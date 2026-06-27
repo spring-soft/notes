@@ -7,6 +7,10 @@ import { ICON } from '../../utils/IconGlyphs';
 /**
  * Immersive note card with color-tag stripe and system material depth.
  * On tablet the material is lighter (THIN) to avoid overwhelming the wider layout.
+ *
+ * Two visual modes:
+ *   gridMode=false — list card with title + 1-line preview + footer
+ *   gridMode=true  — ultra-compact grid card with title + footer (no preview)
  */
 @Component
 export struct NoteCard {
@@ -28,54 +32,54 @@ export struct NoteCard {
 
   build() {
     Row() {
-      // Accent color stripe
+      // Accent color stripe — thin left-edge indicator
       Column()
-        .width(this.gridMode ? 2 : 3)
+        .width(3)
         .height('100%')
         .backgroundColor(this.note.colorTag)
         .borderRadius(2)
-        .margin({ right: this.gridMode ? 6 : 10 });
+        .margin({ right: 8 });
 
-      // Content
+      // Content — grid mode is ultra-compact, list mode shows preview
       Column() {
-        // Title
+        // Title (always visible)
         Text(this.note.title !== '' ? this.note.title : '无标题')
-          .fontSize((this.gridMode ? 13 : 15) * this.themeConfig.fontScale)
+          .fontSize((this.gridMode ? 12 : 14) * this.themeConfig.fontScale)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.themeConfig.textColor)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis });
 
-        // Content preview
-        if (this.note.content !== '') {
+        // Content preview — only in list mode (to keep cards short)
+        if (!this.gridMode && this.note.content !== '') {
           Text(this.note.content)
-            .fontSize((this.gridMode ? 12 : 13) * this.themeConfig.fontScale)
+            .fontSize(12 * this.themeConfig.fontScale)
             .fontColor(this.themeConfig.textSecondaryColor)
-            .maxLines(this.gridMode ? 1 : 2)
+            .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .margin({ top: this.gridMode ? 3 : 4 });
+            .margin({ top: 3 });
         }
 
-        // Footer
+        // Footer — time + optional pin
         Row() {
           Text(formatRelativeTime(this.note.updatedAt))
-            .fontSize((this.gridMode ? 11 : 12) * this.themeConfig.fontScale)
+            .fontSize(11 * this.themeConfig.fontScale)
             .fontColor(this.themeConfig.textSecondaryColor)
             .opacity(0.7);
 
           if (this.note.isPinned) {
             SymbolGlyph(ICON.PIN)
-              .fontSize(11)
+              .fontSize(10)
               .fontColor([this.themeConfig.primaryColor])
-              .margin({ left: 6 });
+              .margin({ left: 4 });
           }
         }
-        .margin({ top: this.gridMode ? 4 : 8 });
+        .margin({ top: this.gridMode ? 2 : 4 });
       }
       .layoutWeight(1);
     }
     .width('100%')
-    .padding(this.gridMode ? 8 : 10)
+    .padding(this.gridMode ? 6 : 10)
     .borderRadius(this.themeConfig.borderRadius)
     .backdropBlur(MaterialConstants.getBlur(
       this.isTabletCard ? MaterialConstants.THIN : MaterialConstants.CARD
