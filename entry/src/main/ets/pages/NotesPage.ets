@@ -105,26 +105,33 @@ export struct NotesPage {
             icon: ICON.EMPTY_NOTES, title: '还没有笔记', subtitle: '点击右下角按钮创建第一条笔记',
           });
         } else if (this.isTablet && this.viewMode === 1) {
-          // ═══ Tablet Grid: 2-column compact cards ═══
+          // ═══ Tablet Grid: 3-column square cards ═══
           Scroll() {
             Column() {
-              ForEach(this.getNotePairs(), (pair: Note[], _pi: number) => {
+              ForEach(this.getNoteTriplets(), (triplet: Note[], _ti: number) => {
                 Row() {
-                  ForEach(pair, (note: Note, _ni: number) => {
+                  ForEach(triplet, (note: Note, _ni: number) => {
                     NoteCard({
                       note: note,
                       gridMode: true,
                       onCardClick: () => { this.navigateToDetail(note.id); },
                     })
                     .layoutWeight(1)
-                    .margin({ left: _ni === 0 ? 10 : 4, right: _ni === 0 ? 4 : 10 });
-                  }, (note: Note) => note.id + '_g2_' + String(note.updatedAt) + '_' + String(this.refreshSignal));
-                  if (pair.length === 1) {
-                    Column().layoutWeight(1).margin({ left: 4, right: 10 });
+                    .aspectRatio(1)
+                    .margin({
+                      left: _ni === 0 ? 10 : 4,
+                      right: _ni === 2 ? 10 : 4
+                    });
+                  }, (note: Note) => 'g3_' + note.id + '_' + String(this.refreshSignal));
+                  if (triplet.length < 3) {
+                    Column().layoutWeight(1).aspectRatio(1);
+                  }
+                  if (triplet.length < 2) {
+                    Column().layoutWeight(1).aspectRatio(1);
                   }
                 }
                 .width('100%').margin({ bottom: 6 });
-              }, (pair: Note[]) => 'p2_' + pair[0].id + '_' + String(this.refreshSignal));
+              }, (triplet: Note[]) => 't3_' + String(triplet[0].id) + '_' + String(this.refreshSignal));
             }
             .width('100%');
           }
@@ -187,20 +194,19 @@ export struct NotesPage {
       .onClick(() => { this.viewModel.setSortOrder(sortOrder); this.refreshNotes(); });
   }
 
-  private getNotePairs(): Note[][] {
-    const pairs: Note[][] = [];
+  private getNoteTriplets(): Note[][] {
+    const triplets: Note[][] = [];
     const notes: Note[] = this.viewModel.filteredNotes;
     let i: number = 0;
     while (i < notes.length) {
-      const pair: Note[] = [notes[i]];
-      i++;
-      if (i < notes.length) {
-        pair.push(notes[i]);
+      const triplet: Note[] = [];
+      for (let j: number = 0; j < 3 && i < notes.length; j++) {
+        triplet.push(notes[i]);
         i++;
       }
-      pairs.push(pair);
+      triplets.push(triplet);
     }
-    return pairs;
+    return triplets;
   }
 
   private navigateToDetail(noteId: string): void {

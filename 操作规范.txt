@@ -1206,3 +1206,243 @@ function checkAllCapabilities() {
 
 
 
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+根据您已申请的待机屏保卡片能力，在项目中启用此功能主要涉及**配置文件修改**和**卡片UI适配**两个核心步骤。待机屏保卡片是HarmonyOS Form Kit从API version 23开始提供的能力，允许应用在设备横屏充电锁屏状态下展示信息。<rsup>1</rsup><rsup>2</rsup>
+
+### 一、配置待机屏保卡片
+
+在项目的卡片配置文件 `entry/src/main/resources/base/profile/form_config.json` 中，为您希望展示在待机屏保的卡片配置 `standby` 字段。
+
+**关键配置项说明：**
+```json
+{
+  "forms": [
+    {
+      "name": "widget", // 卡片名称
+      "displayName": "$string:widget_display_name",
+      "description": "$string:widget_desc",
+      "src": "./ets/widget/pages/WidgetCard.ets", // 卡片UI页面路径
+      "uiSyntax": "arkts",
+      "isDynamic": true,
+      "isDefault": true,
+      "updateEnabled": false,
+      "renderingMode": "autoColor",
+      "defaultDimension": "2*2", // 必须为2*2
+      "supportDimensions": [
+        "2*2" // 待机屏保仅支持2*2尺寸
+      ],
+      "standby": { // 待机屏保配置
+        "isSupported": true, // 声明支持待机屏保展示
+        "isAdapted": true, // 声明已适配待机屏保UX规范（系统会移除backgroundImage）
+        "isPrivacySensitive": false // 若涉及隐私敏感信息，设置为true会添加蒙版
+      }
+    }
+  ]
+}
+```
+
+### 二、实现卡片UI (ArkTS)
+
+待机屏保卡片与普通桌面卡片共享同一套 `FormExtensionAbility` 数据管理逻辑。您需要确保卡片UI已适配待机屏保的设计规范。<rsup>3</rsup>
+
+**示例卡片页面 (`WidgetCard.ets`):**
+```typescript
+import { LocalStorage } from '@kit.ArkUI';
+
+// 使用LocalStorage进行数据管理
+let storageUpdateByMsg = new LocalStorage();
+
+@Entry(storageUpdateByMsg)
+@Component
+struct WidgetCard {
+  // 通过LocalStorageProp接收来自主应用或FormExtensionAbility的数据
+  @LocalStorageProp('finalWatchList') lockScreenStockList: WatchedStockInfo[] = []
+
+  readonly actionType = 'router';
+  readonly abilityName = 'EntryAbility';
+
+  build() {
+    Column({ space: 10 }) {
+      // 示例：展示股票信息列表（前3条）
+      ForEach(this.lockScreenStockList.slice(0, 3), (stock: WatchedStockInfo) => {
+        Column({ space: 2 }) {
+          Row() {
+            Text(stock.name)
+              .textAlign(TextAlign.Start)
+              .fontSize(14)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .fontColor(Color.White)
+            Text(stock.price)
+              .textAlign(TextAlign.Start)
+              .fontSize(14)
+              .fontColor(stock.rate.startsWith('+') ? Color.Red : Color.Green)
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.SpaceBetween)
+          Row() {
+            Text(stock.code)
+              .textAlign(TextAlign.Start)
+              .fontSize(11)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .fontColor('#999999')
+            Text(stock.rate)
+              .textAlign(TextAlign.Start)
+              .fontSize(11)
+              .fontColor(stock.rate.startsWith('+') ? Color.Red : Color.Green)
+          }
+        }
+        .width('100%')
+      }, (stock: WatchedStockInfo) => stock.code)
+    }
+    .width('100%')
+    .height('100%')
+    .onClick(() => {
+      // 点击卡片跳转到应用主页面
+      postCardAction(this, {
+        action: this.actionType,
+        abilityName: this.abilityName,
+      });
+    })
+  }
+}
+```
+
+### 三、数据更新与管理
+
+卡片数据更新通常通过 `FormExtensionAbility` 的 `onUpdateForm` 生命周期回调或主应用主动调用 `formProvider.updateForm()` 实现。
+
+**在FormExtensionAbility中管理数据 (`EntryFormAbility.ets`):**
+```typescript
+import { FormExtensionAbility, formBindingData } from '@kit.FormKit';
+import { Want } from '@kit.AbilityKit';
+
+export default class EntryFormAbility extends FormExtensionAbility {
+  onAddForm(want: Want) {
+    // 卡片添加时的初始化逻辑
+    const formData = '';
+    return formBindingData.createFormBindingData(formData);
+  }
+
+  onUpdateForm(formId: string) {
+    // 卡片更新逻辑，可在此处获取最新数据并更新卡片
+    // 例如：从网络或本地获取数据，然后通过formProvider.updateForm更新
+  }
+
+  onRemoveForm(formId: string) {
+    // 卡片移除时的清理逻辑
+  }
+}
+```
+
+### 四、重要注意事项
+
+1.  **尺寸限制**：待机屏保卡片**仅支持 2*2 尺寸**，务必在 `supportDimensions` 中正确配置。
+2.  **设计规范**：待机屏保界面默认为深色模式，不会跟随系统主题切换。设计时应遵循“清晰可见、沉浸视觉、轻量交互”原则：
+    *   **清晰可见**：为中远场浏览优化，放大关键信息。
+    *   **沉浸视觉**：避免大面积使用高明度浅色，防止视觉割裂。
+    *   **轻量交互**：卡片内**不要设计**滑动、长按、拖动等复杂手势，仅支持点击等轻量操作，避免与系统手势冲突。
+3.  **隐私安全**：不推荐在待机屏保卡片上展示个人隐私敏感数据。若涉及，请将 `isPrivacySensitive` 设置为 `true`。
+4.  **UX适配**：当 `isAdapted` 设置为 `true` 时，系统会自动移除卡片布局组件中的 `backgroundImage`，以确保在待机屏保下的显示效果。
+
+### 五、测试与验证
+
+1.  **进入待机屏保界面**：<rsup>1</rsup>
+    *   设备插入充电器或开启“设置 > 桌面和个性化 > 待机屏保设置”中的“不充电可显示”开关。
+    *   将设备横屏锁屏，并与桌面呈45°~90°夹角稳定摆放（折叠屏需切换为外屏）。
+2.  **添加卡片**：
+    *   在待机屏保界面长按或双指捏合进入编辑界面。
+    *   上滑左侧或右侧列表至最后，点击“+”进入卡片中心。
+    *   找到您的应用，选择对应的2*2卡片并点击“添加”。
+3.  **调试**：您可以通过 `formProvider.updateForm` 主动刷新卡片，或在 `FormExtensionAbility` 的生命周期回调中打印日志，以验证功能是否正常工作。
+
+### 总结
+
+在项目中调用待机屏保卡片功能的核心是：<rsup>1</rsup><rsup>2</rsup>
+1.  在 `form_config.json` 中为卡片配置 `"standby": {"isSupported": true, "isAdapted": true}`。
+2.  确保卡片尺寸为 `2*2`。
+3.  按照待机屏保的UX规范设计卡片UI（深色模式适配、信息突出、交互简洁）。<rsup>1</rsup>
+
+完成以上配置后，编译并安装应用到支持该功能的设备上，即可按照上述测试步骤在待机屏保界面添加并使用您的卡片。<rsup>4</rsup>
+
+
+
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+申请到待机屏保卡片的开放能力后，**并不能直接自动使用**，您还需要在项目中完成必要的配置和开发工作。<rsup>1</rsup><rsup>2</rsup>
+
+### 一、申请权限 ≠ 自动生效
+
+您在AppGallery Connect中申请并获批的“待机屏保卡片”开放能力，仅代表您的应用**获得了在待机屏保界面展示卡片的资格**。要使卡片真正在待机屏保上显示，您必须在项目中进行以下配置和开发。<rsup>3</rsup><rsup>1</rsup>
+
+### 二、必须完成的配置与开发步骤
+
+#### 1. 配置卡片信息 (`form_config.json`)
+在项目的卡片配置文件 `entry/src/main/resources/base/profile/form_config.json` 中，为您希望展示在待机屏保的卡片添加 `standby` 字段。
+
+**关键配置项：**
+- `"isSupported": true`：**必须设置为 `true`**，以声明此卡片支持在待机屏保界面展示。
+- `"isAdapted": true`：如果您的卡片UI已遵循待机屏保的UX设计规范（如适配深色模式、移除复杂背景图等），建议设置为 `true`。系统会将卡片布局组件中的 `backgroundImage` 移除。
+- `"isPrivacySensitive": false`：若卡片内容涉及用户隐私敏感信息（如个人健康数据、财务信息），可设置为 `true`，系统会在待机屏保显示时添加蒙版保护。
+
+**配置示例：**
+```json
+{
+  "forms": [
+    {
+      "name": "widget",
+      "src": "./ets/widget/pages/WidgetCard.ets",
+      "uiSyntax": "arkts",
+      "isDynamic": true,
+      "defaultDimension": "2*2", // 待机屏保仅支持2*2尺寸
+      "supportDimensions": ["2*2"], // 必须包含2*2
+      "standby": {
+        "isSupported": true, // 核心：启用待机屏保支持
+        "isAdapted": true,
+        "isPrivacySensitive": false
+      }
+    }
+  ]
+}
+```
+
+#### 2. 确保卡片尺寸为 `2*2`
+待机屏保卡片**仅支持 2*2 一种尺寸**。您必须在 `supportDimensions` 中配置 `"2*2"`，并将 `defaultDimension` 也设置为 `"2*2"`。
+
+#### 3. 遵循待机屏保UX规范设计卡片UI
+待机屏保界面默认为深色模式，且用户在中远距离观看。您的卡片UI（`.ets`文件）应遵循以下原则：<rsup>2</rsup>
+- **清晰可见**：放大关键信息，确保在中远距离下可读。
+- **沉浸视觉**：避免大面积使用高明度浅色，防止视觉割裂。建议使用深色背景与高对比度文字。
+- **轻量交互**：卡片内**不要设计**滑动、长按、拖动等复杂手势，仅支持点击等轻量操作，避免与系统手势冲突。
+
+#### 4. 用户手动添加卡片
+即使完成以上所有配置，卡片也不会自动出现在待机屏保上。用户需要**手动进入待机屏保编辑界面，找到您的应用，并选择对应的2*2卡片进行添加**。具体操作路径通常为：设备横屏锁屏充电 → 在待机屏保界面长按或双指捏合进入编辑态 → 上滑列表找到您的应用 → 点击“添加”。
+
+### 三、总结：申请权限后的完整流程
+
+1.  **项目配置**：在 `form_config.json` 中为卡片配置 `"standby": {"isSupported": true}`。
+2.  **尺寸限定**：确保卡片尺寸配置为 `2*2`。
+3.  **UI适配**：按照待机屏保规范（深色模式、信息突出、交互简洁）开发或调整卡片UI。<rsup>4</rsup><rsup>2</rsup>
+4.  **编译与安装**：将应用编译并安装到支持该功能的设备上。
+5.  **用户添加**：引导用户在设备的待机屏保界面手动添加您的卡片。<rsup>1</rsup>
+
+**简单来说，申请开放能力是“拿到入场券”，而配置 `standby` 字段和适配UI是“布置展台”，两者缺一不可，用户最后还需要“走进来参观”（手动添加）。**
+
+
+
+
+

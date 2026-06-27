@@ -64,6 +64,7 @@ export struct NoteCard {
       .margin({ top: this.gridMode ? 2 : 4 });
     }
     .width('100%')
+    .justifyContent(this.gridMode ? FlexAlign.Center : FlexAlign.Start)
     .padding({
       left: 11,   // 3px border + 8px gap
       right: 10,

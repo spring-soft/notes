@@ -35,6 +35,7 @@ export struct PomodoroPage {
       this.displayRemaining = remaining;
       this.displayProgress = progress;
       this.displayState = state;
+      this.currentType = this.viewModel.currentType;
       this.stateUpdateSignal++;
     });
     this.stateUpdateSignal++;
@@ -162,23 +163,18 @@ export struct PomodoroPage {
           : this.themeConfig.primaryColor + '15')
         : Color.Transparent
     )
-    .backdropBlur(
-      this.currentType === type
-        ? 0
-        : MaterialConstants.getBlur(MaterialConstants.CHIP)
-    )
-    .borderWidth(this.currentType === type ? 1.5 : 0)
+    .borderWidth(this.currentType === type ? 1.5 : 1)
     .borderColor(
       this.currentType === type
         ? this.themeConfig.primaryColor
-        : Color.Transparent
+        : this.themeConfig.isDarkMode
+          ? 'rgba(255, 255, 255, 0.12)'
+          : 'rgba(0, 0, 0, 0.08)'
     )
+    .animation({ duration: 250, curve: Curve.EaseInOut })
     .onClick(() => {
-      // Only allow switching modes when the timer is completely IDLE.
-      // Running or paused sessions must be stopped/reset first.
       if (this.displayState === PomodoroState.IDLE) {
         this.viewModel.setSessionType(type);
-        // Sync @State so chips re-render immediately
         this.currentType = type;
         this.displayRemaining = this.viewModel.remainingSeconds;
         this.displayProgress = this.viewModel.progress;
