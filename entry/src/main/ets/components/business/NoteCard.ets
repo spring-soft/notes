@@ -1,16 +1,13 @@
 import { Note } from '../../model/NoteModel';
 import { ThemeConfig } from '../../model/ThemeConfigModel';
-import { MaterialConstants } from '../../constants/MaterialConstants';
 import { formatRelativeTime } from '../../utils/DateUtils';
 import { ICON } from '../../utils/IconGlyphs';
 
 /**
- * Immersive note card with color-tag stripe and system material depth.
- * On tablet the material is lighter (THIN) to avoid overwhelming the wider layout.
+ * Lightweight note card — accent stripe + subtle surface, no heavy blur frame.
  *
- * Two visual modes:
- *   gridMode=false — list card with title + 1-line preview + footer
- *   gridMode=true  — ultra-compact grid card with title + footer (no preview)
+ * gridMode=false — list: title + 1-line preview + footer
+ * gridMode=true  — grid: title + footer only (ultra-compact)
  */
 @Component
 export struct NoteCard {
@@ -40,9 +37,8 @@ export struct NoteCard {
         .borderRadius(2)
         .margin({ right: 8 });
 
-      // Content — grid mode is ultra-compact, list mode shows preview
+      // Content
       Column() {
-        // Title (always visible)
         Text(this.note.title !== '' ? this.note.title : '无标题')
           .fontSize((this.gridMode ? 12 : 14) * this.themeConfig.fontScale)
           .fontWeight(FontWeight.Medium)
@@ -50,7 +46,6 @@ export struct NoteCard {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis });
 
-        // Content preview — only in list mode (to keep cards short)
         if (!this.gridMode && this.note.content !== '') {
           Text(this.note.content)
             .fontSize(12 * this.themeConfig.fontScale)
@@ -60,7 +55,6 @@ export struct NoteCard {
             .margin({ top: 3 });
         }
 
-        // Footer — time + optional pin
         Row() {
           Text(formatRelativeTime(this.note.updatedAt))
             .fontSize(11 * this.themeConfig.fontScale)
@@ -80,14 +74,12 @@ export struct NoteCard {
     }
     .width('100%')
     .padding(this.gridMode ? 6 : 10)
-    .borderRadius(this.themeConfig.borderRadius)
-    .backdropBlur(MaterialConstants.getBlur(
-      this.isTabletCard ? MaterialConstants.THIN : MaterialConstants.CARD
-    ))
-    .backgroundColor(MaterialConstants.getOverlayColor(
-      this.isTabletCard ? MaterialConstants.THIN : MaterialConstants.CARD,
+    .borderRadius(8)
+    .backgroundColor(
       this.themeConfig.isDarkMode
-    ))
+        ? 'rgba(255, 255, 255, 0.04)'
+        : 'rgba(0, 0, 0, 0.02)'
+    )
     .onClick(() => {
       this.onCardClick();
     });
