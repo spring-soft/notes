@@ -25,12 +25,6 @@ export struct PomodoroPage {
   @State displayProgress: number = 0;
   @State displayState: PomodoroState = PomodoroState.IDLE;
   @State stateUpdateSignal: number = 0;
-  // Separate @State copies of config durations — updated on init / config change
-  // so the session-type chips ALWAYS show the latest values without relying on
-  // @Observed nested-property tracking through @State viewModel.
-  @State chipWorkSecs: number = 25 * 60;
-  @State chipShortSecs: number = 5 * 60;
-  @State chipLongSecs: number = 15 * 60;
 
   aboutToAppear(): void {
     this.viewModel.setTickHandler((remaining: number, progress: number, state: PomodoroState) => {
@@ -40,7 +34,6 @@ export struct PomodoroPage {
       this.stateUpdateSignal++;
     });
     this.viewModel.initialize().then(() => {
-      this.syncChipDurations();
       this.stateUpdateSignal++;
     });
   }
@@ -60,18 +53,7 @@ export struct PomodoroPage {
     this.displayRemaining = this.viewModel.remainingSeconds;
     this.displayProgress = this.viewModel.progress;
     this.displayState = this.viewModel.currentState;
-    this.syncChipDurations();
     this.stateUpdateSignal++;
-  }
-
-  /**
-   * Copies ViewModel config durations into @State fields so the
-   * session-type chips always display up-to-date numbers.
-   */
-  private syncChipDurations(): void {
-    this.chipWorkSecs = this.viewModel.config.workDuration;
-    this.chipShortSecs = this.viewModel.config.shortBreakDuration;
-    this.chipLongSecs = this.viewModel.config.longBreakDuration;
   }
 
   private createViewModel(): PomodoroViewModel {
@@ -101,9 +83,9 @@ export struct PomodoroPage {
 
         // Session type selector
         Row() {
-          this.sessionTypeChip(PomodoroSessionType.WORK, '专注', this.chipWorkSecs);
-          this.sessionTypeChip(PomodoroSessionType.SHORT_BREAK, '短休息', this.chipShortSecs);
-          this.sessionTypeChip(PomodoroSessionType.LONG_BREAK, '长休息', this.chipLongSecs);
+          this.sessionTypeChip(PomodoroSessionType.WORK, '专注', 0);
+          this.sessionTypeChip(PomodoroSessionType.SHORT_BREAK, '短休息', 0);
+          this.sessionTypeChip(PomodoroSessionType.LONG_BREAK, '长休息', 0);
         }
         .width('100%')
         .padding({ left: 20, right: 20, bottom: 24 })
@@ -174,12 +156,6 @@ export struct PomodoroPage {
             ? this.themeConfig.primaryColor
             : this.themeConfig.textSecondaryColor
         );
-
-      Text(`${Math.floor(durationSeconds / 60)} 分钟`)
-        .fontSize(12 * this.themeConfig.fontScale)
-        .fontColor(this.themeConfig.textSecondaryColor)
-        .opacity(0.7)
-        .margin({ top: 2 });
     }
     .padding({ left: 16, right: 16, top: 10, bottom: 10 })
     .borderRadius(this.themeConfig.borderRadius)

@@ -1,17 +1,17 @@
 import { ThemeConfig } from '../../model/ThemeConfigModel';
-import { PomodoroState } from '../../model/PomodoroSessionModel';
 
 /**
  * Circular progress ring for the pomodoro timer.
  *
- * Three stacked layers:
- *   1. Background track — subtle full-circle ring
- *   2. Progress arc — single dash that grows clockwise (flat caps)
- *   3. Leading dot — a small filled circle at the tip, rotated to match progress
+ * Layers (bottom → top):
+ *   1. Full-circle background track
+ *   2. Path-drawn arc — a single SVG-style arc from 12-o'clock growing clockwise.
+ *      strokeLineCap(Round) on the Path gives exactly ONE round cap at the arc's end.
+ *   3. Leading dot — a filled Circle at the arc tip, rotated to exactly match.
  *
- * The arc starts at 12-o'clock (via rotate -90°) and fills clockwise.
- * A separate dot element (not a stroke cap) ensures exactly ONE visible dot
- * regardless of progress value.
+ * Unlike Circle + strokeDashArray (which creates visible artifacts at both the
+ * start and end of the dash), a Path with explicit arc commands produces a clean
+ * open stroke with a single cap.
  */
 @Component
 export struct PomodoroCircle {
@@ -21,12 +21,36 @@ export struct PomodoroCircle {
   @Prop sessionLabel: string = '专注';
   @Prop isRunning: boolean = false;
 
-  // Circle geometry — computed from fixed sizing (280×280, strokeWidth 12)
-  private readonly circumference: number = 2 * Math.PI * 134;
+  // Fixed geometry: 280×280 container, 12 vp stroke width
+  // Radius for stroke centerline = (280 − 12) / 2 = 134
+  private readonly cx: number = 140;
+  private readonly cy: number = 140;
+  private readonly r: number = 134;
+
+  /**
+   * Builds an SVG arc path from 12-o'clock clockwise to the progress angle.
+   * Returns path commands string usable by Path().commands().
+   */
+  private arcCommands(): string {
+    // Angles in radians: 0 = 3-o'clock, π/2 = 6-o'clock (y-down screen coords)
+    // 12-o'clock = -π/2
+    const startAngle: number = -Math.PI / 2;
+    const endAngle: number = startAngle + this.progress * 2 * Math.PI;
+
+    const x1: number = this.cx + this.r * Math.cos(startAngle);
+    const y1: number = this.cy + this.r * Math.sin(startAngle);
+    const x2: number = this.cx + this.r * Math.cos(endAngle);
+    const y2: number = this.cy + this.r * Math.sin(endAngle);
+
+    // large-arc-flag: 1 when arc sweeps more than 180°
+    const largeArc: number = this.progress > 0.5 ? 1 : 0;
+
+    return `M ${x1} ${y1} A ${this.r} ${this.r} 0 ${largeArc} 1 ${x2} ${y2}`;
+  }
 
   build() {
     Stack() {
-      // ── Layer 1: Background track ──
+      // ══════ Layer 1: Background track ══════
       Circle()
         .width('100%')
         .height('100%')
@@ -38,42 +62,15 @@ export struct PomodoroCircle {
         )
         .strokeWidth(12);
 
-      // ── Layer 2: Progress arc (flat caps — no dots from stroke) ──
-      Circle()
-        .width('100%')
-        .height('100%')
+      // ══════ Layer 2: Progress arc (Path, single Round cap at end) ══════
+      Path()
+        .commands(this.arcCommands())
         .fill(Color.Transparent)
         .stroke(this.themeConfig.primaryColor)
         .strokeWidth(12)
-        .strokeLineCap(LineCapStyle.Butt)
-        .strokeDashArray([
-          this.circumference * this.progress,
-          this.circumference * (1 - this.progress),
-        ])
-        .rotate({ angle: -90 });
+        .strokeLineCap(LineCapStyle.Round);
 
-      // ── Layer 3: Leading dot — one small filled circle rotated to the arc tip ──
-      // A 280×280 Column with justifyContent(Start) places the dot at the top
-      // (12-o'clock).  Rotating the entire Column by progress×360° spins the dot
-      // clockwise around the centre, tracking the leading edge of the arc.
-      Column() {
-        Circle()
-          .width(12)
-          .height(12)
-          .fill(this.themeConfig.primaryColor);
-      }
-      .width(280)
-      .height(280)
-      .justifyContent(FlexAlign.Start)
-      .alignItems(HorizontalAlign.Center)
-      .rotate({ angle: this.progress * 360 })
-      .visibility(
-        this.progress <= 0
-          ? Visibility.Hidden
-          : Visibility.Visible
-      );
-
-      // ── Center content ──
+      // ══════ Center content ══════
       Column() {
         Text(this.remainingTime)
           .fontSize(48 * this.themeConfig.fontScale)
