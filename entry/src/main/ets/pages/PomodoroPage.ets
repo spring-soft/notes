@@ -5,9 +5,6 @@ import { ThemeConfig } from '../model/ThemeConfigModel';
 import { PomodoroRepository } from '../repository/PomodoroRepository';
 import { SettingsRepository } from '../repository/SettingsRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
-import { NotificationService } from '../service/NotificationService';
-import { BackgroundTaskService } from '../service/BackgroundTaskService';
-import { LiveViewService } from '../service/LiveViewService';
 import { common } from '@kit.AbilityKit';
 import { PomodoroCircle } from '../components/business/PomodoroCircle';
 import { PomodoroControls } from '../components/business/PomodoroControls';
@@ -28,7 +25,6 @@ export struct PomodoroPage {
   @State stateUpdateSignal: number = 0;
 
   aboutToAppear(): void {
-    this.viewModel.setPrimaryColor(this.themeConfig.primaryColor);
     this.viewModel.setTickHandler((remaining: number, progress: number, state: PomodoroState) => {
       this.displayRemaining = remaining;
       this.displayProgress = progress;
@@ -63,10 +59,7 @@ export struct PomodoroPage {
     const appContext: common.Context = context.getApplicationContext();
     return new PomodoroViewModel(
       new PomodoroRepository(DatabaseHelper.getInstance().getStore()),
-      new SettingsRepository(appContext),
-      new NotificationService(context),
-      new BackgroundTaskService(context),
-      new LiveViewService(context)
+      new SettingsRepository(appContext)
     );
   }
 

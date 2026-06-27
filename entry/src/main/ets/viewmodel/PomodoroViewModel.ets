@@ -3,9 +3,6 @@ import { Seconds } from '../model/AppConstantsModel';
 import { PomodoroRepository } from '../repository/PomodoroRepository';
 import { SettingsRepository } from '../repository/SettingsRepository';
 import { PomodoroTimerService } from '../service/PomodoroTimerService';
-import { NotificationService } from '../service/NotificationService';
-import { BackgroundTaskService } from '../service/BackgroundTaskService';
-import { LiveViewService, LiveViewLabels } from '../service/LiveViewService';
 import { generateId } from '../utils/IdGenerator';
 import { now, startOfToday, endOfToday } from '../utils/DateUtils';
 import { formatDuration } from '../utils/DateUtils';
@@ -13,8 +10,7 @@ import { getDefaultPomodoroConfig } from '../constants/PomodoroConstants';
 
 /**
  * ViewModel for the Pomodoro timer feature.
- * Manages timer state machine, session history, background keep-alive,
- * Live View (实况窗 / 灵动岛), and completion notifications.
+ * Manages timer state machine and session history.
  */
 @Observed
 export class PomodoroViewModel {
@@ -34,25 +30,13 @@ export class PomodoroViewModel {
   private timerService: PomodoroTimerService;
   private repository: PomodoroRepository;
   private settingsRepository: SettingsRepository;
-  private notificationService: NotificationService;
-  private backgroundTaskService: BackgroundTaskService;
-  private liveViewService: LiveViewService;
-  // True when Live View is active (灵动岛 mode); false = notification fallback.
-  private useLiveView: boolean = false;
-  private primaryColor: string = '#4A90D9';
 
   constructor(
     repository: PomodoroRepository,
-    settingsRepository: SettingsRepository,
-    notificationService: NotificationService,
-    backgroundTaskService: BackgroundTaskService,
-    liveViewService: LiveViewService
+    settingsRepository: SettingsRepository
   ) {
     this.repository = repository;
     this.settingsRepository = settingsRepository;
-    this.notificationService = notificationService;
-    this.backgroundTaskService = backgroundTaskService;
-    this.liveViewService = liveViewService;
     this.timerService = new PomodoroTimerService();
     this.config = getDefaultPomodoroConfig();
 
@@ -63,23 +47,11 @@ export class PomodoroViewModel {
       if (this.tickHandler !== null) {
         this.tickHandler(remaining, this.progress, this.currentState);
       }
-      // In fallback mode (no Live View), update the ongoing notification.
-      if (!this.useLiveView && this.currentType === PomodoroSessionType.WORK) {
-        this.notificationService.updateTimerNotification(this.currentType, remaining);
-      }
     });
 
     this.timerService.onComplete(() => {
       this.onSessionComplete();
     });
-  }
-
-  /**
-   * Sets the primary colour used for the Live View capsule background.
-   * Called by the page whenever the theme changes.
-   */
-  setPrimaryColor(color: string): void {
-    this.primaryColor = color;
   }
 
   /**
@@ -133,7 +105,6 @@ export class PomodoroViewModel {
    */
   startTimer(): void {
     if (this.currentState === PomodoroState.IDLE) {
-      // Create a new session
       this.currentSessionId = generateId();
       const session: PomodoroSession = {
         id: this.currentSessionId,
@@ -154,26 +125,7 @@ export class PomodoroViewModel {
         this.currentState = PomodoroState.LONG_BREAK_RUNNING;
       }
       this.timerService.start();
-
-      // Publish custom countdown notification FIRST, then request background
-      // task.  On some devices the background-task system notification can
-      // suppress subsequent publishes from the same app.
-      if (this.currentType === PomodoroSessionType.WORK) {
-        this.notificationService.showTimerNotification(this.currentType, this.remainingSeconds);
-      }
-      this.backgroundTaskService.requestContinuousTask();
-      // Try Live View as a bonus (灵动岛).  If it succeeds we stop updating
-      // the notification on every tick; if it fails the notification stays.
-      const labels: LiveViewLabels = this.getLiveViewLabels();
-      this.liveViewService.startLiveView(
-        labels,
-        this.remainingSeconds * 1000,
-        this.primaryColor
-      ).then((ok: boolean) => {
-        this.useLiveView = ok;
-      });
     } else if (this.currentState === PomodoroState.PAUSED) {
-      // Resume from pause
       this.timerService.resume();
       if (this.currentType === PomodoroSessionType.WORK) {
         this.currentState = PomodoroState.WORKING;
@@ -181,20 +133,6 @@ export class PomodoroViewModel {
         this.currentState = PomodoroState.SHORT_BREAK_RUNNING;
       } else {
         this.currentState = PomodoroState.LONG_BREAK_RUNNING;
-      }
-      // Always re-acquire background task + re-show notification.
-      this.backgroundTaskService.requestContinuousTask();
-      if (this.currentType === PomodoroSessionType.WORK) {
-        this.notificationService.showTimerNotification(this.currentType, this.remainingSeconds);
-      }
-      // Also resume Live View if it was active.
-      if (this.useLiveView) {
-        const labels: LiveViewLabels = this.getLiveViewLabels();
-        this.liveViewService.updateLiveView(
-          labels,
-          this.remainingSeconds * 1000,
-          this.primaryColor
-        );
       }
     }
     if (this.tickHandler !== null) {
@@ -208,18 +146,6 @@ export class PomodoroViewModel {
   pauseTimer(): void {
     this.timerService.pause();
     this.currentState = PomodoroState.PAUSED;
-    // Always release background task + cancel notification on pause.
-    this.backgroundTaskService.stopContinuousTask();
-    this.notificationService.cancelTimerNotification();
-    // Pause Live View if active.
-    if (this.useLiveView) {
-      const labels: LiveViewLabels = this.getLiveViewLabels();
-      this.liveViewService.pauseLiveView(
-        labels,
-        this.remainingSeconds * 1000,
-        this.primaryColor
-      );
-    }
     if (this.tickHandler !== null) {
       this.tickHandler(this.remainingSeconds, this.progress, this.currentState);
     }
@@ -233,12 +159,6 @@ export class PomodoroViewModel {
     this.remainingSeconds = this.totalSeconds;
     this.progress = 0;
     this.currentState = PomodoroState.IDLE;
-    this.backgroundTaskService.stopContinuousTask();
-    this.notificationService.cancelTimerNotification();
-    if (this.useLiveView) {
-      this.liveViewService.stopLiveView();
-      this.useLiveView = false;
-    }
 
     if (this.currentSessionId !== '') {
       this.markSessionAbandoned(this.currentSessionId);
@@ -252,13 +172,6 @@ export class PomodoroViewModel {
    * Skips to the next session.
    */
   skipToNext(): void {
-    if (this.useLiveView) {
-      this.liveViewService.stopLiveView();
-      this.useLiveView = false;
-    } else {
-      this.backgroundTaskService.stopContinuousTask();
-      this.notificationService.cancelTimerNotification();
-    }
     if (this.currentType === PomodoroSessionType.WORK) {
       this.completedWorkCount++;
       if (this.completedWorkCount % this.config.longBreakInterval === 0) {
@@ -275,21 +188,9 @@ export class PomodoroViewModel {
   }
 
   private async onSessionComplete(): Promise<void> {
-    if (this.useLiveView) {
-      this.liveViewService.stopLiveView();
-      this.useLiveView = false;
-    } else {
-      this.backgroundTaskService.stopContinuousTask();
-      this.notificationService.cancelTimerNotification();
-    }
-
     if (this.currentType === PomodoroSessionType.WORK) {
       this.completedWorkCount++;
       await this.loadTodaySessions();
-      this.notificationService.showSessionCompleteNotification(
-        PomodoroSessionType.WORK,
-        this.todayCompletedCount
-      );
 
       if (this.completedWorkCount % this.config.longBreakInterval === 0) {
         this.setSessionType(PomodoroSessionType.LONG_BREAK);
@@ -297,10 +198,6 @@ export class PomodoroViewModel {
         this.setSessionType(PomodoroSessionType.SHORT_BREAK);
       }
     } else {
-      this.notificationService.showSessionCompleteNotification(
-        this.currentType,
-        this.todayCompletedCount
-      );
       this.setSessionType(PomodoroSessionType.WORK);
     }
 
@@ -368,25 +265,6 @@ export class PomodoroViewModel {
   }
 
   /**
-   * Called when app goes to background.
-   */
-  async onBackground(): Promise<void> {
-    if (!this.useLiveView && this.timerService.active) {
-      await this.backgroundTaskService.requestContinuousTask();
-    }
-  }
-
-  /**
-   * Called when app returns to foreground.
-   */
-  async onForeground(): Promise<void> {
-    if (!this.useLiveView) {
-      await this.backgroundTaskService.stopContinuousTask();
-    }
-    await this.loadTodaySessions();
-  }
-
-  /**
    * Reloads config from persistent storage without altering timer state.
    */
   async reloadConfig(): Promise<void> {
@@ -425,29 +303,5 @@ export class PomodoroViewModel {
    */
   destroy(): void {
     this.timerService.destroy();
-    if (this.useLiveView) {
-      this.liveViewService.stopLiveView();
-      this.useLiveView = false;
-    } else {
-      this.backgroundTaskService.stopContinuousTask();
-      this.notificationService.cancelTimerNotification();
-    }
-  }
-
-  /**
-   * Returns the Live View title and capsule title for the current session type.
-   */
-  private getLiveViewLabels(): LiveViewLabels {
-    switch (this.currentType) {
-      case PomodoroSessionType.WORK:
-        const workLabels: LiveViewLabels = { title: '专注中', capsuleTitle: '专注' };
-        return workLabels;
-      case PomodoroSessionType.SHORT_BREAK:
-        const shortLabels: LiveViewLabels = { title: '短休息', capsuleTitle: '休息' };
-        return shortLabels;
-      case PomodoroSessionType.LONG_BREAK:
-        const longLabels: LiveViewLabels = { title: '长休息', capsuleTitle: '休息' };
-        return longLabels;
-    }
   }
 }

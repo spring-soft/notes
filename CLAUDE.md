@@ -170,6 +170,7 @@ TodoAddSheet save:
 28. **Custom background image picker not working** — `DocumentViewPicker` → `photoAccessHelper.PhotoViewPicker`.
 29. **Pomodoro config not persisted after app restart** — SettingsPage initialized sliders from hardcoded defaults → added `loadSavedPomodoroConfig()` in `aboutToAppear()`.
 30. **Pomodoro timer resets when switching session types** — `setSessionType()` unconditionally called `timerService.reset()` → changed to conditional: only reset when `timerService.running || timerService.active` (PAUSED state); IDLE state skips reset and only updates type+duration.
+31. **通知栏和实况窗做不好，全删了** — Removed all notification, Live View, and background task code because they didn't work reliably: deleted `NotificationService.ets`, `LiveViewService.ets`, `BackgroundTaskService.ets`; stripped all notification/LiveView/background-task logic from `PomodoroViewModel`; simplified `PomodoroPage.createViewModel()` and `SettingsPage.createPomodoroVM()` to only pass Repository + SettingsRepository; removed `NOTIFICATION_TIMER_ID`, `NOTIFICATION_SESSION_COMPLETE_ID` from `AppConstants`; removed `NOTIFICATION_UPDATE_INTERVAL_MS` from `PomodoroConstants`. Pomodoro timer now runs purely in-app with no system notifications or background keep-alive.
 
 ## ArkTS Strict Rules
 - No spread operator `...` → explicit property copy when creating new ThemeConfig

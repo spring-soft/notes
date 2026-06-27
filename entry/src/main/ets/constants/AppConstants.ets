@@ -17,8 +17,6 @@ export class AppConstants {
 
   static readonly PREFERENCES_NAME: string = 'memoflow_settings';
 
-  static readonly NOTIFICATION_TIMER_ID: number = 99991001;
-  static readonly NOTIFICATION_SESSION_COMPLETE_ID: number = 1002;
 }
 
 /**
