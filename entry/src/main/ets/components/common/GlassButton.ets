@@ -1,17 +1,11 @@
 import { ThemeConfig } from '../../model/ThemeConfigModel';
-import { createGlassColor } from '../../utils/ColorUtils';
 
 /**
- * Liquid-glass button with specular highlight and press animation.
- *
- * Layers:
- *   1. Colored glass fill (primary for filled, surface for ghost)
- *   2. Top-left specular highlight
- *   3. Backdrop blur
+ * Solid button with press animation.
  *
  * @param label - Button text
  * @param icon - Optional system symbol or resource icon
- * @param type - 'primary' (accent-filled) or 'ghost' (transparent glass)
+ * @param type - 'primary' (accent-filled) or 'ghost' (transparent)
  * @param disabled - Grayed out / non-interactive
  * @param onClick - Click callback
  */
@@ -28,73 +22,42 @@ export struct GlassButton {
   @State isPressed: boolean = false;
 
   build() {
-    Stack() {
-      // ── Main button surface ──
-      Row() {
-        if (this.icon !== '' && this.icon !== undefined) {
-          Image(this.icon)
-            .width(20)
-            .height(20)
-            .fillColor(this.type === 'primary' ? '#FFFFFF' : this.themeConfig.primaryColor)
-            .margin({ right: this.label !== '' ? 8 : 0 });
-        }
-        if (this.label !== '') {
-          Text(this.label)
-            .fontSize(16 * this.themeConfig.fontScale)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.type === 'primary' ? '#FFFFFF' : this.themeConfig.textColor);
-        }
+    Row() {
+      if (this.icon !== '' && this.icon !== undefined) {
+        Image(this.icon)
+          .width(20)
+          .height(20)
+          .fillColor(this.type === 'primary' ? '#FFFFFF' : this.themeConfig.primaryColor)
+          .margin({ right: this.label !== '' ? 8 : 0 });
       }
-      .justifyContent(FlexAlign.Center)
-      .alignItems(VerticalAlign.Center)
-      .padding({ left: 20, right: 20, top: 12, bottom: 12 })
-      .borderRadius(this.themeConfig.borderRadius)
-      .backgroundColor(
-        this.type === 'primary'
-          ? this.themeConfig.primaryColor
-          : createGlassColor(
-            this.themeConfig.surfaceColor,
-            this.themeConfig.glassOpacity,
-            this.themeConfig.isDarkMode
-          )
-      )
-      .backdropBlur(this.themeConfig.glassBlurRadius)
-      .borderWidth(1)
-      .borderColor(
-        this.type === 'primary'
-          ? 'rgba(255, 255, 255, 0.30)'
-          : (this.themeConfig.isDarkMode
-            ? 'rgba(255, 255, 255, 0.08)'
-            : 'rgba(255, 255, 255, 0.25)')
-      );
-
-      // ── Specular highlight (top-left shine) ──
-      Row()
-        .width('100%')
-        .height('100%')
-        .borderRadius(this.themeConfig.borderRadius)
-        .linearGradient({
-          direction: GradientDirection.Top,
-          colors: [
-            [this.type === 'primary'
-              ? 'rgba(255, 255, 255, 0.18)'
-              : 'rgba(255, 255, 255, 0.10)', 0.0],
-            ['rgba(255, 255, 255, 0.0)', 0.6],
-          ],
-        })
-        .hitTestBehavior(HitTestMode.None);
-
-      // ── Press overlay ──
-      if (this.isPressed) {
-        Row()
-          .width('100%')
-          .height('100%')
-          .borderRadius(this.themeConfig.borderRadius)
-          .backgroundColor('rgba(0, 0, 0, 0.08)')
-          .hitTestBehavior(HitTestMode.None);
+      if (this.label !== '') {
+        Text(this.label)
+          .fontSize(16 * this.themeConfig.fontScale)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.type === 'primary' ? '#FFFFFF' : this.themeConfig.textColor);
       }
     }
+    .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Center)
+    .padding({ left: 20, right: 20, top: 12, bottom: 12 })
     .borderRadius(this.themeConfig.borderRadius)
+    .backgroundColor(
+      this.type === 'primary'
+        ? (this.isPressed
+          ? this.darken(this.themeConfig.primaryColor, 0.1)
+          : this.themeConfig.primaryColor)
+        : (this.isPressed
+          ? (this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)')
+          : (this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'))
+    )
+    .borderWidth(1)
+    .borderColor(
+      this.type === 'primary'
+        ? 'rgba(255, 255, 255, 0.20)'
+        : (this.themeConfig.isDarkMode
+          ? 'rgba(255, 255, 255, 0.06)'
+          : 'rgba(0, 0, 0, 0.06)')
+    )
     .opacity(this.disabled ? 0.4 : 1.0)
     .scale({ x: this.isPressed ? 0.96 : 1.0, y: this.isPressed ? 0.96 : 1.0 })
     .animation({ duration: 120, curve: Curve.EaseOut })
@@ -124,5 +87,15 @@ export struct GlassButton {
         this.onButtonClick();
       }
     });
+  }
+
+  private darken(hex: string, ratio: number): string {
+    const r: number = parseInt(hex.substring(1, 3), 16);
+    const g: number = parseInt(hex.substring(3, 5), 16);
+    const b: number = parseInt(hex.substring(5, 7), 16);
+    const nr: number = Math.max(0, Math.floor(r * (1 - ratio)));
+    const ng: number = Math.max(0, Math.floor(g * (1 - ratio)));
+    const nb: number = Math.max(0, Math.floor(b * (1 - ratio)));
+    return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
   }
 }

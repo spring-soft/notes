@@ -30,24 +30,6 @@ export function hexToRgba(hex: ColorHex, alpha: number): string {
 }
 
 /**
- * Creates a glass-effect background color from a base color.
- * Light mode → low opacity, subtle overlay.
- * Dark mode → higher opacity, richer overlay.
- */
-export function createGlassColor(
-  baseColor: ColorHex,
-  opacity: number,
-  isDarkMode: boolean
-): string {
-  const r: number = parseInt(baseColor.substring(1, 3), 16);
-  const g: number = parseInt(baseColor.substring(3, 5), 16);
-  const b: number = parseInt(baseColor.substring(5, 7), 16);
-  const alpha: number = isDarkMode ? opacity * 1.5 : opacity;
-  const clampedAlpha: number = Math.max(0.02, Math.min(0.6, alpha));
-  return `rgba(${r}, ${g}, ${b}, ${clampedAlpha})`;
-}
-
-/**
  * Lightens a hex color by a ratio (0-1).
  */
 export function lightenColor(hex: ColorHex, ratio: number): ColorHex {

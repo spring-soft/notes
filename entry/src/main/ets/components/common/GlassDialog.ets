@@ -1,9 +1,8 @@
 import { ThemeConfig, ThemePreset } from '../../model/ThemeConfigModel';
 import { getThemeConfigByPreset } from '../../constants/ThemeConstants';
-import { createGlassColor } from '../../utils/ColorUtils';
 
 /**
- * Custom liquid-glass dialog with specular highlight and deep shadow.
+ * Dialog with solid surface background and shadow.
  * Receives themeConfig via parameter (not @Consume) because @CustomDialog
  * is rendered in an overlay outside the component tree.
  *
@@ -78,37 +77,18 @@ export struct GlassDialog {
     .width(340)
     .padding(20)
     .borderRadius(this.themeConfig.borderRadius + 4)
-    // Combined glass background + specular highlight in one gradient
-    .linearGradient({
-      direction: GradientDirection.Top,
-      colors: [
-        [this.themeConfig.isDarkMode
-          ? 'rgba(255, 255, 255, 0.06)'
-          : 'rgba(255, 255, 255, 0.22)', 0.0],
-        [createGlassColor(
-          this.themeConfig.surfaceColor,
-          this.themeConfig.glassOpacity * 1.5,
-          this.themeConfig.isDarkMode
-        ), 0.18],
-        [createGlassColor(
-          this.themeConfig.surfaceColor,
-          this.themeConfig.glassOpacity * 1.5,
-          this.themeConfig.isDarkMode
-        ), 1.0],
-      ],
-    })
-    .backdropBlur(this.themeConfig.glassBlurRadius * 2)
+    .backgroundColor(this.themeConfig.surfaceColor)
     .borderWidth(1)
     .borderColor(
       this.themeConfig.isDarkMode
         ? 'rgba(255, 255, 255, 0.12)'
-        : 'rgba(255, 255, 255, 0.35)'
+        : 'rgba(0, 0, 0, 0.08)'
     )
     .constraintSize({ maxWidth: 380, maxHeight: 300 })
     .shadow({
-      radius: 30,
-      color: 'rgba(0, 0, 0, 0.35)',
-      offsetY: 8,
+      radius: 20,
+      color: 'rgba(0, 0, 0, 0.25)',
+      offsetY: 6,
     })
     .clip(true);
   }

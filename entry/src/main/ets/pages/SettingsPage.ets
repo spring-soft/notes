@@ -12,14 +12,11 @@ import { ColorPickerComponent } from '../components/business/ColorPicker';
 import { ImagePickerButton } from '../components/business/ImagePickerButton';
 import { getThemeConfigByPreset } from '../constants/ThemeConstants';
 import { PomodoroConstants } from '../constants/PomodoroConstants';
-import { createGlassColor } from '../utils/ColorUtils';
 
 /**
  * Slider type enum — determines display format and themeVM update behavior.
  */
 enum SliderType {
-  GLASS_OPACITY = 0,
-  BLUR_RADIUS = 1,
   BORDER_RADIUS = 2,
   WORK_MINUTES = 3,
   SHORT_BREAK = 4,
@@ -40,14 +37,10 @@ export struct SettingsPage {
   @State shortBreakMinutes: number = 5;
   @State longBreakMinutes: number = 15;
   @State longBreakInterval: number = 4;
-  @State glassOpacity: number = 0.2;
-  @State blurRadius: number = 20;
   @State borderRadiusValue: number = 16;
 
   aboutToAppear(): void {
     this.selectedPreset = this.themeVM.currentPreset;
-    this.glassOpacity = this.themeConfig.glassOpacity;
-    this.blurRadius = this.themeConfig.glassBlurRadius;
     this.borderRadiusValue = this.themeConfig.borderRadius;
   }
 
@@ -119,32 +112,13 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
-          .backgroundColor(
-            this.createGlassBg(this.glassOpacity, this.themeConfig.isDarkMode)
-          )
-          .backdropBlur(this.blurRadius)
+          .backgroundColor(this.themeConfig.surfaceColor)
           .margin({ left: 20, right: 20, bottom: 16 });
 
-          // ── Glass Effect Section ──
-          this.sectionHeader('玻璃效果');
+          // ── Appearance Settings ──
+          this.sectionHeader('外观设置');
 
           Column() {
-            SettingSliderComponent({
-              label: '透明度',
-              value: $glassOpacity,
-              min: 0.05,
-              max: 0.5,
-              step: 0.01,
-              sliderType: SliderType.GLASS_OPACITY,
-            });
-            SettingSliderComponent({
-              label: '模糊强度',
-              value: $blurRadius,
-              min: 5,
-              max: 40,
-              step: 1,
-              sliderType: SliderType.BLUR_RADIUS,
-            });
             SettingSliderComponent({
               label: '圆角大小',
               value: $borderRadiusValue,
@@ -176,10 +150,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
-          .backgroundColor(
-            this.createGlassBg(this.glassOpacity, this.themeConfig.isDarkMode)
-          )
-          .backdropBlur(this.blurRadius)
+          .backgroundColor(this.themeConfig.surfaceColor)
           .margin({ left: 20, right: 20, bottom: 16 });
 
           // ── Background Section ──
@@ -198,10 +169,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
-          .backgroundColor(
-            this.createGlassBg(this.glassOpacity, this.themeConfig.isDarkMode)
-          )
-          .backdropBlur(this.blurRadius)
+          .backgroundColor(this.themeConfig.surfaceColor)
           .margin({ left: 20, right: 20, bottom: 16 });
 
           // ── Pomodoro Section ──
@@ -260,10 +228,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
-          .backgroundColor(
-            this.createGlassBg(this.glassOpacity, this.themeConfig.isDarkMode)
-          )
-          .backdropBlur(this.blurRadius)
+          .backgroundColor(this.themeConfig.surfaceColor)
           .margin({ left: 20, right: 20, bottom: 16 });
 
           // ── About Section ──
@@ -282,13 +247,10 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
-          .backgroundColor(
-            this.createGlassBg(this.glassOpacity, this.themeConfig.isDarkMode)
-          )
-          .backdropBlur(this.blurRadius)
+          .backgroundColor(this.themeConfig.surfaceColor)
           .margin({ left: 20, right: 20, bottom: 40 });
 
-          // Bottom spacer for FAB clearance
+          // Bottom spacer
           Blank().height(80);
         }
         .width('100%');
@@ -301,18 +263,6 @@ export struct SettingsPage {
     .hideTitleBar(true)
     .backgroundColor(this.themeConfig.backgroundColor)
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
-  }
-
-  /**
-   * Creates a glass-effect background color string from the current opacity.
-   * Uses local @State glassOpacity for instant visual feedback.
-   */
-  private createGlassBg(opacity: number, isDark: boolean): string {
-    return createGlassColor(
-      isDark ? '#1E1E1E' : '#FFFFFF',
-      opacity,
-      isDark
-    );
   }
 
   @Builder
@@ -344,9 +294,6 @@ export struct SettingsPage {
     .onClick(() => {
       this.selectedPreset = preset;
       this.themeVM.applyPreset(preset);
-      // Update local state from new theme
-      this.glassOpacity = this.themeConfig.glassOpacity;
-      this.blurRadius = this.themeConfig.glassBlurRadius;
       this.borderRadiusValue = this.themeConfig.borderRadius;
     });
   }
@@ -355,7 +302,6 @@ export struct SettingsPage {
 
 /**
  * Reusable setting slider component with two-way @Link binding.
- * Replaces the old @Builder approach which passed values by snapshot.
  */
 @Component
 struct SettingSliderComponent {
@@ -366,7 +312,7 @@ struct SettingSliderComponent {
   @Prop min: number = 0;
   @Prop max: number = 100;
   @Prop step: number = 1;
-  @Prop sliderType: SliderType = SliderType.GLASS_OPACITY;
+  @Prop sliderType: SliderType = SliderType.BORDER_RADIUS;
 
   build() {
     Column() {
@@ -409,18 +355,11 @@ struct SettingSliderComponent {
   }
 
   private formatDisplay(): string {
-    if (this.sliderType === SliderType.GLASS_OPACITY) {
-      return Math.floor(this.value * 100) + '%';
-    }
     return String(Math.floor(this.value));
   }
 
   private notifyChange(newValue: number): void {
-    if (this.sliderType === SliderType.GLASS_OPACITY) {
-      this.themeVM.updateGlassOpacity(newValue);
-    } else if (this.sliderType === SliderType.BLUR_RADIUS) {
-      this.themeVM.updateBlurRadius(newValue);
-    } else if (this.sliderType === SliderType.BORDER_RADIUS) {
+    if (this.sliderType === SliderType.BORDER_RADIUS) {
       this.themeVM.updateBorderRadius(newValue);
     }
     // Pomodoro sliders: parent @State syncs automatically via @Link,

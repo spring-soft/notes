@@ -212,10 +212,9 @@ struct Index {
       .height('100%')
       .backgroundColor(
         this.themeConfig.isDarkMode
-          ? 'rgba(20, 20, 20, 0.8)'
-          : 'rgba(255, 255, 255, 0.7)'
+          ? 'rgba(20, 20, 20, 0.95)'
+          : 'rgba(255, 255, 255, 0.95)'
       )
-      .backdropBlur(this.themeConfig.glassBlurRadius)
       .border({
         width: { right: 1 },
         color: this.themeConfig.isDarkMode

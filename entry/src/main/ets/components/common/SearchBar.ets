@@ -1,9 +1,8 @@
 import { ThemeConfig } from '../../model/ThemeConfigModel';
-import { createGlassColor } from '../../utils/ColorUtils';
 import { ICON } from '../../utils/IconGlyphs';
 
 /**
- * Reusable search input bar with glass styling.
+ * Reusable search input bar with solid styling.
  *
  * @param placeholder - Placeholder text (default: "搜索...")
  * @param query - Two-way bound search query
@@ -52,19 +51,12 @@ export struct SearchBar {
     }
     .padding({ left: 14, right: 14, top: 10, bottom: 10 })
     .borderRadius(this.themeConfig.borderRadius)
-    .backgroundColor(
-      createGlassColor(
-        this.themeConfig.surfaceColor,
-        this.themeConfig.glassOpacity * 0.6,
-        this.themeConfig.isDarkMode
-      )
-    )
-    .backdropBlur(this.themeConfig.glassBlurRadius)
+    .backgroundColor(this.themeConfig.surfaceColor)
     .borderWidth(1)
     .borderColor(
       this.themeConfig.isDarkMode
         ? 'rgba(255, 255, 255, 0.06)'
-        : 'rgba(255, 255, 255, 0.2)'
+        : 'rgba(0, 0, 0, 0.06)'
     );
   }
 }

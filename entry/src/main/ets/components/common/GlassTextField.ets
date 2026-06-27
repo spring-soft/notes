@@ -1,8 +1,7 @@
 import { ThemeConfig } from '../../model/ThemeConfigModel';
-import { createGlassColor } from '../../utils/ColorUtils';
 
 /**
- * Glass-effect text input field.
+ * Solid-surface text input field.
  *
  * @param placeholder - Placeholder text
  * @param text - Two-way bound text value
@@ -29,20 +28,14 @@ export struct GlassTextField {
         .fontSize(16 * this.themeConfig.fontScale)
         .fontColor(this.themeConfig.textColor)
         .placeholderColor(this.themeConfig.textSecondaryColor)
-        .backgroundColor(
-          createGlassColor(
-            this.themeConfig.surfaceColor,
-            this.themeConfig.glassOpacity * 0.5,
-            this.themeConfig.isDarkMode
-          )
-        )
+        .backgroundColor(this.themeConfig.surfaceColor)
         .borderRadius(this.themeConfig.borderRadius)
         .padding(16)
         .borderWidth(1)
         .borderColor(
           this.themeConfig.isDarkMode
             ? 'rgba(255, 255, 255, 0.08)'
-            : 'rgba(255, 255, 255, 0.2)'
+            : 'rgba(0, 0, 0, 0.08)'
         )
         .onChange((value: string) => {
           this.text = value;
@@ -55,20 +48,14 @@ export struct GlassTextField {
         .fontSize(16 * this.themeConfig.fontScale)
         .fontColor(this.themeConfig.textColor)
         .placeholderColor(this.themeConfig.textSecondaryColor)
-        .backgroundColor(
-          createGlassColor(
-            this.themeConfig.surfaceColor,
-            this.themeConfig.glassOpacity * 0.5,
-            this.themeConfig.isDarkMode
-          )
-        )
+        .backgroundColor(this.themeConfig.surfaceColor)
         .borderRadius(this.themeConfig.borderRadius)
         .padding({ left: 16, right: 16, top: 12, bottom: 12 })
         .borderWidth(1)
         .borderColor(
           this.themeConfig.isDarkMode
             ? 'rgba(255, 255, 255, 0.08)'
-            : 'rgba(255, 255, 255, 0.2)'
+            : 'rgba(0, 0, 0, 0.08)'
         )
         .onChange((value: string) => {
           this.text = value;
