@@ -33,7 +33,6 @@ export struct SettingsPage {
   @State longBreakMinutes: number = 15;
   @State longBreakInterval: number = 4;
   @State borderRadiusValue: number = 16;
-  private pomodoroSaveTimer: number = -1;
 
   aboutToAppear(): void {
     this.selectedPreset = this.themeVM.currentPreset;
@@ -41,13 +40,12 @@ export struct SettingsPage {
     this.loadSavedPomodoroConfig();
   }
 
-  aboutToDisappear(): void {
-    // Force-save immediately — the debounced setTimeout may never fire
-    // if Tabs destroys this component before the timer elapses.
-    if (this.pomodoroSaveTimer !== -1) {
-      clearTimeout(this.pomodoroSaveTimer);
-      this.pomodoroSaveTimer = -1;
-    }
+  /**
+   * Save immediately on every slider change — no debounce.
+   * Debouncing with setTimeout was unsafe because Tabs destroys this
+   * component on tab switch, causing the timer callback to be dropped.
+   */
+  private schedulePomodoroSave(): void {
     const config: PomodoroConfig = {
       workDuration: this.workMinutes * 60,
       shortBreakDuration: this.shortBreakMinutes * 60,
@@ -55,26 +53,6 @@ export struct SettingsPage {
       longBreakInterval: this.longBreakInterval,
     };
     this.savePomodoroConfigToPreferences(config);
-  }
-
-  /**
-   * Debounced save — fires 400 ms after the last slider change so
-   * every drag gesture results in exactly one Preferences flush.
-   */
-  private schedulePomodoroSave(): void {
-    if (this.pomodoroSaveTimer !== -1) {
-      clearTimeout(this.pomodoroSaveTimer);
-    }
-    this.pomodoroSaveTimer = setTimeout(() => {
-      const config: PomodoroConfig = {
-        workDuration: this.workMinutes * 60,
-        shortBreakDuration: this.shortBreakMinutes * 60,
-        longBreakDuration: this.longBreakMinutes * 60,
-        longBreakInterval: this.longBreakInterval,
-      };
-      this.savePomodoroConfigToPreferences(config);
-      this.pomodoroSaveTimer = -1;
-    }, 400);
   }
 
   private createSettingsRepo(): SettingsRepository {

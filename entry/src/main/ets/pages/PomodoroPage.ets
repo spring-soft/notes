@@ -25,12 +25,9 @@ export struct PomodoroPage {
   private viewModel: PomodoroViewModel = getPomodoroViewModel();
 
   aboutToAppear(): void {
-    // Sync display state from the singleton (may already be running).
-    this.displayRemaining = this.viewModel.remainingSeconds;
-    this.displayProgress = this.viewModel.progress;
-    this.displayState = this.viewModel.currentState;
-    this.currentType = this.viewModel.currentType;
-
+    // Reload config from Preferences BEFORE syncing display state.
+    // onShown() is unreliable across tab switches (Tabs destroys/recreates
+    // non-visible TabContent), so we reload here where it's guaranteed to run.
     this.viewModel.setTickHandler((remaining: number, progress: number, state: PomodoroState) => {
       this.displayRemaining = remaining;
       this.displayProgress = progress;
@@ -38,7 +35,7 @@ export struct PomodoroPage {
       this.currentType = this.viewModel.currentType;
       this.stateUpdateSignal++;
     });
-    this.stateUpdateSignal++;
+    this.reloadAndSync();
   }
 
   aboutToDisappear(): void {
@@ -48,13 +45,11 @@ export struct PomodoroPage {
   }
 
   /**
-   * Reloads pomodoro config from persistent storage.
-   * Called when the page becomes visible again (e.g. after switching back
-   * from Settings tab where durations may have been changed).
+   * Reloads config from Preferences and syncs all @State display fields.
+   * Called from aboutToAppear (guaranteed) and onShown (backup).
    */
-  private async refreshConfig(): Promise<void> {
+  private async reloadAndSync(): Promise<void> {
     await this.viewModel.reloadConfig();
-    // Sync @State with reloaded values so session-type chips re-render
     this.displayRemaining = this.viewModel.remainingSeconds;
     this.displayProgress = this.viewModel.progress;
     this.displayState = this.viewModel.currentState;
@@ -136,7 +131,7 @@ export struct PomodoroPage {
       .height('100%');
     }
     .onShown(() => {
-      this.refreshConfig();
+      this.reloadAndSync();
     })
     .hideTitleBar(true)
     .backgroundColor(this.themeConfig.backgroundColor)
