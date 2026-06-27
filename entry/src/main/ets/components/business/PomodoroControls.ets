@@ -10,6 +10,8 @@ import { ICON } from '../../utils/IconGlyphs';
 export struct PomodoroControls {
   @Consume('themeConfig') themeConfig: ThemeConfig;
   @Prop currentState: PomodoroState = PomodoroState.IDLE;
+  @Prop isRunning: boolean = false;
+  @Prop stateSignal: number = 0;
   @State private animScale: number = 1.0;
   onStartPause: () => void = () => {
   };
@@ -41,6 +43,8 @@ export struct PomodoroControls {
       Blank().width(24);
 
       // Start / Pause button (larger, primary) with animated icon transition
+      // Using @Prop isRunning + @Prop stateSignal (both from parent @State)
+      // ensures ArkUI always re-evaluates on every state tick.
       Button() {
         Text(this.isRunning ? ICON.PAUSE_BARS : ICON.PLAY)
           .fontSize(28)
@@ -91,9 +95,4 @@ export struct PomodoroControls {
     .justifyContent(FlexAlign.Center);
   }
 
-  private get isRunning(): boolean {
-    return this.currentState === PomodoroState.WORKING ||
-      this.currentState === PomodoroState.SHORT_BREAK_RUNNING ||
-      this.currentState === PomodoroState.LONG_BREAK_RUNNING;
-  }
 }

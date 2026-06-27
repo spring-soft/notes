@@ -38,10 +38,9 @@ export struct PomodoroCircle {
         .strokeLineCap(LineCapStyle.Round);
 
       // ── Progress arc: single dash whose length grows with progress ──
-      // Dash = progress × circumference, Gap = (1−progress) × circumference
-      // so the total pattern always equals exactly one circumference — no wrapping.
-      // Positive dashOffset shifts clockwise from the default 3-o'clock start.
-      // We offset by −¼ circumference so the arc begins at 12-o'clock.
+      // Dash + Gap = exactly one circumference → no wrapping artifacts.
+      // Rotate the circle by −90° so the dash starts at 12-o'clock (default is 3-o'clock).
+      // strokeLineCap(Round) gives the leading edge a smooth dot appearance.
       Circle()
         .width('100%')
         .height('100%')
@@ -53,7 +52,7 @@ export struct PomodoroCircle {
           this.circumference * this.progress,
           this.circumference * (1 - this.progress),
         ])
-        .strokeDashOffset(-this.circumference / 4);
+        .rotate({ angle: -90 });
 
       // ── Center content ──
       Column() {
