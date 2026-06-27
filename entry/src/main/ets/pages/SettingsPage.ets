@@ -38,11 +38,32 @@ export struct SettingsPage {
   @State longBreakMinutes: number = 15;
   @State longBreakInterval: number = 4;
   @State borderRadiusValue: number = 16;
+  private pomodoroSaveTimer: number = -1;
 
   aboutToAppear(): void {
     this.selectedPreset = this.themeVM.currentPreset;
     this.borderRadiusValue = this.themeConfig.borderRadius;
     this.loadSavedPomodoroConfig();
+  }
+
+  /**
+   * Debounced save — fires 400 ms after the last slider change so
+   * every drag gesture results in exactly one Preferences flush.
+   */
+  private schedulePomodoroSave(): void {
+    if (this.pomodoroSaveTimer !== -1) {
+      clearTimeout(this.pomodoroSaveTimer);
+    }
+    this.pomodoroSaveTimer = setTimeout(() => {
+      const config: PomodoroConfig = {
+        workDuration: this.workMinutes * 60,
+        shortBreakDuration: this.shortBreakMinutes * 60,
+        longBreakDuration: this.longBreakMinutes * 60,
+        longBreakInterval: this.longBreakInterval,
+      };
+      this.pomodoroVM.persistConfig(config);
+      this.pomodoroSaveTimer = -1;
+    }, 400);
   }
 
   private async loadSavedPomodoroConfig(): Promise<void> {
@@ -195,6 +216,9 @@ export struct SettingsPage {
               max: PomodoroConstants.MAX_WORK_DURATION / 60,
               step: 1,
               sliderType: SliderType.WORK_MINUTES,
+              onSliderChanged: () => {
+                this.schedulePomodoroSave();
+              },
             });
             SettingSliderComponent({
               label: '短休息 (分钟)',
@@ -203,6 +227,9 @@ export struct SettingsPage {
               max: PomodoroConstants.MAX_BREAK_DURATION / 60,
               step: 1,
               sliderType: SliderType.SHORT_BREAK,
+              onSliderChanged: () => {
+                this.schedulePomodoroSave();
+              },
             });
             SettingSliderComponent({
               label: '长休息 (分钟)',
@@ -211,6 +238,9 @@ export struct SettingsPage {
               max: PomodoroConstants.MAX_BREAK_DURATION / 60,
               step: 1,
               sliderType: SliderType.LONG_BREAK,
+              onSliderChanged: () => {
+                this.schedulePomodoroSave();
+              },
             });
             SettingSliderComponent({
               label: '长休息间隔 (次)',
@@ -219,24 +249,10 @@ export struct SettingsPage {
               max: 8,
               step: 1,
               sliderType: SliderType.LONG_BREAK_INTERVAL,
+              onSliderChanged: () => {
+                this.schedulePomodoroSave();
+              },
             });
-
-            Button('保存番茄钟设置')
-              .fontSize(14 * this.themeConfig.fontScale)
-              .fontColor('#FFFFFF')
-              .backgroundColor(this.themeConfig.primaryColor)
-              .borderRadius(this.themeConfig.borderRadius)
-              .padding({ left: 20, right: 20, top: 10, bottom: 10 })
-              .margin({ top: 12 })
-              .onClick(() => {
-                const config: PomodoroConfig = {
-                  workDuration: this.workMinutes * 60,
-                  shortBreakDuration: this.shortBreakMinutes * 60,
-                  longBreakDuration: this.longBreakMinutes * 60,
-                  longBreakInterval: this.longBreakInterval,
-                };
-                this.pomodoroVM.saveConfig(config);
-              });
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
@@ -325,6 +341,8 @@ struct SettingSliderComponent {
   @Prop max: number = 100;
   @Prop step: number = 1;
   @Prop sliderType: SliderType = SliderType.BORDER_RADIUS;
+  onSliderChanged: () => void = () => {
+  };
 
   build() {
     Column() {
@@ -373,8 +391,9 @@ struct SettingSliderComponent {
   private notifyChange(newValue: number): void {
     if (this.sliderType === SliderType.BORDER_RADIUS) {
       this.themeVM.updateBorderRadius(newValue);
+    } else {
+      // Pomodoro slider types: trigger immediate debounced save via callback
+      this.onSliderChanged();
     }
-    // Pomodoro sliders: parent @State syncs automatically via @Link,
-    // saved later via "保存番茄钟设置" button
   }
 }

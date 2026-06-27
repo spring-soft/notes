@@ -84,7 +84,11 @@ export class PomodoroViewModel {
    * Switches the session type and resets the timer.
    */
   setSessionType(type: PomodoroSessionType): void {
-    this.timerService.reset();
+    // Only reset the timer engine if it has an active interval (running or paused).
+    // When IDLE there is nothing to stop — just update the type and duration.
+    if (this.timerService.running || this.timerService.active) {
+      this.timerService.reset();
+    }
     this.currentType = type;
 
     switch (type) {
@@ -340,8 +344,16 @@ export class PomodoroViewModel {
   }
 
   /**
-   * Saves current pomodoro config.
+   * Persists pomodoro config to Preferences without resetting the timer.
+   * Used by Settings sliders for immediate save-on-change.
    */
+  async persistConfig(config: PomodoroConfig): Promise<void> {
+    this.config = config;
+    await this.settingsRepository.savePomodoroConfig(config);
+  }
+
+  /**
+   * Saves current pomodoro config.
   async saveConfig(config: PomodoroConfig): Promise<void> {
     this.config = config;
     await this.settingsRepository.savePomodoroConfig(config);

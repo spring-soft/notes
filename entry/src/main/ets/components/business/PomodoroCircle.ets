@@ -3,12 +3,15 @@ import { PomodoroState } from '../../model/PomodoroSessionModel';
 
 /**
  * Circular progress ring for the pomodoro timer.
- * Uses a single continuous arc that fills clockwise from the 12-o'clock position,
- * with a rounded leading-edge cap for a smooth "filling" visual.
  *
- * The arc is implemented via strokeDashArray on a Circle — one dash segment whose
- * length equals (circumference × progress), with a gap that fills the remainder.
- * strokeDashOffset rotates the start point from the default 3-o'clock to 12-o'clock.
+ * Three stacked layers:
+ *   1. Background track — subtle full-circle ring
+ *   2. Progress arc — single dash that grows clockwise (flat caps)
+ *   3. Leading dot — a small filled circle at the tip, rotated to match progress
+ *
+ * The arc starts at 12-o'clock (via rotate -90°) and fills clockwise.
+ * A separate dot element (not a stroke cap) ensures exactly ONE visible dot
+ * regardless of progress value.
  */
 @Component
 export struct PomodoroCircle {
@@ -19,12 +22,11 @@ export struct PomodoroCircle {
   @Prop isRunning: boolean = false;
 
   // Circle geometry — computed from fixed sizing (280×280, strokeWidth 12)
-  private readonly circleRadius: number = 134;   // (280 - 12) / 2
   private readonly circumference: number = 2 * Math.PI * 134;
 
   build() {
     Stack() {
-      // ── Background track ──
+      // ── Layer 1: Background track ──
       Circle()
         .width('100%')
         .height('100%')
@@ -34,25 +36,42 @@ export struct PomodoroCircle {
             ? 'rgba(255,255,255,0.1)'
             : 'rgba(0,0,0,0.08)'
         )
-        .strokeWidth(12)
-        .strokeLineCap(LineCapStyle.Round);
+        .strokeWidth(12);
 
-      // ── Progress arc: single dash whose length grows with progress ──
-      // Dash + Gap = exactly one circumference → no wrapping artifacts.
-      // Rotate the circle by −90° so the dash starts at 12-o'clock (default is 3-o'clock).
-      // strokeLineCap(Round) gives the leading edge a smooth dot appearance.
+      // ── Layer 2: Progress arc (flat caps — no dots from stroke) ──
       Circle()
         .width('100%')
         .height('100%')
         .fill(Color.Transparent)
         .stroke(this.themeConfig.primaryColor)
         .strokeWidth(12)
-        .strokeLineCap(LineCapStyle.Round)
+        .strokeLineCap(LineCapStyle.Butt)
         .strokeDashArray([
           this.circumference * this.progress,
           this.circumference * (1 - this.progress),
         ])
         .rotate({ angle: -90 });
+
+      // ── Layer 3: Leading dot — one small filled circle rotated to the arc tip ──
+      // A 280×280 Column with justifyContent(Start) places the dot at the top
+      // (12-o'clock).  Rotating the entire Column by progress×360° spins the dot
+      // clockwise around the centre, tracking the leading edge of the arc.
+      Column() {
+        Circle()
+          .width(12)
+          .height(12)
+          .fill(this.themeConfig.primaryColor);
+      }
+      .width(280)
+      .height(280)
+      .justifyContent(FlexAlign.Start)
+      .alignItems(HorizontalAlign.Center)
+      .rotate({ angle: this.progress * 360 })
+      .visibility(
+        this.progress <= 0
+          ? Visibility.Hidden
+          : Visibility.Visible
+      );
 
       // ── Center content ──
       Column() {
