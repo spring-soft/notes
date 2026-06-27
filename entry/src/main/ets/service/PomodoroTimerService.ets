@@ -1,9 +1,14 @@
 import { Seconds } from '../model/AppConstantsModel';
 
 /**
- * Pure timer engine using setInterval.
- * Emits ticks and completion events via callbacks.
- * Does NOT depend on any ArkUI state — the ViewModel subscribes to events.
+ * Pure timer engine using wall-clock timestamps.
+ *
+ * Instead of counting down with setInterval (which gets throttled in background
+ * and drifts over time), the timer records a start timestamp and calculates
+ * remaining time from `Date.now()` on every tick.  This keeps the countdown
+ * accurate even when:
+ * - The app is minimised (setInterval is throttled by the OS)
+ * - The user switches between tabs (Navigation keeps the page alive)
  */
 export class PomodoroTimerService {
   private totalSeconds: Seconds = 0;
@@ -11,6 +16,11 @@ export class PomodoroTimerService {
   private isRunning: boolean = false;
   private isPaused: boolean = false;
   private timerId: number = -1;
+
+  // Wall-clock tracking — the timer's truth is always:
+  //   remaining = totalSeconds - pausedElapsed - floor((Date.now() - startTimestamp) / 1000)
+  private startTimestamp: number = 0;
+  private pausedElapsed: Seconds = 0;
 
   private onTickCallback: ((remaining: Seconds, total: Seconds) => void) | null = null;
   private onCompleteCallback: (() => void) | null = null;
@@ -44,6 +54,7 @@ export class PomodoroTimerService {
   setDuration(totalSeconds: Seconds): void {
     this.totalSeconds = totalSeconds;
     this.remainingSeconds = totalSeconds;
+    this.pausedElapsed = 0;
     this.hasFiredHalfway = false;
   }
 
@@ -57,49 +68,48 @@ export class PomodoroTimerService {
 
     this.isRunning = true;
     this.isPaused = false;
-    this.hasFiredHalfway = this.remainingSeconds <= this.totalSeconds / 2;
+    this.startTimestamp = Date.now();
+    this.hasFiredHalfway = (this.totalSeconds - this.pausedElapsed) <= this.totalSeconds / 2;
 
     this.timerId = setInterval(() => {
       if (this.isPaused) {
         return;
       }
 
-      this.remainingSeconds--;
-
-      if (this.onTickCallback !== null) {
-        this.onTickCallback(this.remainingSeconds, this.totalSeconds);
-      }
-
-      // Check halfway
-      if (!this.hasFiredHalfway && this.remainingSeconds <= this.totalSeconds / 2) {
-        this.hasFiredHalfway = true;
-        if (this.onHalfwayCallback !== null) {
-          this.onHalfwayCallback();
-        }
-      }
-
-      // Check completion
-      if (this.remainingSeconds <= 0) {
-        this.stop();
-        if (this.onCompleteCallback !== null) {
-          this.onCompleteCallback();
-        }
-      }
+      this.tick();
     }, 1000);
   }
 
   /**
    * Pauses the timer without resetting.
+   * Accumulates elapsed time into pausedElapsed so resume continues from the
+   * correct wall-clock position.
    */
   pause(): void {
+    if (!this.isRunning || this.isPaused) {
+      return;
+    }
+
     this.isPaused = true;
+    // Accumulate the seconds that have elapsed since the last start/resume.
+    const elapsed: Seconds = Math.floor((Date.now() - this.startTimestamp) / 1000);
+    this.pausedElapsed += elapsed;
+    // Clamp pausedElapsed so we don't overshoot totalSeconds.
+    if (this.pausedElapsed > this.totalSeconds) {
+      this.pausedElapsed = this.totalSeconds;
+    }
   }
 
   /**
    * Resumes the timer from pause.
    */
   resume(): void {
+    if (!this.isRunning || !this.isPaused) {
+      return;
+    }
+
     this.isPaused = false;
+    this.startTimestamp = Date.now();
   }
 
   /**
@@ -108,7 +118,43 @@ export class PomodoroTimerService {
   reset(): void {
     this.stop();
     this.remainingSeconds = this.totalSeconds;
+    this.pausedElapsed = 0;
     this.hasFiredHalfway = false;
+  }
+
+  /**
+   * Core tick — calculates remaining time from wall-clock and fires callbacks.
+   */
+  private tick(): void {
+    const elapsed: Seconds = Math.floor((Date.now() - this.startTimestamp) / 1000);
+    const totalElapsed: Seconds = this.pausedElapsed + elapsed;
+    let remaining: Seconds = this.totalSeconds - totalElapsed;
+
+    if (remaining < 0) {
+      remaining = 0;
+    }
+
+    this.remainingSeconds = remaining;
+
+    if (this.onTickCallback !== null) {
+      this.onTickCallback(this.remainingSeconds, this.totalSeconds);
+    }
+
+    // Check halfway
+    if (!this.hasFiredHalfway && this.remainingSeconds <= this.totalSeconds / 2) {
+      this.hasFiredHalfway = true;
+      if (this.onHalfwayCallback !== null) {
+        this.onHalfwayCallback();
+      }
+    }
+
+    // Check completion
+    if (this.remainingSeconds <= 0) {
+      this.stop();
+      if (this.onCompleteCallback !== null) {
+        this.onCompleteCallback();
+      }
+    }
   }
 
   /**
