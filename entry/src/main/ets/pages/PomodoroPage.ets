@@ -99,7 +99,8 @@ export struct PomodoroPage {
         }
         .width('100%')
         .alignItems(HorizontalAlign.Center)
-        .padding({ top: 20, bottom: 32 });
+        .padding({ top: 20, bottom: 32 })
+        .animation({ duration: 300, curve: Curve.EaseInOut });
 
         // Controls — uses @State displayState for button state
         PomodoroControls({

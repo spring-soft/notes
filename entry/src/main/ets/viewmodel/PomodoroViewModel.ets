@@ -172,13 +172,12 @@ export class PomodoroViewModel {
    * Skips to the next session.
    */
   skipToNext(): void {
+    // Cycle through all three session types: WORK → SHORT_BREAK → LONG_BREAK → WORK
     if (this.currentType === PomodoroSessionType.WORK) {
       this.completedWorkCount++;
-      if (this.completedWorkCount % this.config.longBreakInterval === 0) {
-        this.setSessionType(PomodoroSessionType.LONG_BREAK);
-      } else {
-        this.setSessionType(PomodoroSessionType.SHORT_BREAK);
-      }
+      this.setSessionType(PomodoroSessionType.SHORT_BREAK);
+    } else if (this.currentType === PomodoroSessionType.SHORT_BREAK) {
+      this.setSessionType(PomodoroSessionType.LONG_BREAK);
     } else {
       this.setSessionType(PomodoroSessionType.WORK);
     }

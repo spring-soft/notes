@@ -1619,5 +1619,100 @@ struct HdsDemo {
 
 
 
+鸿蒙（HarmonyOS）提供的**设计组件（ArkUI 组件、HDS 组件等）都是可以直接使用的，不需要额外申请权限或审批**。它们属于 HarmonyOS SDK 的标准 API，开发者只需在项目中正确引入即可。
+
+## ✅ 使用条件与方式
+
+| 组件类型 | 说明 | 如何使用 |
+| :--- | :--- | :--- |
+| **ArkUI 基础组件**（Button、Text、Column 等） | 随 SDK 提供，无需任何额外配置即可使用。 | 直接导入 `@kit.ArkUI` 并在代码中声明。 |
+| **HDS 组件**（HdsTabs、HdsNavigation 等） | HarmonyOS Design System 组件，从 SDK 6.1.0(23) 开始提供，可直接使用。 | 导入 `@kit.UIDesignKit` 并调用对应组件。 |
+| **沉浸光感等高级效果** | 属于系统材质能力，需满足 API 版本要求，并在 `module.json5` 中配置开关，但**无需申请**。 | 1. 配置 `metadata`；<br>2. 调用 `systemMaterial` 或 `systemMaterialEffect`。 |
+| **系统能力（SystemCapability）** | 如网络、传感器等，需要在 `module.json5` 中声明对应的 `requestPermissions`，但**不属于设计组件范畴**。 | 在 `module.json5` 的 `requestPermissions` 字段中添加权限声明。 |
+
+## 📦 直接使用的示例
+
+### 1. 基础 ArkUI 组件
+```typescript
+// 直接使用，无需任何前置申请
+import { Button, Text, Column } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct MyPage {
+  build() {
+    Column() {
+      Text('Hello HarmonyOS')
+        .fontSize(30)
+      Button('点击')
+        .onClick(() => {
+          // 处理点击
+        })
+    }
+  }
+}
+```
+
+### 2. HDS 组件（如悬浮页签）
+```typescript
+// 直接使用，只需导入对应 kit
+import { HdsTabs, HdsTabsController } from '@kit.UIDesignKit';
+
+@Entry
+@Component
+struct TabPage {
+  private controller: HdsTabsController = new HdsTabsController();
+
+  build() {
+    HdsTabs({ controller: this.controller }) {
+      // TabContent...
+    }
+    .barOverlap(true)
+    .barPosition(BarPosition.End)
+  }
+}
+```
+
+### 3. 沉浸光感材质
+```typescript
+// 1. 在 module.json5 中配置（非申请，只是启用开关）
+// "metadata": [{ "name": "ohos.arkui.UIMaterial.state", "value": "enable" }]
+
+// 2. 代码中直接使用
+import { uiMaterial } from '@kit.ArkUI';
+
+Column()
+  .systemMaterial(new uiMaterial.ImmersiveMaterial({
+    style: uiMaterial.ImmersiveStyle.REGULAR
+  }))
+```
+
+## ⚠️ 注意事项（非“申请”，但需关注）
+
+1.  **SDK 版本**：部分高级组件（如 HDS、沉浸光感）需要 **HarmonyOS SDK 6.1.0(23) 或更高版本**（对应 API 23+）。请在项目的 `build-profile.json5` 中确认 `targetAPIVersion` 符合要求。
+2.  **模块导入**：使用前需在代码文件顶部导入对应的模块（如 `@kit.ArkUI`、`@kit.UIDesignKit`）。
+3.  **设备兼容性**：某些效果（如沉浸光感的完整空间动效）会在低算力设备上自动降级，这是系统自适应行为，开发者无需处理。
+4.  **权限声明**：设计组件本身**不需要权限**，但如果组件涉及网络、存储等系统能力，则需在 `module.json5` 中声明对应权限（这与组件使用是分开的）。
+
+## 📚 官方资源
+
+- **组件文档**：在 [HarmonyOS 开发者官网](https://developer.harmonyos.com) 的“文档”中搜索对应组件名称（如“HdsTabs”、“Button”）即可查看完整用法。
+- **设计资源**：HarmonyOS Design 网站提供设计规范、Symbol 图标库等，可直接在项目中使用。
+- **示例代码**：DevEco Studio 的“Sample”中提供了大量组件的实际用法示例，可直接运行学习。
+
+## 💎 总结
+
+**鸿蒙提供的所有设计组件都是开箱即用的，无需任何形式的申请或审批。** 你只需要：
+
+1.  确保 DevEco Studio 安装了对应版本的 SDK。
+2.  在代码中导入正确的模块（如 `@kit.ArkUI`）。
+3.  按照官方文档的示例使用组件即可。
+
+如果在使用中遇到问题，通常是因为版本不匹配、模块未导入或配置遗漏（如沉浸光感需在 `module.json5` 中配置开关），而非权限问题。
+
+
+
+
+
 
 

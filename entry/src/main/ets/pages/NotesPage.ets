@@ -137,7 +137,8 @@ export struct NotesPage {
                 .width('100%').margin({ bottom: 6 });
               }, (triplet: Note[]) => 't3_' + String(triplet[0].id) + '_' + String(this.refreshSignal));
             }
-            .width('100%');
+            .width('100%')
+            .justifyContent(FlexAlign.Start);
           }
           .scrollable(ScrollDirection.Vertical).scrollBar(BarState.Off)
           .edgeEffect(EdgeEffect.Spring).width('100%').layoutWeight(1).padding({ top: 4 });
@@ -154,7 +155,8 @@ export struct NotesPage {
                 .margin({ left: 10, right: 10, bottom: 6 });
               }, (note: Note) => note.id + '_s1_' + String(note.updatedAt) + '_' + String(this.refreshSignal));
             }
-            .width('100%');
+            .width('100%')
+            .justifyContent(FlexAlign.Start);
           }
           .scrollable(ScrollDirection.Vertical).scrollBar(BarState.Off)
           .edgeEffect(EdgeEffect.Spring).width('100%').layoutWeight(1).padding({ top: 4 });
