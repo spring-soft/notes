@@ -7,15 +7,18 @@ import { common } from '@kit.AbilityKit';
 
 /**
  * Manages the application theme state.
- * Designed to be @Observed and @Provided from the root Index component.
+ * Designed to be @ObservedV2 and @Provided from the root Index component.
  */
-@Observed
+@ObservedV2
 export class ThemeViewModel {
-  themeConfig: ThemeConfig;
-  currentPreset: ThemePreset = ThemePreset.OCEAN_BLUE;
+  @Trace themeConfig: ThemeConfig;
+  @Trace currentPreset: ThemePreset = ThemePreset.OCEAN_BLUE;
   private settingsRepository: SettingsRepository;
   private appContext: common.Context | null = null;
   private themeChangeListener: ((config: ThemeConfig) => void) | null = null;
+
+  /** Compile-time placeholder — @Provider always overrides before any @Consumer reads it. */
+  static readonly placeholder: ThemeViewModel = new ThemeViewModel(null as unknown as SettingsRepository);
 
   constructor(settingsRepository: SettingsRepository, context?: common.Context) {
     this.settingsRepository = settingsRepository;

@@ -1,4 +1,4 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { MaterialConstants } from '../../constants/MaterialConstants';
 import { Timestamp } from '../../model/AppConstantsModel';
 import { RepeatType } from '../../model/ReminderModel';
@@ -6,12 +6,12 @@ import { RepeatType } from '../../model/ReminderModel';
 /**
  * Date and time picker for setting todo reminder times.
  */
-@Component
+@ComponentV2
 export struct ReminderPicker {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop reminderTime: Timestamp = 0;
-  @Prop repeatType: RepeatType = RepeatType.NONE;
-  @Prop enabled: boolean = false;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param reminderTime: Timestamp = 0;
+  @Param repeatType: RepeatType = RepeatType.NONE;
+  @Param enabled: boolean = false;
   onTimeChange: (timestamp: Timestamp) => void = (_t: Timestamp) => {
   };
   onRepeatChange: (repeat: RepeatType) => void = (_r: RepeatType) => {
@@ -19,7 +19,7 @@ export struct ReminderPicker {
   onToggle: (enabled: boolean) => void = (_e: boolean) => {
   };
 
-  @State selectedDate: Date = new Date();
+  @Local selectedDate: Date = new Date();
 
   aboutToAppear(): void {
     if (this.reminderTime > 0) {

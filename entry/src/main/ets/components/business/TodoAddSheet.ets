@@ -1,22 +1,22 @@
 import { TodoPriority, TodoItem, TodoCategory, PRESET_TODO_CATEGORIES } from '../../model/TodoModel';
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { ID } from '../../model/AppConstantsModel';
 
 /**
  * Bottom sheet / inline form for adding a new todo item.
  */
-@Component
+@ComponentV2
 export struct TodoAddSheet {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop categories: TodoCategory[] = [];
-  @State title: string = '';
-  @State description: string = '';
-  @State selectedPriority: TodoPriority = TodoPriority.MEDIUM;
-  @State selectedCategoryId: string = '';
-  @State showPriorityPicker: boolean = false;
-  @State showCategoryPicker: boolean = false;
-  @State customCategoryName: string = '';
-  @State selectedCategoryColor: string = '#4A90D9';
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param categories: TodoCategory[] = [];
+  @Local title: string = '';
+  @Local description: string = '';
+  @Local selectedPriority: TodoPriority = TodoPriority.MEDIUM;
+  @Local selectedCategoryId: string = '';
+  @Local showPriorityPicker: boolean = false;
+  @Local showCategoryPicker: boolean = false;
+  @Local customCategoryName: string = '';
+  @Local selectedCategoryColor: string = '#4A90D9';
 
   onSave: (title: string, description: string, priority: TodoPriority, categoryId: ID, customCategoryName: string) => void =
     (_t: string, _d: string, _p: TodoPriority, _c: ID, _cn: string) => {

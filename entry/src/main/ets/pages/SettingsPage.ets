@@ -1,5 +1,5 @@
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
-import { ThemeConfig, ThemePreset } from '../model/ThemeConfigModel';
+import { ThemeConfig, ThemePreset, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
 import { PomodoroConfig } from '../model/PomodoroSessionModel';
 import { MaterialConstants } from '../constants/MaterialConstants';
 import { SettingsRepository } from '../repository/SettingsRepository';
@@ -23,16 +23,16 @@ enum SliderType {
 /**
  * Settings page with theme customization, pomodoro config, and background image.
  */
-@Component
+@ComponentV2
 export struct SettingsPage {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Consume('themeVM') themeVM: ThemeViewModel;
-  @State selectedPreset: ThemePreset = ThemePreset.OCEAN_BLUE;
-  @State workMinutes: number = 25;
-  @State shortBreakMinutes: number = 5;
-  @State longBreakMinutes: number = 15;
-  @State longBreakInterval: number = 4;
-  @State borderRadiusValue: number = 16;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Consumer('themeVM') themeVM: ThemeViewModel = ThemeViewModel.placeholder;
+  @Local selectedPreset: ThemePreset = ThemePreset.OCEAN_BLUE;
+  @Local workMinutes: number = 25;
+  @Local shortBreakMinutes: number = 5;
+  @Local longBreakMinutes: number = 15;
+  @Local longBreakInterval: number = 4;
+  @Local borderRadiusValue: number = 16;
 
   aboutToAppear(): void {
     this.selectedPreset = this.themeVM.currentPreset;
@@ -143,7 +143,8 @@ export struct SettingsPage {
           Column() {
             SettingSliderComponent({
               label: '圆角大小',
-              value: $borderRadiusValue,
+              value: this.borderRadiusValue,
+              onValueChange: (val: number) => { this.borderRadiusValue = val; },
               min: 4,
               max: 32,
               step: 1,
@@ -241,7 +242,8 @@ export struct SettingsPage {
           Column() {
             SettingSliderComponent({
               label: '专注时长 (分钟)',
-              value: $workMinutes,
+              value: this.workMinutes,
+              onValueChange: (val: number) => { this.workMinutes = val; },
               min: PomodoroConstants.MIN_WORK_DURATION / 60,
               max: PomodoroConstants.MAX_WORK_DURATION / 60,
               step: 1,
@@ -252,7 +254,8 @@ export struct SettingsPage {
             });
             SettingSliderComponent({
               label: '短休息 (分钟)',
-              value: $shortBreakMinutes,
+              value: this.shortBreakMinutes,
+              onValueChange: (val: number) => { this.shortBreakMinutes = val; },
               min: PomodoroConstants.MIN_BREAK_DURATION / 60,
               max: PomodoroConstants.MAX_BREAK_DURATION / 60,
               step: 1,
@@ -263,7 +266,8 @@ export struct SettingsPage {
             });
             SettingSliderComponent({
               label: '长休息 (分钟)',
-              value: $longBreakMinutes,
+              value: this.longBreakMinutes,
+              onValueChange: (val: number) => { this.longBreakMinutes = val; },
               min: PomodoroConstants.MIN_BREAK_DURATION / 60,
               max: PomodoroConstants.MAX_BREAK_DURATION / 60,
               step: 1,
@@ -274,7 +278,8 @@ export struct SettingsPage {
             });
             SettingSliderComponent({
               label: '长休息间隔 (次)',
-              value: $longBreakInterval,
+              value: this.longBreakInterval,
+              onValueChange: (val: number) => { this.longBreakInterval = val; },
               min: 2,
               max: 8,
               step: 1,
@@ -384,18 +389,20 @@ export struct SettingsPage {
 }
 
 /**
- * Reusable setting slider component with two-way @Link binding.
+ * Reusable setting slider component with @Param + @Event.
  */
-@Component
+@ComponentV2
 struct SettingSliderComponent {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Consume('themeVM') themeVM: ThemeViewModel;
-  @Link value: number;
-  @Prop label: string = '';
-  @Prop min: number = 0;
-  @Prop max: number = 100;
-  @Prop step: number = 1;
-  @Prop sliderType: SliderType = SliderType.BORDER_RADIUS;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Consumer('themeVM') themeVM: ThemeViewModel = ThemeViewModel.placeholder;
+  @Param value: number = 0;
+  @Event onValueChange: (val: number) => void = (_v: number) => {
+  };
+  @Param label: string = '';
+  @Param min: number = 0;
+  @Param max: number = 100;
+  @Param step: number = 1;
+  @Param sliderType: SliderType = SliderType.BORDER_RADIUS;
   onSliderChanged: () => void = () => {
   };
 
@@ -431,7 +438,7 @@ struct SettingSliderComponent {
         .selectedColor(this.themeConfig.primaryColor)
         .trackThickness(4)
         .onChange((newValue: number) => {
-          this.value = newValue;
+          this.onValueChange(newValue);
           this.notifyChange(newValue);
         });
     }

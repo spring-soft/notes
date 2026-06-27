@@ -1,4 +1,4 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { MaterialConstants } from '../../constants/MaterialConstants';
 
 /**
@@ -8,11 +8,11 @@ import { MaterialConstants } from '../../constants/MaterialConstants';
  * @param padding - Inner padding
  * @param content - BuilderParam slot
  */
-@Component
+@ComponentV2
 export struct GlassCard {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop colorTag: string = '';
-  @Prop padding: number = 16;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param colorTag: string = '';
+  @Param padding: number = 16;
   @BuilderParam content: () => void = this.defaultContent;
 
   @Builder

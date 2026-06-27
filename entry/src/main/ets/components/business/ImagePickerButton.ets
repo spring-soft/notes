@@ -1,6 +1,6 @@
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import { common } from '@kit.AbilityKit';
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { MaterialConstants } from '../../constants/MaterialConstants';
 import { ICON } from '../../utils/IconGlyphs';
 import { BusinessError } from '@kit.BasicServicesKit';
@@ -14,10 +14,10 @@ const TAG: string = 'ImagePickerButton';
  * Uses photoAccessHelper.PhotoViewPicker — the HarmonyOS-recommended
  * photo picker — so the returned URI is directly usable by Image().
  */
-@Component
+@ComponentV2
 export struct ImagePickerButton {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop currentImageUri: string = '';
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param currentImageUri: string = '';
   onImagePicked: (uri: string) => void = (_uri: string) => {
   };
   onImageRemoved: () => void = () => {

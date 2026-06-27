@@ -1,5 +1,5 @@
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
-import { ThemeConfig, ThemePreset } from '../model/ThemeConfigModel';
+import { ThemeConfig, ThemePreset, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
 import { BreakpointType, WindowSize, calculateBreakpoint, isTablet } from '../model/BreakpointModel';
 import { SettingsRepository } from '../repository/SettingsRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
@@ -25,35 +25,20 @@ import { PomodoroRepository } from '../repository/PomodoroRepository';
  * - Tablet: Side navigation panel with per-section Navigation
  */
 @Entry
-@Component
+@ComponentV2
 struct Index {
-  @Provide('themeConfig') themeConfig: ThemeConfig = {
-    primaryColor: '#4A90D9',
-    backgroundColor: '#E8F0FE',
-    surfaceColor: '#FFFFFF',
-    textColor: '#1A2530',
-    textSecondaryColor: '#5F6B7A',
-    glassOpacity: 0.2,
-    glassBlurRadius: 20,
-    backgroundImageUri: '',
-    isDarkMode: false,
-    accentColor: '#4A90D9',
-    fontScale: 1.0,
-    borderRadius: 16,
-    materialLevel: 0,
-    immersiveEnabled: true,
-  };
-  @Provide('themeVM') themeVM: ThemeViewModel = new ThemeViewModel(
+  @Provider('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Provider('themeVM') themeVM: ThemeViewModel = new ThemeViewModel(
     new SettingsRepository(this.getAppContext()),
     this.getAppContext()
   );
-  @Provide('navStack') currentNavStack: NavPathStack = new NavPathStack();
-  @Provide('isTablet') isTablet: boolean = false;
+  @Provider('navStack') currentNavStack: NavPathStack = new NavPathStack();
+  @Provider('isTablet') isTablet: boolean = false;
 
-  @State currentTabIndex: number = 0;
-  @State windowSize: WindowSize = { width: 0, height: 0, breakpoint: BreakpointType.SM };
-  @State isInitialized: boolean = false;
-  @State themeUpdateSignal: number = 0;
+  @Local currentTabIndex: number = 0;
+  @Local windowSize: WindowSize = { width: 0, height: 0, breakpoint: BreakpointType.SM };
+  @Local isInitialized: boolean = false;
+  @Local themeUpdateSignal: number = 0;
 
   private tabsController: HdsTabsController = new HdsTabsController();
   private tabItems: TabItemConfig[] = getTabItems();

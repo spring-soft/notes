@@ -1,4 +1,4 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { ColorHex } from '../../model/AppConstantsModel';
 import { ColorConstants } from '../../constants/ColorConstants';
 import { ICON } from '../../utils/IconGlyphs';
@@ -6,10 +6,10 @@ import { ICON } from '../../utils/IconGlyphs';
 /**
  * Color swatch grid picker for selecting accent colors.
  */
-@Component
+@ComponentV2
 export struct ColorPickerComponent {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop selectedColor: ColorHex = '#4A90D9';
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param selectedColor: ColorHex = '#4A90D9';
   onColorSelect: (color: ColorHex) => void = (_c: ColorHex) => {
   };
 

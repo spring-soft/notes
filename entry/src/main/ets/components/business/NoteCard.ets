@@ -1,5 +1,5 @@
 import { Note } from '../../model/NoteModel';
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { formatRelativeTime } from '../../utils/DateUtils';
 import { ICON } from '../../utils/IconGlyphs';
 
@@ -12,11 +12,11 @@ import { ICON } from '../../utils/IconGlyphs';
  * The accent color is implemented as a left border (not an inner Column with
  * height:100%) to avoid any vertical-stretch side-effects in Scroll layouts.
  */
-@Component
+@ComponentV2
 export struct NoteCard {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Consume('isTablet') isTabletCard: boolean = false;
-  @Prop note: Note = {
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Consumer('isTablet') isTabletCard: boolean = false;
+  @Param note: Note = {
     id: '',
     title: '',
     content: '',
@@ -26,7 +26,7 @@ export struct NoteCard {
     isPinned: false,
     categoryId: '未分类',
   };
-  @Prop gridMode: boolean = false;
+  @Param gridMode: boolean = false;
   onCardClick: () => void = () => {
   };
 

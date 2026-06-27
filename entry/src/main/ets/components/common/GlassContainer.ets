@@ -1,4 +1,4 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { MaterialConstants } from '../../constants/MaterialConstants';
 
 /**
@@ -9,12 +9,12 @@ import { MaterialConstants } from '../../constants/MaterialConstants';
  * @param elevation - Depth level: 1=low(REGULAR), 2=mid(THICK), 3=high(ULTRA_THICK)
  * @param content - BuilderParam slot for child content
  */
-@Component
+@ComponentV2
 export struct GlassContainer {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop borderRadius: number = -1;
-  @Prop padding: number = 16;
-  @Prop elevation: number = 1;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param borderRadius: number = -1;
+  @Param padding: number = 16;
+  @Param elevation: number = 1;
   @BuilderParam content: () => void = this.defaultContent;
 
   @Builder

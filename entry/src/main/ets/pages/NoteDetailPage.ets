@@ -1,7 +1,7 @@
 import { NotesViewModel } from '../viewmodel/NotesViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { Note, NOTE_CATEGORIES } from '../model/NoteModel';
-import { ThemeConfig } from '../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
 import { MaterialConstants } from '../constants/MaterialConstants';
 import { NoteRepository } from '../repository/NoteRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
@@ -18,25 +18,25 @@ import { generateId } from '../utils/IdGenerator';
  * Note create / edit / view page.
  * Hosted as a NavDestination inside a parent Navigation component.
  */
-@Component
+@ComponentV2
 export struct NoteDetailPage {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Consume('navStack') navStack: NavPathStack;
-  @State viewModel: NotesViewModel = new NotesViewModel(
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Consumer('navStack') navStack: NavPathStack = new NavPathStack();
+  @Local viewModel: NotesViewModel = new NotesViewModel(
     new NoteRepository(DatabaseHelper.getInstance().getStore())
   );
-  @State noteId: string = '';
-  @State title: string = '';
-  @State content: string = '';
-  @State colorTag: string = '#4A90D9';
-  @State categoryId: string = '未分类';
-  @State customCategoryName: string = '';
-  @State isNew: boolean = true;
-  @State showDeleteDialog: boolean = false;
-  @State showColorPicker: boolean = false;
-  @State hasChanges: boolean = false;
-  @State isSaving: boolean = false;
-  @State @Watch('handleDelete') isDeleting: boolean = false;
+  @Local noteId: string = '';
+  @Local title: string = '';
+  @Local content: string = '';
+  @Local colorTag: string = '#4A90D9';
+  @Local categoryId: string = '未分类';
+  @Local customCategoryName: string = '';
+  @Local isNew: boolean = true;
+  @Local showDeleteDialog: boolean = false;
+  @Local showColorPicker: boolean = false;
+  @Local hasChanges: boolean = false;
+  @Local isSaving: boolean = false;
+  @Local isDeleting: boolean = false;
   private loadedNote: Note | null = null;
   private dialogController: CustomDialogController | null = null;
 
@@ -129,10 +129,11 @@ export struct NoteDetailPage {
   }
 
   /**
-   * Called by @Watch when the delete dialog is confirmed and isDeleting
+   * Called by @Monitor when the delete dialog is confirmed and isDeleting
    * becomes true.  Performs the actual DB delete and stack pop after the
    * dialog close animation has started (avoiding overlapping animations).
    */
+  @Monitor('isDeleting')
   handleDelete(): void {
     if (this.isDeleting) {
       this.deleteNote();

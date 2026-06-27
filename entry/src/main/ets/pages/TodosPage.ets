@@ -2,7 +2,7 @@ import { TodosViewModel } from '../viewmodel/TodosViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { ReminderViewModel } from '../viewmodel/ReminderViewModel';
 import { TodoItem, TodoCategory, TodoPriority, TodoFilterType } from '../model/TodoModel';
-import { ThemeConfig } from '../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
 import { MaterialConstants } from '../constants/MaterialConstants';
 import { TodoRepository } from '../repository/TodoRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
@@ -17,17 +17,17 @@ import { ICON } from '../utils/IconGlyphs';
 /**
  * Todos list page with category grouping, filter tabs, and add sheet.
  */
-@Component
+@ComponentV2
 export struct TodosPage {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @State viewModel: TodosViewModel = new TodosViewModel(
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Local viewModel: TodosViewModel = new TodosViewModel(
     new TodoRepository(DatabaseHelper.getInstance().getStore())
   );
-  @State showAddSheet: boolean = false;
-  @State activeTab: number = 0;
-  @State showCategoryManager: boolean = false;
-  @State newCategoryName: string = '';
-  @State newCategoryColor: string = '#4A90D9';
+  @Local showAddSheet: boolean = false;
+  @Local activeTab: number = 0;
+  @Local showCategoryManager: boolean = false;
+  @Local newCategoryName: string = '';
+  @Local newCategoryColor: string = '#4A90D9';
 
   aboutToAppear(): void {
     this.viewModel.loadData();

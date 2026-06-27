@@ -9,14 +9,14 @@ import { now } from '../utils/DateUtils';
  * ViewModel for the Todos feature.
  * Manages todo items, categories, filtering, and completion tracking.
  */
-@Observed
+@ObservedV2
 export class TodosViewModel {
-  todos: TodoItem[] = [];
-  categories: TodoCategory[] = [];
-  filteredTodos: TodoItem[] = [];
-  activeFilter: TodoFilterType = TodoFilterType.ALL;
-  selectedCategoryId: string = '';
-  isLoading: boolean = false;
+  @Trace todos: TodoItem[] = [];
+  @Trace categories: TodoCategory[] = [];
+  @Trace filteredTodos: TodoItem[] = [];
+  @Trace activeFilter: TodoFilterType = TodoFilterType.ALL;
+  @Trace selectedCategoryId: string = '';
+  @Trace isLoading: boolean = false;
 
   private repository: TodoRepository;
 

@@ -1,18 +1,18 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { AppConstants } from '../../constants/AppConstants';
 
 /**
  * Multi-line text editor for note content.
- * Uses internal @State to avoid parent rebuild on every keystroke.
- * Watches initialContent so content loaded asynchronously (e.g. from DB)
+ * Uses internal @Local to avoid parent rebuild on every keystroke.
+ * Monitors initialContent so content loaded asynchronously (e.g. from DB)
  * is displayed even after the component has already appeared.
  */
-@Component
+@ComponentV2
 export struct NoteEditor {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop @Watch('syncInitialContent') initialContent: string = '';
-  @Prop placeholder: string = '开始记录...';
-  @State localContent: string = '';
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param initialContent: string = '';
+  @Param placeholder: string = '开始记录...';
+  @Local localContent: string = '';
   private isUserEditing: boolean = false;
   onContentChange: (value: string) => void = (_v: string) => {};
 
@@ -21,9 +21,10 @@ export struct NoteEditor {
   }
 
   /**
-   * Called by @Watch when the parent updates initialContent (e.g. after async DB load).
+   * Called by @Monitor when the parent updates initialContent (e.g. after async DB load).
    * Only syncs when the user is not actively typing to avoid cursor disruption.
    */
+  @Monitor('initialContent')
   syncInitialContent(): void {
     if (!this.isUserEditing) {
       this.localContent = this.initialContent;

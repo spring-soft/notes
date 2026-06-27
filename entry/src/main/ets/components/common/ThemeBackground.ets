@@ -1,4 +1,4 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 
 /**
  * Full-screen adaptive background with depth.
@@ -10,9 +10,9 @@ import { ThemeConfig } from '../../model/ThemeConfigModel';
  *
  * The glass components above this will blur this rich background.
  */
-@Component
+@ComponentV2
 export struct ThemeBackground {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
 
   build() {
     Stack() {

@@ -1,4 +1,4 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { MaterialConstants } from '../../constants/MaterialConstants';
 import { PomodoroState } from '../../model/PomodoroSessionModel';
 import { ICON } from '../../utils/IconGlyphs';
@@ -7,12 +7,12 @@ import { ICON } from '../../utils/IconGlyphs';
  * Control buttons for the pomodoro timer: start/pause, reset, skip.
  * Press deformation is provided by systemMaterial interactive:true.
  */
-@Component
+@ComponentV2
 export struct PomodoroControls {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop currentState: PomodoroState = PomodoroState.IDLE;
-  @Prop isRunning: boolean = false;
-  @Prop stateSignal: number = 0;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param currentState: PomodoroState = PomodoroState.IDLE;
+  @Param isRunning: boolean = false;
+  @Param stateSignal: number = 0;
   onStartPause: () => void = () => {
   };
   onReset: () => void = () => {

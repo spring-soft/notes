@@ -1,4 +1,4 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 
 /**
  * Circular progress ring for the pomodoro timer.
@@ -13,13 +13,13 @@ import { ThemeConfig } from '../../model/ThemeConfigModel';
  * Circle and the dot Column are animated so the dot appears to smoothly
  * "push" the arc clockwise.
  */
-@Component
+@ComponentV2
 export struct PomodoroCircle {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop progress: number = 0;
-  @Prop remainingTime: string = '25:00';
-  @Prop sessionLabel: string = '专注';
-  @Prop isRunning: boolean = false;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param progress: number = 0;
+  @Param remainingTime: string = '25:00';
+  @Param sessionLabel: string = '专注';
+  @Param isRunning: boolean = false;
 
   // Fixed geometry: 280×280 container, 12 vp stroke width
   // Circle radius at the stroke center-line = 140 vp

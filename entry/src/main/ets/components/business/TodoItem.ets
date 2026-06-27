@@ -1,5 +1,5 @@
 import { TodoItem as TodoItemModel, TodoPriority } from '../../model/TodoModel';
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { MaterialConstants } from '../../constants/MaterialConstants';
 import { formatDateLabel } from '../../utils/DateUtils';
 import { ICON } from '../../utils/IconGlyphs';
@@ -7,10 +7,10 @@ import { ICON } from '../../utils/IconGlyphs';
 /**
  * Single todo item row with checkbox, title, priority indicator, and due date.
  */
-@Component
+@ComponentV2
 export struct TodoItemView {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop todo: TodoItemModel = {
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param todo: TodoItemModel = {
     id: '',
     title: '',
     description: '',

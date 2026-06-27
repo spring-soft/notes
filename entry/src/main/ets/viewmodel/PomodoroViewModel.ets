@@ -12,17 +12,17 @@ import { getDefaultPomodoroConfig } from '../constants/PomodoroConstants';
  * ViewModel for the Pomodoro timer feature.
  * Manages timer state machine and session history.
  */
-@Observed
+@ObservedV2
 export class PomodoroViewModel {
-  currentState: PomodoroState = PomodoroState.IDLE;
-  currentType: PomodoroSessionType = PomodoroSessionType.WORK;
-  remainingSeconds: Seconds = 0;
-  totalSeconds: Seconds = 0;
-  progress: number = 0;
-  todaySessions: PomodoroSession[] = [];
-  todayCompletedCount: number = 0;
-  todayTotalMinutes: number = 0;
-  config: PomodoroConfig;
+  @Trace currentState: PomodoroState = PomodoroState.IDLE;
+  @Trace currentType: PomodoroSessionType = PomodoroSessionType.WORK;
+  @Trace remainingSeconds: Seconds = 0;
+  @Trace totalSeconds: Seconds = 0;
+  @Trace progress: number = 0;
+  @Trace todaySessions: PomodoroSession[] = [];
+  @Trace todayCompletedCount: number = 0;
+  @Trace todayTotalMinutes: number = 0;
+  @Trace config: PomodoroConfig;
 
   private currentSessionId: string = '';
   private completedWorkCount: number = 0;

@@ -1,4 +1,4 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { MaterialConstants } from '../../constants/MaterialConstants';
 import { ICON } from '../../utils/IconGlyphs';
 
@@ -6,15 +6,18 @@ import { ICON } from '../../utils/IconGlyphs';
  * Reusable search input bar with solid styling.
  *
  * @param placeholder - Placeholder text (default: "搜索...")
- * @param query - Two-way bound search query
+ * @param query - Search query from parent
+ * @param onQueryChange - Callback when query changes (replaces @Link)
  * @param onSearch - Callback when text changes
  * @param onClear - Callback when clear button pressed
  */
-@Component
+@ComponentV2
 export struct SearchBar {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop placeholder: string = '搜索...';
-  @Link query: string;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param placeholder: string = '搜索...';
+  @Param query: string = '';
+  @Event onQueryChange: (value: string) => void = (_v: string) => {
+  };
   onSearch: (value: string) => void = (_v: string) => {
   };
   onClear: () => void = () => {
@@ -35,7 +38,7 @@ export struct SearchBar {
         .backgroundColor(Color.Transparent)
         .borderWidth(0)
         .onChange((value: string) => {
-          this.query = value;
+          this.onQueryChange(value);
           this.onSearch(value);
         });
 
@@ -45,7 +48,7 @@ export struct SearchBar {
           .fontColor([this.themeConfig.textSecondaryColor])
           .margin({ left: 8 })
           .onClick(() => {
-            this.query = '';
+            this.onQueryChange('');
             this.onClear();
           });
       }

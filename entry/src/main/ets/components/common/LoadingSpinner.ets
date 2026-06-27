@@ -1,14 +1,14 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 
 /**
  * Loading indicator with optional message.
  *
  * @param message - Optional loading text
  */
-@Component
+@ComponentV2
 export struct LoadingSpinner {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop message: string = '加载中...';
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param message: string = '加载中...';
 
   build() {
     Column() {

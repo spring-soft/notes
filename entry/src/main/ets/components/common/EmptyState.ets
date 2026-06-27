@@ -1,4 +1,4 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 
 /**
  * Empty state placeholder with icon and message.
@@ -8,12 +8,12 @@ import { ThemeConfig } from '../../model/ThemeConfigModel';
  * @param title - Main empty message
  * @param subtitle - Subtitle hint
  */
-@Component
+@ComponentV2
 export struct EmptyState {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop icon: Resource = $r('sys.symbol.circle');
-  @Prop title: string = '暂无内容';
-  @Prop subtitle: string = '';
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param icon: Resource = $r('sys.symbol.circle');
+  @Param title: string = '暂无内容';
+  @Param subtitle: string = '';
 
   build() {
     Column() {

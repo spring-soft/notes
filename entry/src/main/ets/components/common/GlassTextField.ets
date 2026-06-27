@@ -1,23 +1,26 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 
 /**
  * Solid-surface text input field.
  *
  * @param placeholder - Placeholder text
- * @param text - Two-way bound text value
+ * @param text - Text value from parent
+ * @param onTextChange - Callback when text changes (replaces @Link)
  * @param maxLength - Maximum character length
  * @param type - Input type: 'text', 'number', 'password'
  * @param multiline - Enable multi-line input
  * @param onChange - Text change callback
  */
-@Component
+@ComponentV2
 export struct GlassTextField {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop placeholder: string = '';
-  @Link text: string;
-  @Prop maxLength: number = 500;
-  @Prop type: InputType = InputType.Normal;
-  @Prop multiline: boolean = false;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param placeholder: string = '';
+  @Param text: string = '';
+  @Event onTextChange: (value: string) => void = (_v: string) => {
+  };
+  @Param maxLength: number = 500;
+  @Param type: InputType = InputType.Normal;
+  @Param multiline: boolean = false;
   onChange: (value: string) => void = (_v: string) => {
   };
 
@@ -38,7 +41,7 @@ export struct GlassTextField {
             : 'rgba(0, 0, 0, 0.08)'
         )
         .onChange((value: string) => {
-          this.text = value;
+          this.onTextChange(value);
           this.onChange(value);
         });
     } else {
@@ -58,7 +61,7 @@ export struct GlassTextField {
             : 'rgba(0, 0, 0, 0.08)'
         )
         .onChange((value: string) => {
-          this.text = value;
+          this.onTextChange(value);
           this.onChange(value);
         });
     }

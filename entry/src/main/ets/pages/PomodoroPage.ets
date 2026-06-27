@@ -1,7 +1,7 @@
 import { PomodoroViewModel, getPomodoroViewModel } from '../viewmodel/PomodoroViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { PomodoroSessionType, PomodoroState, PomodoroConfig } from '../model/PomodoroSessionModel';
-import { ThemeConfig } from '../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
 import { MaterialConstants } from '../constants/MaterialConstants';
 import { PomodoroCircle } from '../components/business/PomodoroCircle';
 import { PomodoroControls } from '../components/business/PomodoroControls';
@@ -13,14 +13,14 @@ import { PomodoroSessionStats } from '../components/business/PomodoroSessionStat
  * The PomodoroViewModel is a module-level singleton (initialised by Index)
  * so the timer survives tab switches — Tabs destroys non-visible TabContent.
  */
-@Component
+@ComponentV2
 export struct PomodoroPage {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @State displayRemaining: number = 0;
-  @State displayProgress: number = 0;
-  @State displayState: PomodoroState = PomodoroState.IDLE;
-  @State stateUpdateSignal: number = 0;
-  @State currentType: PomodoroSessionType = PomodoroSessionType.WORK;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Local displayRemaining: number = 0;
+  @Local displayProgress: number = 0;
+  @Local displayState: PomodoroState = PomodoroState.IDLE;
+  @Local stateUpdateSignal: number = 0;
+  @Local currentType: PomodoroSessionType = PomodoroSessionType.WORK;
 
   private viewModel: PomodoroViewModel = getPomodoroViewModel();
 

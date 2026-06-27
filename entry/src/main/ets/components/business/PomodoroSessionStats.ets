@@ -1,14 +1,14 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { MaterialConstants } from '../../constants/MaterialConstants';
 
 /**
  * Today's pomodoro session statistics display.
  */
-@Component
+@ComponentV2
 export struct PomodoroSessionStats {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop completedCount: number = 0;
-  @Prop totalMinutes: number = 0;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param completedCount: number = 0;
+  @Param totalMinutes: number = 0;
 
   build() {
     Row() {

@@ -1,4 +1,4 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { MaterialConstants } from '../../constants/MaterialConstants';
 
 /**
@@ -10,13 +10,13 @@ import { MaterialConstants } from '../../constants/MaterialConstants';
  * @param disabled - Grayed out / non-interactive
  * @param onClick - Click callback
  */
-@Component
+@ComponentV2
 export struct GlassButton {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop label: string = '';
-  @Prop icon: ResourceStr = '';
-  @Prop type: string = 'primary';
-  @Prop disabled: boolean = false;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param label: string = '';
+  @Param icon: ResourceStr = '';
+  @Param type: string = 'primary';
+  @Param disabled: boolean = false;
   onButtonClick: () => void = () => {
   };
 

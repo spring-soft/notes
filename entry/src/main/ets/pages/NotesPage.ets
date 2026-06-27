@@ -1,7 +1,7 @@
 import { NotesViewModel } from '../viewmodel/NotesViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { Note, NoteSortOrder } from '../model/NoteModel';
-import { ThemeConfig } from '../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
 import { MaterialConstants } from '../constants/MaterialConstants';
 import { NoteRepository } from '../repository/NoteRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
@@ -12,19 +12,19 @@ import { AppConstants, NavDestinationNames } from '../constants/AppConstants';
 import { NavParams } from '../utils/NavParams';
 import { ICON } from '../utils/IconGlyphs';
 
-@Component
+@ComponentV2
 export struct NotesPage {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Consume('themeVM') themeVM: ThemeViewModel;
-  @Consume('navStack') navStack: NavPathStack;
-  @Consume('isTablet') isTablet: boolean;
-  @State viewModel: NotesViewModel = new NotesViewModel(
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Consumer('themeVM') themeVM: ThemeViewModel = ThemeViewModel.placeholder;
+  @Consumer('navStack') navStack: NavPathStack = new NavPathStack();
+  @Consumer('isTablet') isTablet: boolean = false;
+  @Local viewModel: NotesViewModel = new NotesViewModel(
     new NoteRepository(DatabaseHelper.getInstance().getStore())
   );
-  @State searchQuery: string = '';
-  @State showFilterMenu: boolean = false;
-  @State refreshSignal: number = 0;
-  @State viewMode: number = 0; // 0=list, 1=grid (tablet only)
+  @Local searchQuery: string = '';
+  @Local showFilterMenu: boolean = false;
+  @Local refreshSignal: number = 0;
+  @Local viewMode: number = 0; // 0=list, 1=grid (tablet only)
 
   aboutToAppear(): void {
     NavParams.triggerNotesRefresh = () => {
@@ -80,7 +80,8 @@ export struct NotesPage {
         Row() {
           SearchBar({
             placeholder: '搜索笔记...',
-            query: $searchQuery,
+            query: this.searchQuery,
+            onQueryChange: (value: string) => { this.searchQuery = value; },
             onSearch: (value: string) => { this.viewModel.setSearchQuery(value); this.refreshSignal++; },
             onClear: () => { this.viewModel.setSearchQuery(''); this.refreshSignal++; },
           });
