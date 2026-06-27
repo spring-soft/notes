@@ -38,6 +38,8 @@ struct Index {
     accentColor: '#4A90D9',
     fontScale: 1.0,
     borderRadius: 16,
+    materialLevel: 0,
+    immersiveEnabled: true,
   };
   @Provide('themeVM') themeVM: ThemeViewModel = new ThemeViewModel(
     new SettingsRepository(this.getAppContext()),

@@ -1,10 +1,11 @@
 import { Note } from '../../model/NoteModel';
 import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 import { formatRelativeTime } from '../../utils/DateUtils';
 import { ICON } from '../../utils/IconGlyphs';
 
 /**
- * Note card with solid background, color tag border, and shadow.
+ * Immersive note card with color-tag stripe and system material depth.
  */
 @Component
 export struct NoteCard {
@@ -24,73 +25,58 @@ export struct NoteCard {
   };
 
   build() {
-    Column() {
-      // Title
-      Text(this.note.title !== '' ? this.note.title : '无标题')
-        .fontSize((this.gridMode ? 14 : 17) * this.themeConfig.fontScale)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.themeConfig.textColor)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis });
+    Row() {
+      // Accent color stripe (inner element — systemMaterial handles the background)
+      Column()
+        .width(this.gridMode ? 3 : 4)
+        .height('100%')
+        .backgroundColor(this.note.colorTag)
+        .borderRadius(2)
+        .margin({ right: this.gridMode ? 8 : 12 });
 
-      // Content preview
-      if (this.note.content !== '') {
-        Text(this.note.content)
-          .fontSize((this.gridMode ? 12 : 14) * this.themeConfig.fontScale)
-          .fontColor(this.themeConfig.textSecondaryColor)
-          .maxLines(this.gridMode ? 1 : 2)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .margin({ top: this.gridMode ? 4 : 6 });
-      }
+      // Content
+      Column() {
+        // Title
+        Text(this.note.title !== '' ? this.note.title : '无标题')
+          .fontSize((this.gridMode ? 14 : 17) * this.themeConfig.fontScale)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.themeConfig.textColor)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis });
 
-      // Footer
-      Row() {
-        Text(formatRelativeTime(this.note.updatedAt))
-          .fontSize((this.gridMode ? 11 : 12) * this.themeConfig.fontScale)
-          .fontColor(this.themeConfig.textSecondaryColor)
-          .opacity(0.7);
-
-        if (this.note.isPinned) {
-          SymbolGlyph(ICON.PIN)
-            .fontSize(12)
-            .fontColor([this.themeConfig.primaryColor])
-            .margin({ left: 8 });
+        // Content preview
+        if (this.note.content !== '') {
+          Text(this.note.content)
+            .fontSize((this.gridMode ? 12 : 14) * this.themeConfig.fontScale)
+            .fontColor(this.themeConfig.textSecondaryColor)
+            .maxLines(this.gridMode ? 1 : 2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .margin({ top: this.gridMode ? 4 : 6 });
         }
+
+        // Footer
+        Row() {
+          Text(formatRelativeTime(this.note.updatedAt))
+            .fontSize((this.gridMode ? 11 : 12) * this.themeConfig.fontScale)
+            .fontColor(this.themeConfig.textSecondaryColor)
+            .opacity(0.7);
+
+          if (this.note.isPinned) {
+            SymbolGlyph(ICON.PIN)
+              .fontSize(12)
+              .fontColor([this.themeConfig.primaryColor])
+              .margin({ left: 8 });
+          }
+        }
+        .margin({ top: this.gridMode ? 6 : 10 });
       }
-      .margin({ top: this.gridMode ? 6 : 10 });
+      .layoutWeight(1);
     }
     .width('100%')
     .padding(this.gridMode ? 12 : 16)
     .borderRadius(this.themeConfig.borderRadius)
-    .backgroundColor(this.themeConfig.surfaceColor)
-    .border({
-      width: { left: this.gridMode ? 3 : 4 },
-      color: this.note.colorTag,
-      style: BorderStyle.Solid,
-    })
-    .borderWidth({
-      top: 1,
-      right: 1,
-      bottom: 1,
-    })
-    .borderColor({
-      top: this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.06)'
-        : 'rgba(0, 0, 0, 0.06)',
-      right: this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.06)'
-        : 'rgba(0, 0, 0, 0.06)',
-      bottom: this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.06)'
-        : 'rgba(0, 0, 0, 0.06)',
-    })
-    .shadow({
-      radius: this.gridMode ? 4 : 6,
-      color: this.themeConfig.isDarkMode
-        ? 'rgba(0, 0, 0, 0.20)'
-        : 'rgba(0, 0, 0, 0.06)',
-      offsetY: 1,
-    })
+    .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CARD))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CARD, this.themeConfig.isDarkMode))
     .onClick(() => {
       this.onCardClick();
     });

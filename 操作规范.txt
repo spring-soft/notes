@@ -1,0 +1,600 @@
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+要在代码中使用 HarmonyOS 的沉浸光感（Immersive Light Effects），你需要根据使用的组件类型选择不同的配置方式。沉浸光感从 HarmonyOS 6.1.0（API 23）开始提供，它通过**沉浸式系统材质**和**空间动效**为组件带来通透、精致的视觉效果。<rsup>1</rsup>
+
+## 一、开启沉浸光感
+
+### 1. 应用级开启（推荐）
+在 `module.json5` 中配置，对整个应用生效：
+```json5
+{
+  "module": {
+    "name": "entry",
+    "type": "entry",
+    "metadata": [{
+      "name": "ohos.arkui.UIMaterial.state",
+      "value": "enable" // 可选：default、enable、disable
+    }]
+  }
+}
+```
+
+### 2. 组件级开启
+#### 方式一：通过通用属性 `systemMaterial`
+```typescript
+import { uiMaterial } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct MyPage {
+  build() {
+    Column() {
+      // 为 Column 组件开启沉浸光感
+      Column() {
+        Text('沉浸光感')
+      }
+      .width(328)
+      .height(56)
+      .borderRadius(28)
+      .justifyContent(FlexAlign.Center)
+      .systemMaterial(new uiMaterial.ImmersiveMaterial({
+        style: uiMaterial.ImmersiveStyle.ULTRA_THIN, // 材质样式
+        interactive: true, // 启用交互形变
+        lightEffect: { color: undefined } // 光感交互反馈
+      }))
+    }
+  }
+}
+```
+
+#### 方式二：通过组件独有接口
+适用于弹窗类组件：
+```typescript
+// Toast 示例
+import { PromptAction, uiMaterial } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct MyPage {
+  promptAction: PromptAction = this.getUIContext().getPromptAction();
+  
+  build() {
+    Column() {
+      Button('显示Toast')
+        .onClick(() => {
+          this.promptAction.showToast({
+            message: '操作成功',
+            duration: 2000,
+            systemMaterial: new uiMaterial.ImmersiveMaterial({
+              style: uiMaterial.ImmersiveStyle.THIN
+            })
+          });
+        })
+    }
+  }
+}
+```
+
+## 二、HDS 组件使用沉浸光感
+
+### 1. HdsTabs（底部悬浮页签）
+```typescript
+import { hdsMaterial, HdsTabs, HdsTabsController } from '@kit.UIDesignKit';
+
+@Entry
+@Component
+struct Index {
+  private controller: HdsTabsController = new HdsTabsController();
+  
+  build() {
+    HdsTabs({ controller: this.controller }) {
+      TabContent() {
+        // 页面内容
+      }
+      .tabBar(new BottomTabBarStyle($r('sys.media.ohos_ic_public_camera'), '首页'))
+      
+      // 更多 TabContent...
+    }
+    .barOverlap(true)
+    .barPosition(BarPosition.End)
+    .barFloatingStyle({
+      barBottomMargin: 28,
+      // 核心配置：开启沉浸光感
+      systemMaterialEffect: {
+        materialType: hdsMaterial.MaterialType.ADAPTIVE,    // 自适应类型
+        materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE   // 自适应级别
+      }
+    })
+  }
+}
+```
+
+### 2. HdsNavigation（顶部导航栏）
+```typescript
+import { hdsMaterial, HdsNavigation, ScrollEffectType } from '@kit.UIDesignKit';
+
+@Entry
+@Component
+struct Index {
+  build() {
+    HdsNavigation() {
+      // 页面内容
+    }
+    .titleBar({
+      content: {
+        title: { mainTitle: '我的应用' },
+      },
+      style: {
+        scrollEffectOpts: {
+          enableScrollEffect: true,
+          scrollEffectType: ScrollEffectType.GRADIENT_BLUR,
+        },
+        // 开启沉浸光感
+        systemMaterialEffect: {
+          materialType: hdsMaterial.MaterialType.ADAPTIVE,
+          materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
+        }
+      }
+    })
+  }
+}
+```
+
+## 三、材质样式与级别
+
+### 1. 材质样式（ImmersiveStyle）
+| 样式 | 说明 | 适用场景 |
+|------|------|----------|
+| `ULTRA_THIN` | 超薄样式，透明度高 | 浮动工具栏、搜索框 |
+| `THIN` | 薄样式，透明度较高 | 需要较强透明的场景 |
+| `REGULAR` | 常规样式 | 通用场景 |
+| `THICK` | 厚样式，模糊效果强 | 菜单、卡片 |
+| `ULTRA_THICK` | 超厚样式，模糊很强 | 弹窗、半模态面板 |
+
+### 2. 材质级别（MaterialLevel）
+| 级别 | 说明 | 性能消耗 |
+|------|------|----------|
+| `ADAPTIVE` | 系统自适应（推荐） | 自动平衡 |
+| `EXQUISITE` | 精致效果 | 高 |
+| `GENTLE` | 柔和效果 | 中 |
+| `SMOOTH` | 流畅效果 | 低 |
+
+## 四、设备兼容性检查
+
+建议在使用自定义材质前检查设备支持情况：
+
+```typescript
+import { hdsMaterial } from '@kit.UIDesignKit';
+import { uiMaterial } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct MyPage {
+  @State customMaterialLevel: hdsMaterial.MaterialLevel = hdsMaterial.MaterialLevel.EXQUISITE;
+  
+  aboutToAppear(): void {
+    // 查询设备支持的材质类型
+    let materialTypes: Array<hdsMaterial.MaterialType> = hdsMaterial.getSystemMaterialTypes();
+    
+    // 如果不支持 IMMERSIVE，降级到 SMOOTH
+    if (materialTypes.indexOf(hdsMaterial.MaterialType.IMMERSIVE) < 0) {
+      this.customMaterialLevel = hdsMaterial.MaterialLevel.SMOOTH;
+    }
+  }
+  
+  build() {
+    Column() {
+      // 使用检查后的材质级别
+      Button('沉浸光感按钮')
+        .systemMaterial(new uiMaterial.ImmersiveMaterial({
+          style: uiMaterial.ImmersiveStyle.ULTRA_THIN,
+          materialLevel: this.customMaterialLevel
+        }))
+    }
+  }
+}
+```
+
+## 五、完整示例：带沉浸光感的页面
+
+```typescript
+import { hdsMaterial, HdsTabs, HdsTabsController } from '@kit.UIDesignKit';
+import { uiMaterial } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct ImmersivePage {
+  private controller: HdsTabsController = new HdsTabsController();
+  
+  build() {
+    Column() {
+      // 顶部沉浸光感区域
+      Column() {
+        Text('沉浸式标题')
+          .fontSize(24)
+          .fontColor(Color.White)
+      }
+      .width('100%')
+      .height(100)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor(Color.Black)
+      .systemMaterial(new uiMaterial.ImmersiveMaterial({
+        style: uiMaterial.ImmersiveStyle.ULTRA_THIN,
+        interactive: true
+      }))
+      
+      // 内容区域
+      Scroll() {
+        Column({ space: 20 }) {
+          // 沉浸光感按钮
+          Button('操作按钮')
+            .width('80%')
+            .height(56)
+            .backgroundColor(Color.Transparent)
+            .systemMaterial(new uiMaterial.ImmersiveMaterial({
+              style: uiMaterial.ImmersiveStyle.THIN,
+              interactive: true,
+              lightEffect: { color: undefined }
+            }))
+          
+          // 沉浸光感卡片
+          Column({ space: 10 }) {
+            Text('卡片标题')
+              .fontSize(18)
+            Text('卡片内容描述...')
+              .fontSize(14)
+              .fontColor('#666')
+          }
+          .width('90%')
+          .padding(20)
+          .backgroundColor(Color.White)
+          .borderRadius(16)
+          .systemMaterial(new uiMaterial.ImmersiveMaterial({
+            style: uiMaterial.ImmersiveStyle.REGULAR
+          }))
+        }
+        .width('100%')
+        .padding(20)
+      }
+      .layoutWeight(1)
+      
+      // 底部沉浸光感导航
+      HdsTabs({ controller: this.controller }) {
+        TabContent() {
+          Column() {
+            Text('首页内容')
+          }
+        }
+        .tabBar(new BottomTabBarStyle($r('sys.media.ohos_ic_public_home'), '首页'))
+        
+        TabContent() {
+          Column() {
+            Text('我的页面')
+          }
+        }
+        .tabBar(new BottomTabBarStyle($r('sys.media.ohos_ic_public_person'), '我的'))
+      }
+      .barOverlap(true)
+      .barPosition(BarPosition.End)
+      .barFloatingStyle({
+        barBottomMargin: 28,
+        systemMaterialEffect: {
+          materialType: hdsMaterial.MaterialType.ADAPTIVE,
+          materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
+        }
+      })
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#F5F5F5')
+  }
+}
+```
+
+## 六、注意事项
+
+1. **版本要求**：需要 HarmonyOS 6.1.0（API 23）或更高版本
+2. **性能优化**：低端设备建议使用 `ADAPTIVE` 或 `SMOOTH` 级别
+3. **属性冲突**：设置 `systemMaterial` 后，避免同时设置背景色、阴影等样式
+4. **深浅色适配**：沉浸光感会自动适配系统深浅色模式
+5. **自动反色**：薄材质（`ULTRA_THIN`、`THIN`）可开启 `colorInvert: true` 确保文字可读性
+
+## 七、最佳实践建议
+
+1. **优先使用自适应模式**：`materialType: hdsMaterial.MaterialType.ADAPTIVE`
+2. **焦点组件使用**：只在关键交互组件上使用，避免全屏滥用
+3. **暗色模式效果更佳**：沉浸光感在深色背景上表现更好
+4. **HDS组件优先**：对于导航栏和页签，优先使用 HDS 组件的 `systemMaterialEffect`<rsup>2</rsup><rsup>3</rsup>
+5. **降级处理**：使用 `getSystemMaterialTypes()` 检查设备支持情况
+
+通过以上配置，你可以轻松为应用添加高级的沉浸光感效果，提升用户体验和界面质感。
+
+
+
+
+
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+华为开发者官网提供的设计组件（UI Design Kit）是构建高端精致HarmonyOS应用的重要资源。下面为您详细说明如何获取和使用这些组件：<rsup>1</rsup><rsup>2</rsup>
+
+## 📦 什么是UI Design Kit？
+
+UI Design Kit是华为官方提供的符合HarmonyOS Design System规范的UI界面开发套件集合，包含：<rsup>3</rsup>
+
+- **增强型UI组件**：导航、侧边栏、底部页签、即时操作、列表、应用内多窗等<rsup>3</rsup>
+- **HDS沉浸视效**：物理光感系统、按压交互阴影、沉浸光感材质
+- **资源与图标能力**：应用图标处理、自定义Symbol图标
+
+## 📥 如何获取UI Design Kit？
+
+### 1. 从官网下载设计资源
+访问华为开发者联盟设计资源官网，下载`.pix`和`.sketch`格式的设计组件库文件。<rsup>4</rsup>
+
+### 2. 通过DevEco Studio集成
+在DevEco Studio中，可以通过以下方式使用：
+
+#### 方式一：命令行安装（ohpm）
+```bash
+ohpm install @kit.UIDesignKit
+```
+
+#### 方式二：组件市场可视化集成
+1. 安装组件市场插件
+2. 在IDE中选择Tools → Component Market
+3. 搜索所需组件，点击"Integrate SDK"完成集成
+
+## 🛠️ 如何使用UI Design Kit组件？
+
+### 基本使用步骤
+
+#### 1. 导入模块
+```typescript
+import { HdsNavigation, HdsTabs, HdsSideBar } from '@kit.UIDesignKit';
+```
+
+#### 2. 使用增强型导航组件示例
+```typescript
+// 使用HdsNavigation替代基础Navigation
+@Entry
+@Component
+struct MainPage {
+  build() {
+    HdsNavigation() {
+      // 页面内容
+      Column() {
+        Text('主页面内容')
+          .fontSize(20)
+      }
+    }
+    .title('我的应用')
+    .hideTitleBar(false)
+  }
+}
+```
+
+#### 3. 使用增强型底部页签
+```typescript
+@Entry
+@Component
+struct TabPage {
+  @State currentTabIndex: number = 0;
+  
+  build() {
+    HdsTabs({ index: this.currentTabIndex }) {
+      TabContent() {
+        HomePage()
+      }.tabBar(new BottomTabBarStyle({
+        normal: new SymbolGlyphModifier($r('sys.symbol.house')),
+        selected: new SymbolGlyphModifier($r('sys.symbol.house_fill'))
+      }, '首页'))
+      
+      TabContent() {
+        ProfilePage()
+      }.tabBar(new BottomTabBarStyle({
+        normal: new SymbolGlyphModifier($r('sys.symbol.person')),
+        selected: new SymbolGlyphModifier($r('sys.symbol.person_fill'))
+      }, '我的'))
+    }
+    .barOverlap(true)
+    .barPosition(BarPosition.End)
+    .onChange((index: number) => {
+      this.currentTabIndex = index;
+    })
+  }
+}
+```
+
+#### 4. 使用自定义Symbol图标
+```typescript
+import { SymbolGlyphModifier } from '@kit.ArkUI';
+
+// 注册自定义图标
+SymbolGlyphModifier.registerSymbol({
+  name: 'custom_heart',
+  svgPath: $rawfile('icons/heart.svg')
+});
+
+// 使用自定义图标
+Text('爱心')
+  .fontSize(20)
+  .symbolGlyph(new SymbolGlyphModifier('custom_heart'))
+```
+
+## 🔄 UI Design Kit与ArkUI基础组件的区别
+
+| 特性 | ArkUI基础组件 <rsup>5</rsup>| UI Design Kit组件 |
+|------|--------------|------------------|
+| **导航组件** | 基础跳转能力，静态标题栏 | 动态模糊标题栏、信息提醒、半模态样式 |
+| **底部页签** | 基础切换功能 | 分割线动态显隐、页签栏模糊、图标出血设计 |
+| **列表交互** | 普通展示 | 内置横滑删除、统一样式卡片、多设备适配 |
+| **光影视觉** | 基础平面/材质 | 点光源、流光、按压阴影等系统级沉浸渲染 |
+| **图标能力** | 依赖系统预置 | 应用内注册自定义Symbol，支持动态更新 |
+
+## 📝 实际开发示例：构建现代化界面
+
+### 示例1：带沉浸效果的导航页面
+```typescript
+import { HdsNavigation } from '@kit.UIDesignKit';
+
+@Entry
+@Component
+struct ProductDetailPage {
+  build() {
+    HdsNavigation() {
+      Scroll() {
+        Column() {
+          // 产品图片
+          Image($r('app.media.product'))
+            .width('100%')
+            .height(300)
+            .objectFit(ImageFit.Cover)
+          
+          // 产品信息
+          Column({ space: 12 }) {
+            Text('华为Mate 60 Pro')
+              .fontSize(24)
+              .fontWeight(FontWeight.Bold)
+            
+            Text('旗舰影像，鸿蒙智慧体验')
+              .fontSize(16)
+              .fontColor('#666666')
+            
+            // 价格区域
+            Row() {
+              Text('¥6999')
+                .fontSize(28)
+                .fontColor('#e11d48')
+                .fontWeight(FontWeight.Bold)
+              
+              Text('原价: ¥7999')
+                .fontSize(14)
+                .fontColor('#999999')
+                .decoration({ type: TextDecorationType.LineThrough })
+                .margin({ left: 12 })
+            }
+          }
+          .padding(20)
+        }
+      }
+    }
+    .title('商品详情')
+    .titleMode(NavigationTitleMode.Mini) // 滚动时标题缩小
+    .menus([
+      {
+        value: '分享',
+        icon: $r('sys.symbol.share'),
+        action: () => this.shareProduct()
+      },
+      {
+        value: '收藏',
+        icon: $r('sys.symbol.heart'),
+        action: () => this.addToFavorites()
+      }
+    ])
+  }
+  
+  private shareProduct() {
+    // 分享逻辑
+  }
+  
+  private addToFavorites() {
+    // 收藏逻辑
+  }
+}
+```
+
+### 示例2：带横滑删除的列表项
+```typescript
+import { HdsListItem } from '@kit.UIDesignKit';
+
+@Component
+struct MessageItem {
+  @Prop message: Message;
+  @State isDeleted: boolean = false;
+  
+  build() {
+    HdsListItem({
+      onDelete: () => {
+        this.isDeleted = true;
+        // 执行删除操作
+      }
+    }) {
+      Row({ space: 12 }) {
+        // 头像
+        Image(this.message.avatar)
+          .width(40)
+          .height(40)
+          .borderRadius(20)
+        
+        // 消息内容
+        Column({ space: 4 }) {
+          Row() {
+            Text(this.message.sender)
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .layoutWeight(1)
+            
+            Text(this.message.time)
+              .fontSize(12)
+              .fontColor('#999999')
+          }
+          
+          Text(this.message.content)
+            .fontSize(14)
+            .fontColor('#666666')
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .layoutWeight(1)
+      }
+      .padding(16)
+      .width('100%')
+    }
+    .backgroundColor(this.isDeleted ? '#f5f5f5' : Color.White)
+  }
+}
+```
+
+## ⚠️ 使用注意事项
+
+1. **平台支持**：
+   - UI Design Kit当前仅支持中国境内（港澳台除外）
+   - 不同组件支持不同的设备类型，请查阅官方兼容性列表
+
+2. **约束限制**：
+   - HdsNavigation在横屏Stack模式下不支持合并工具栏到菜单栏
+   - 标题栏默认采用层叠布局（位于内容区上层）
+   - 图标批量处理接口最大并发数为10，单次最大处理量500个
+
+3. **性能优化**：
+   - 合理使用组件复用（@Reusable装饰器）
+   - 对于长列表使用LazyForEach优化渲染性能
+   - 避免在build()中执行耗时操作
+
+## 🚀 最佳实践建议
+
+1. **渐进式采用**：从关键页面开始使用UI Design Kit，逐步替换基础组件<rsup>3</rsup>
+2. **保持一致性**：在整个应用中统一使用相同的设计语言和组件风格
+3. **适配多设备**：利用响应式布局和断点系统确保在不同设备上的良好体验
+4. **性能监控**：使用DevEco Profiler监控组件渲染性能，及时优化
+
+## 📚 学习资源推荐
+
+1. **官方文档**：华为开发者联盟官网的UI Design Kit文档<rsup>3</rsup>
+2. **设计规范**：HarmonyOS Design System设计指南
+3. **示例代码**：GitHub/Gitee上的开源项目参考
+4. **视频教程**：华为开发者学堂的相关课程
+
+通过合理使用UI Design Kit，您可以快速构建符合HarmonyOS设计规范的高质量应用界面，同时享受官方组件带来的性能优化和一致性保障。建议在实际项目中结合ArkUI基础组件和UI Design Kit组件，根据具体需求选择最合适的解决方案。<rsup>3</rsup><rsup>6</rsup>
+

@@ -2,6 +2,7 @@ import { NotesViewModel } from '../viewmodel/NotesViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { Note, NoteSortOrder } from '../model/NoteModel';
 import { ThemeConfig } from '../model/ThemeConfigModel';
+import { MaterialConstants } from '../constants/MaterialConstants';
 import { NoteRepository } from '../repository/NoteRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
 import { NoteCard } from '../components/business/NoteCard';
@@ -57,7 +58,8 @@ export struct NotesPage {
                 .fontSize(22).fontColor([this.themeConfig.textColor]);
             }
             .width(40).height(40).borderRadius(20)
-            .backgroundColor(this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')
+            .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
             .margin({ right: 8 })
             .onClick(() => { this.viewMode = this.viewMode === 0 ? 1 : 0; });
           }
@@ -65,7 +67,8 @@ export struct NotesPage {
             SymbolGlyph(ICON.MENU).fontSize(22).fontColor([this.themeConfig.textColor]);
           }
           .width(40).height(40).borderRadius(20)
-          .backgroundColor(this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
           .hitTestBehavior(HitTestMode.Block)
           .onClick(() => { this.showFilterMenu = !this.showFilterMenu; });
         }
@@ -150,8 +153,8 @@ export struct NotesPage {
         SymbolGlyph(ICON.PLUS).fontSize(28).fontColor(['#FFFFFF']);
       }
       .width(60).height(60).borderRadius(30)
-      .backgroundColor(this.themeConfig.primaryColor)
-      .shadow({ radius: 16, color: this.themeConfig.primaryColor + '40', offsetY: 4 })
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.FAB))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.FAB, this.themeConfig.isDarkMode))
       .position({ right: 20, bottom: 20 })
       .onClick(() => { this.navigateToDetail(''); });
     }
@@ -171,7 +174,12 @@ export struct NotesPage {
       .padding({ left: 14, right: 14, top: 6, bottom: 6 }).borderRadius(16)
       .backgroundColor(this.viewModel.currentSortOrder === sortOrder
         ? this.themeConfig.primaryColor
-        : (this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'))
+        : Color.Transparent)
+      .backdropBlur(
+          this.viewModel.currentSortOrder === sortOrder
+            ? 0
+            : MaterialConstants.getBlur(MaterialConstants.CHIP)
+        )
       .margin({ right: 8 })
       .onClick(() => { this.viewModel.setSortOrder(sortOrder); this.refreshNotes(); });
   }

@@ -2,6 +2,7 @@ import { PomodoroViewModel, getPomodoroViewModel } from '../viewmodel/PomodoroVi
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { PomodoroSessionType, PomodoroState, PomodoroConfig } from '../model/PomodoroSessionModel';
 import { ThemeConfig } from '../model/ThemeConfigModel';
+import { MaterialConstants } from '../constants/MaterialConstants';
 import { PomodoroCircle } from '../components/business/PomodoroCircle';
 import { PomodoroControls } from '../components/business/PomodoroControls';
 import { PomodoroSessionStats } from '../components/business/PomodoroSessionStats';
@@ -154,8 +155,13 @@ export struct PomodoroPage {
         ? (this.themeConfig.isDarkMode
           ? this.themeConfig.primaryColor + '25'
           : this.themeConfig.primaryColor + '15')
-        : (this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
+        : Color.Transparent
     )
+    .backdropBlur(
+          this.viewModel.currentType === type
+            ? 0
+            : MaterialConstants.getBlur(MaterialConstants.CHIP)
+        )
     .borderWidth(this.viewModel.currentType === type ? 1.5 : 0)
     .borderColor(
       this.viewModel.currentType === type

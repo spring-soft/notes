@@ -1,8 +1,9 @@
 import { ThemeConfig, ThemePreset } from '../../model/ThemeConfigModel';
 import { getThemeConfigByPreset } from '../../constants/ThemeConstants';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 
 /**
- * Dialog with solid surface background and shadow.
+ * Immersive dialog with ULTRA_THICK system material for maximum depth.
  * Receives themeConfig via parameter (not @Consume) because @CustomDialog
  * is rendered in an overlay outside the component tree.
  *
@@ -77,19 +78,9 @@ export struct GlassDialog {
     .width(340)
     .padding(20)
     .borderRadius(this.themeConfig.borderRadius + 4)
-    .backgroundColor(this.themeConfig.surfaceColor)
-    .borderWidth(1)
-    .borderColor(
-      this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.12)'
-        : 'rgba(0, 0, 0, 0.08)'
-    )
+    .backdropBlur(MaterialConstants.getBlur(MaterialConstants.DIALOG))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.DIALOG, this.themeConfig.isDarkMode))
     .constraintSize({ maxWidth: 380, maxHeight: 300 })
-    .shadow({
-      radius: 20,
-      color: 'rgba(0, 0, 0, 0.25)',
-      offsetY: 6,
-    })
     .clip(true);
   }
 }

@@ -2,6 +2,7 @@ import { NotesViewModel } from '../viewmodel/NotesViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { Note, NOTE_CATEGORIES } from '../model/NoteModel';
 import { ThemeConfig } from '../model/ThemeConfigModel';
+import { MaterialConstants } from '../constants/MaterialConstants';
 import { NoteRepository } from '../repository/NoteRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
 import { NoteEditor } from '../components/business/NoteEditor';
@@ -175,11 +176,8 @@ export struct NoteDetailPage {
           .width(40)
           .height(40)
           .borderRadius(20)
-          .backgroundColor(
-            this.themeConfig.isDarkMode
-              ? 'rgba(255, 255, 255, 0.08)'
-              : 'rgba(0, 0, 0, 0.06)'
-          )
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
           .onClick(() => {
             this.navStack.pop();
           });
@@ -196,11 +194,8 @@ export struct NoteDetailPage {
           .width(40)
           .height(40)
           .borderRadius(20)
-          .backgroundColor(
-            this.themeConfig.isDarkMode
-              ? 'rgba(255, 255, 255, 0.08)'
-              : 'rgba(0, 0, 0, 0.06)'
-          )
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
           .margin({ right: 8 })
           .onClick(() => {
             this.showColorPicker = !this.showColorPicker;
@@ -311,8 +306,13 @@ export struct NoteDetailPage {
                     .backgroundColor(
                       this.categoryId === cat
                         ? this.themeConfig.primaryColor
-                        : (this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')
+                        : Color.Transparent
                     )
+                    .backdropBlur(
+          this.categoryId === cat
+            ? 0
+            : MaterialConstants.getBlur(MaterialConstants.CHIP)
+        )
                     .margin({ right: 8 })
                     .onClick(() => {
                       this.categoryId = cat;

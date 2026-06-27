@@ -1,7 +1,8 @@
 import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 
 /**
- * Solid card with accent color stripe and shadow.
+ * Immersive card with accent color stripe and system material depth.
  *
  * @param colorTag - Optional left-edge accent color stripe
  * @param padding - Inner padding
@@ -37,19 +38,7 @@ export struct GlassCard {
     }
     .padding(this.padding)
     .borderRadius(this.themeConfig.borderRadius)
-    .backgroundColor(this.themeConfig.surfaceColor)
-    .borderWidth(1)
-    .borderColor(
-      this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.06)'
-        : 'rgba(0, 0, 0, 0.06)'
-    )
-    .shadow({
-      radius: 8,
-      color: this.themeConfig.isDarkMode
-        ? 'rgba(0, 0, 0, 0.25)'
-        : 'rgba(0, 0, 0, 0.06)',
-      offsetY: 2,
-    });
+    .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CARD))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CARD, this.themeConfig.isDarkMode));
   }
 }

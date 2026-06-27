@@ -20,6 +20,8 @@ class ThemePresetMap {
     accentColor: '#4A90D9',
     fontScale: 1.0,
     borderRadius: 16,
+    materialLevel: 0,
+    immersiveEnabled: true,
   };
   SUNSET_ORANGE: ThemeConfig = {
     primaryColor: '#E8774A',
@@ -34,6 +36,8 @@ class ThemePresetMap {
     accentColor: '#E8774A',
     fontScale: 1.0,
     borderRadius: 16,
+    materialLevel: 0,
+    immersiveEnabled: true,
   };
   FOREST_GREEN: ThemeConfig = {
     primaryColor: '#4CAF50',
@@ -48,6 +52,8 @@ class ThemePresetMap {
     accentColor: '#4CAF50',
     fontScale: 1.0,
     borderRadius: 16,
+    materialLevel: 0,
+    immersiveEnabled: true,
   };
   LAVENDER_PURPLE: ThemeConfig = {
     primaryColor: '#7C5CBF',
@@ -62,6 +68,8 @@ class ThemePresetMap {
     accentColor: '#7C5CBF',
     fontScale: 1.0,
     borderRadius: 16,
+    materialLevel: 0,
+    immersiveEnabled: true,
   };
   CHERRY_PINK: ThemeConfig = {
     primaryColor: '#E91E63',
@@ -76,6 +84,8 @@ class ThemePresetMap {
     accentColor: '#E91E63',
     fontScale: 1.0,
     borderRadius: 16,
+    materialLevel: 0,
+    immersiveEnabled: true,
   };
   MIDNIGHT_TEAL: ThemeConfig = {
     primaryColor: '#00897B',
@@ -90,6 +100,8 @@ class ThemePresetMap {
     accentColor: '#00897B',
     fontScale: 1.0,
     borderRadius: 16,
+    materialLevel: 0,
+    immersiveEnabled: true,
   };
   WARM_AMBER: ThemeConfig = {
     primaryColor: '#FFA000',
@@ -104,6 +116,8 @@ class ThemePresetMap {
     accentColor: '#FFA000',
     fontScale: 1.0,
     borderRadius: 16,
+    materialLevel: 0,
+    immersiveEnabled: true,
   };
   SLATE_GRAY: ThemeConfig = {
     primaryColor: '#607D8B',
@@ -118,6 +132,8 @@ class ThemePresetMap {
     accentColor: '#607D8B',
     fontScale: 1.0,
     borderRadius: 16,
+    materialLevel: 0,
+    immersiveEnabled: true,
   };
   CUSTOM: ThemeConfig = {
     primaryColor: '#4A90D9',
@@ -132,6 +148,8 @@ class ThemePresetMap {
     accentColor: '#4A90D9',
     fontScale: 1.0,
     borderRadius: 16,
+    materialLevel: 0,
+    immersiveEnabled: true,
   };
 }
 
@@ -175,6 +193,8 @@ export function getDarkThemeConfig(lightConfig: ThemeConfig): ThemeConfig {
     accentColor: lightConfig.accentColor,
     fontScale: lightConfig.fontScale,
     borderRadius: lightConfig.borderRadius,
+    materialLevel: lightConfig.materialLevel,
+    immersiveEnabled: lightConfig.immersiveEnabled,
   };
   return darkConfig;
 }

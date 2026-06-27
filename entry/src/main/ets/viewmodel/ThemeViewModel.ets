@@ -76,6 +76,8 @@ export class ThemeViewModel {
       accentColor: config.accentColor,
       fontScale: config.fontScale,
       borderRadius: config.borderRadius,
+      materialLevel: config.materialLevel,
+      immersiveEnabled: config.immersiveEnabled,
     };
     this.themeConfig = newConfig;
     this.currentPreset = preset;
@@ -99,6 +101,8 @@ export class ThemeViewModel {
       accentColor: color,
       fontScale: this.themeConfig.fontScale,
       borderRadius: this.themeConfig.borderRadius,
+      materialLevel: this.themeConfig.materialLevel,
+      immersiveEnabled: this.themeConfig.immersiveEnabled,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -122,6 +126,8 @@ export class ThemeViewModel {
       accentColor: this.themeConfig.accentColor,
       fontScale: this.themeConfig.fontScale,
       borderRadius: this.themeConfig.borderRadius,
+      materialLevel: this.themeConfig.materialLevel,
+      immersiveEnabled: this.themeConfig.immersiveEnabled,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -145,6 +151,8 @@ export class ThemeViewModel {
       accentColor: this.themeConfig.accentColor,
       fontScale: this.themeConfig.fontScale,
       borderRadius: this.themeConfig.borderRadius,
+      materialLevel: this.themeConfig.materialLevel,
+      immersiveEnabled: this.themeConfig.immersiveEnabled,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -168,6 +176,8 @@ export class ThemeViewModel {
       accentColor: this.themeConfig.accentColor,
       fontScale: this.themeConfig.fontScale,
       borderRadius: radius,
+      materialLevel: this.themeConfig.materialLevel,
+      immersiveEnabled: this.themeConfig.immersiveEnabled,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -191,6 +201,8 @@ export class ThemeViewModel {
       accentColor: this.themeConfig.accentColor,
       fontScale: scale,
       borderRadius: this.themeConfig.borderRadius,
+      materialLevel: this.themeConfig.materialLevel,
+      immersiveEnabled: this.themeConfig.immersiveEnabled,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -214,6 +226,8 @@ export class ThemeViewModel {
       accentColor: this.themeConfig.accentColor,
       fontScale: this.themeConfig.fontScale,
       borderRadius: this.themeConfig.borderRadius,
+      materialLevel: this.themeConfig.materialLevel,
+      immersiveEnabled: this.themeConfig.immersiveEnabled,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -237,6 +251,58 @@ export class ThemeViewModel {
       accentColor: this.themeConfig.accentColor,
       fontScale: this.themeConfig.fontScale,
       borderRadius: this.themeConfig.borderRadius,
+      materialLevel: this.themeConfig.materialLevel,
+      immersiveEnabled: this.themeConfig.immersiveEnabled,
+    };
+    this.themeConfig = newConfig;
+    this.currentPreset = ThemePreset.CUSTOM;
+    this.saveTheme();
+  }
+
+  /**
+   * Updates the material rendering quality level.
+   */
+  updateMaterialLevel(level: number): void {
+    const newConfig: ThemeConfig = {
+      primaryColor: this.themeConfig.primaryColor,
+      backgroundColor: this.themeConfig.backgroundColor,
+      surfaceColor: this.themeConfig.surfaceColor,
+      textColor: this.themeConfig.textColor,
+      textSecondaryColor: this.themeConfig.textSecondaryColor,
+      glassOpacity: this.themeConfig.glassOpacity,
+      glassBlurRadius: this.themeConfig.glassBlurRadius,
+      backgroundImageUri: this.themeConfig.backgroundImageUri,
+      isDarkMode: this.themeConfig.isDarkMode,
+      accentColor: this.themeConfig.accentColor,
+      fontScale: this.themeConfig.fontScale,
+      borderRadius: this.themeConfig.borderRadius,
+      materialLevel: level,
+      immersiveEnabled: this.themeConfig.immersiveEnabled,
+    };
+    this.themeConfig = newConfig;
+    this.currentPreset = ThemePreset.CUSTOM;
+    this.saveTheme();
+  }
+
+  /**
+   * Toggles immersive light effects on/off.
+   */
+  updateImmersiveEnabled(enabled: boolean): void {
+    const newConfig: ThemeConfig = {
+      primaryColor: this.themeConfig.primaryColor,
+      backgroundColor: this.themeConfig.backgroundColor,
+      surfaceColor: this.themeConfig.surfaceColor,
+      textColor: this.themeConfig.textColor,
+      textSecondaryColor: this.themeConfig.textSecondaryColor,
+      glassOpacity: this.themeConfig.glassOpacity,
+      glassBlurRadius: this.themeConfig.glassBlurRadius,
+      backgroundImageUri: this.themeConfig.backgroundImageUri,
+      isDarkMode: this.themeConfig.isDarkMode,
+      accentColor: this.themeConfig.accentColor,
+      fontScale: this.themeConfig.fontScale,
+      borderRadius: this.themeConfig.borderRadius,
+      materialLevel: this.themeConfig.materialLevel,
+      immersiveEnabled: enabled,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -265,6 +331,8 @@ export class ThemeViewModel {
         accentColor: lightConfig.accentColor,
         fontScale: lightConfig.fontScale,
         borderRadius: lightConfig.borderRadius,
+        materialLevel: this.themeConfig.materialLevel,
+        immersiveEnabled: this.themeConfig.immersiveEnabled,
       };
       this.themeConfig = newConfig;
     }

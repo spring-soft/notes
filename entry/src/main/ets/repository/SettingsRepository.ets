@@ -34,7 +34,15 @@ export class SettingsRepository {
     const pref: preferences.Preferences = await this.getPreferences();
     const json: string = await pref.get(KEY_THEME_CONFIG, '') as string;
     if (json !== '') {
-      return JSON.parse(json) as ThemeConfig;
+      const config: ThemeConfig = JSON.parse(json) as ThemeConfig;
+      // Backward-compatible defaults for fields added in v2.0
+      if (config.materialLevel === undefined) {
+        config.materialLevel = 0;
+      }
+      if (config.immersiveEnabled === undefined) {
+        config.immersiveEnabled = true;
+      }
+      return config;
     }
     return getThemeConfigByPreset(ThemePreset.OCEAN_BLUE);
   }

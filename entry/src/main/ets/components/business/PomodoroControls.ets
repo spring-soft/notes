@@ -1,10 +1,11 @@
 import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 import { PomodoroState } from '../../model/PomodoroSessionModel';
 import { ICON } from '../../utils/IconGlyphs';
 
 /**
  * Control buttons for the pomodoro timer: start/pause, reset, skip.
- * The play/pause button animates smoothly between states.
+ * Press deformation is provided by systemMaterial interactive:true.
  */
 @Component
 export struct PomodoroControls {
@@ -12,7 +13,6 @@ export struct PomodoroControls {
   @Prop currentState: PomodoroState = PomodoroState.IDLE;
   @Prop isRunning: boolean = false;
   @Prop stateSignal: number = 0;
-  @State private animScale: number = 1.0;
   onStartPause: () => void = () => {
   };
   onReset: () => void = () => {
@@ -31,45 +31,27 @@ export struct PomodoroControls {
       .width(56)
       .height(56)
       .borderRadius(28)
-      .backgroundColor(
-        this.themeConfig.isDarkMode
-          ? 'rgba(255, 255, 255, 0.1)'
-          : 'rgba(0, 0, 0, 0.06)'
-      )
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.SURFACE))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
       .onClick(() => {
         this.onReset();
       });
 
       Blank().width(24);
 
-      // Start / Pause button (larger, primary) with animated icon transition
-      // Using @Prop isRunning + @Prop stateSignal (both from parent @State)
-      // ensures ArkUI always re-evaluates on every state tick.
+      // Start / Pause button (larger, primary) — systemMaterial handles press
       Button() {
         SymbolGlyph(this.isRunning ? ICON.PAUSE_BARS : ICON.PLAY)
           .fontSize(28)
-          .fontColor(['#FFFFFF'])
-          .scale({ x: this.animScale, y: this.animScale })
-          .animation({ duration: 200, curve: Curve.EaseInOut });
+          .fontColor(['#FFFFFF']);
       }
       .width(72)
       .height(72)
       .borderRadius(36)
-      .backgroundColor(this.themeConfig.primaryColor)
-      .shadow({
-        radius: 16,
-        color: this.themeConfig.primaryColor + '40',
-        offsetY: 4,
-      })
-      .animation({ duration: 300, curve: Curve.EaseInOut })
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.FAB))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.FAB, this.themeConfig.isDarkMode))
       .onClick(() => {
-        // Trigger a brief scale-down animation on each press
-        this.animScale = 0.85;
         this.onStartPause();
-        // Reset scale after a short delay
-        setTimeout(() => {
-          this.animScale = 1.0;
-        }, 150);
       });
 
       Blank().width(24);
@@ -83,16 +65,12 @@ export struct PomodoroControls {
       .width(56)
       .height(56)
       .borderRadius(28)
-      .backgroundColor(
-        this.themeConfig.isDarkMode
-          ? 'rgba(255, 255, 255, 0.1)'
-          : 'rgba(0, 0, 0, 0.06)'
-      )
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.SURFACE))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
       .onClick(() => {
         this.onSkip();
       });
     }
     .justifyContent(FlexAlign.Center);
   }
-
 }

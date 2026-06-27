@@ -1,4 +1,5 @@
 import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 import { ICON } from '../../utils/IconGlyphs';
 
 /**
@@ -51,12 +52,7 @@ export struct SearchBar {
     }
     .padding({ left: 14, right: 14, top: 10, bottom: 10 })
     .borderRadius(this.themeConfig.borderRadius)
-    .backgroundColor(this.themeConfig.surfaceColor)
-    .borderWidth(1)
-    .borderColor(
-      this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.06)'
-        : 'rgba(0, 0, 0, 0.06)'
-    );
+    .backdropBlur(MaterialConstants.getBlur(MaterialConstants.SURFACE))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode));
   }
 }

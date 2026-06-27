@@ -3,6 +3,7 @@ import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { ReminderViewModel } from '../viewmodel/ReminderViewModel';
 import { TodoItem, TodoCategory, TodoPriority, TodoFilterType } from '../model/TodoModel';
 import { ThemeConfig } from '../model/ThemeConfigModel';
+import { MaterialConstants } from '../constants/MaterialConstants';
 import { TodoRepository } from '../repository/TodoRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
 import { ReminderService } from '../service/ReminderService';
@@ -63,11 +64,8 @@ export struct TodosPage {
             .width(32)
             .height(32)
             .borderRadius(16)
-            .backgroundColor(
-              this.themeConfig.isDarkMode
-                ? 'rgba(255, 255, 255, 0.08)'
-                : 'rgba(0, 0, 0, 0.04)'
-            )
+            .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
             .onClick(() => {
               this.showCategoryManager = !this.showCategoryManager;
             });
@@ -117,11 +115,8 @@ export struct TodosPage {
                       }
                       .padding({ left: 12, right: 12, top: 6, bottom: 6 })
                       .borderRadius(14)
-                      .backgroundColor(
-                        this.themeConfig.isDarkMode
-                          ? 'rgba(255,255,255,0.06)'
-                          : 'rgba(0,0,0,0.04)'
-                      )
+                      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
                       .margin({ right: 8 });
                     }, (cat: TodoCategory) => cat.id);
                   }
@@ -228,12 +223,8 @@ export struct TodosPage {
           .width(60)
           .height(60)
           .borderRadius(30)
-          .backgroundColor(this.themeConfig.primaryColor)
-          .shadow({
-            radius: 16,
-            color: this.themeConfig.primaryColor + '40',
-            offsetY: 4,
-          })
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.FAB))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.FAB, this.themeConfig.isDarkMode))
           .onClick(() => {
             this.showAddSheet = true;
           });
@@ -257,8 +248,8 @@ export struct TodosPage {
             });
           }
           .borderRadius({ topLeft: 20, topRight: 20 })
-          .backgroundColor(this.themeConfig.surfaceColor)
-          .shadow({ radius: 20, color: 'rgba(0,0,0,0.3)', offsetY: -4 })
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.SHEET))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SHEET, this.themeConfig.isDarkMode))
           .position({ left: 0, right: 0, bottom: 0 })
           .transition(
             TransitionEffect.translate({ y: 400 })
@@ -290,8 +281,13 @@ export struct TodosPage {
           ? (this.themeConfig.isDarkMode
             ? this.themeConfig.primaryColor + '30'
             : this.themeConfig.primaryColor + '1A')
-          : (this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
+          : Color.Transparent
       )
+      .backdropBlur(
+          this.activeTab === index
+            ? 0
+            : MaterialConstants.getBlur(MaterialConstants.CHIP)
+        )
       .margin({ right: 10 })
       .onClick(() => {
         this.activeTab = index;

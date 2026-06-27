@@ -1,4 +1,5 @@
 import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 import { Timestamp } from '../../model/AppConstantsModel';
 import { RepeatType } from '../../model/ReminderModel';
 
@@ -96,8 +97,13 @@ export struct ReminderPicker {
       .backgroundColor(
         this.repeatType === type
           ? this.themeConfig.primaryColor
-          : (this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')
+          : Color.Transparent
       )
+      .backdropBlur(
+          this.repeatType === type
+            ? 0
+            : MaterialConstants.getBlur(MaterialConstants.CHIP)
+        )
       .margin({ right: 8 })
       .onClick(() => {
         this.onRepeatChange(type);

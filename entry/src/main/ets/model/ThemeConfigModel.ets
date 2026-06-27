@@ -13,6 +13,10 @@ export interface ThemeConfig {
   accentColor: ColorHex;
   fontScale: number;
   borderRadius: number;
+  /** Material rendering quality: 0=ADAPTIVE, 1=EXQUISITE, 2=GENTLE, 3=SMOOTH */
+  materialLevel: number;
+  /** Master toggle for all immersive light effects */
+  immersiveEnabled: boolean;
 }
 
 export enum ThemePreset {

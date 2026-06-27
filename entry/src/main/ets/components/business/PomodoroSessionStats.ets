@@ -1,4 +1,5 @@
 import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 
 /**
  * Today's pomodoro session statistics display.
@@ -52,16 +53,7 @@ export struct PomodoroSessionStats {
     .width('100%')
     .padding({ top: 16, bottom: 16, left: 24, right: 24 })
     .borderRadius(this.themeConfig.borderRadius)
-    .backgroundColor(
-      this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.06)'
-        : this.themeConfig.surfaceColor
-    )
-    .borderWidth(1)
-    .borderColor(
-      this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.08)'
-        : 'rgba(255, 255, 255, 0.2)'
-    );
+    .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CARD))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CARD, this.themeConfig.isDarkMode));
   }
 }

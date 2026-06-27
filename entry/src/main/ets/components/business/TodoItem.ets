@@ -1,5 +1,6 @@
 import { TodoItem as TodoItemModel, TodoPriority } from '../../model/TodoModel';
 import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 import { formatDateLabel } from '../../utils/DateUtils';
 import { ICON } from '../../utils/IconGlyphs';
 
@@ -86,6 +87,9 @@ export struct TodoItemView {
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .borderRadius(this.themeConfig.borderRadius)
+    .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CARD))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CARD, this.themeConfig.isDarkMode))
     .onClick(() => {
       this.onItemClick();
     })
