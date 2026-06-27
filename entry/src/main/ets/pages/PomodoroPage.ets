@@ -66,7 +66,7 @@ export struct PomodoroPage {
       new SettingsRepository(appContext),
       new NotificationService(context),
       new BackgroundTaskService(context),
-      new LiveViewService()
+      new LiveViewService(context)
     );
   }
 

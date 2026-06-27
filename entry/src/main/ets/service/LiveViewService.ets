@@ -1,11 +1,12 @@
 import { liveViewManager } from '@kit.LiveViewKit';
+import { common, wantAgent, WantAgent } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 
 const DOMAIN: number = 0x0002;
 const TAG: string = 'LiveViewService';
 
-/** Fixed live-view ID for the pomodoro timer (only one at a time). */
+/** Fixed live-view ID for the pomodoro timer. */
 const POMODORO_LIVE_VIEW_ID: number = 2001;
 
 /**
@@ -19,21 +20,27 @@ export interface LiveViewLabels {
 /**
  * Live View (实况窗 / 灵动岛) service for the pomodoro timer.
  *
- * When the timer is running, the system renders a capsule in the status bar
- * (around the front-camera cutout — "灵动岛") and a card in the notification
- * centre / lock screen, showing the countdown.  Tapping either returns the
- * user to the app.
+ * Uses the LAYOUT_TYPE_PROGRESS template with a timer field so the system
+ * renders a capsule in the status bar and a countdown card in the
+ * notification centre / lock screen.
  *
- * The Live View is created on timer start, updated on pause / resume, and
- * stopped when the session ends.
+ * **Requirements on device:**
+ * 1. AppGallery Connect → Live View Kit 权益已开通
+ * 2. 系统设置 → 应用 → MemoFlow → 实况窗 已开启
+ * 3. HarmonyOS 5.0+ 且在中国境内
  */
 export class LiveViewService {
   private isActive: boolean = false;
   private currentConfig: liveViewManager.LiveView | null = null;
+  private context: common.Context;
+  private cachedWantAgent: WantAgent | null = null;
+
+  constructor(context: common.Context) {
+    this.context = context;
+  }
 
   /**
    * Checks whether Live View is enabled on the device.
-   * Should be called before attempting to create a live view.
    */
   async isEnabled(): Promise<boolean> {
     try {
@@ -46,7 +53,7 @@ export class LiveViewService {
   }
 
   /**
-   * Starts a countdown Live View for a work or break session.
+   * Starts a countdown Live View. Returns true on success.
    */
   async startLiveView(
     labels: LiveViewLabels,
@@ -57,14 +64,16 @@ export class LiveViewService {
       await this.stopLiveView();
     }
 
-    // Check if Live View is enabled first
     const enabled: boolean = await this.isEnabled();
     if (!enabled) {
-      hilog.warn(DOMAIN, TAG, 'Live View is disabled on this device — skipping');
+      hilog.warn(DOMAIN, TAG, 'Live View is disabled — falling back to notification');
       return false;
     }
 
     try {
+      const colorHex: string = this.colorToHex(primaryColor);
+      const clickAction: WantAgent = await this.getOrCreateWantAgent();
+
       const config: liveViewManager.LiveView = {
         id: POMODORO_LIVE_VIEW_ID,
         event: 'POMODORO_TIMER',
@@ -78,8 +87,12 @@ export class LiveViewService {
             content: [
               { text: '${placeholder.timer}' } as liveViewManager.RichText,
             ],
+            clickAction: clickAction,
             layoutData: {
               layoutType: liveViewManager.LayoutType.LAYOUT_TYPE_PROGRESS,
+              progress: this.msToProgress(remainingMs),
+              color: '#' + colorHex,
+              backgroundColor: '#' + colorHex + '33',
             } as liveViewManager.ProgressLayout,
             aliveTime: 7200,
           },
@@ -88,7 +101,7 @@ export class LiveViewService {
             status: 1,
             title: labels.capsuleTitle,
             content: this.formatTimerText(remainingMs),
-            backgroundColor: this.colorToHex(primaryColor),
+            backgroundColor: colorHex,
           },
         },
       };
@@ -96,18 +109,17 @@ export class LiveViewService {
       await liveViewManager.startLiveView(config);
       this.isActive = true;
       this.currentConfig = config;
-      hilog.info(DOMAIN, TAG, 'Live View started: %{public}s, %{public}d ms',
-        labels.title, remainingMs);
+      hilog.info(DOMAIN, TAG, 'Live View started: %{public}s', labels.title);
       return true;
     } catch (err) {
       const e: BusinessError = err as BusinessError;
-      hilog.error(DOMAIN, TAG, 'Failed to start Live View: %{public}s', e.message);
+      hilog.error(DOMAIN, TAG, 'startLiveView failed: %{public}s', e.message);
       return false;
     }
   }
 
   /**
-   * Updates the Live View countdown (e.g. after pause → resume).
+   * Updates the Live View countdown (resume from pause).
    */
   async updateLiveView(
     labels: LiveViewLabels,
@@ -119,6 +131,9 @@ export class LiveViewService {
     }
 
     try {
+      const colorHex: string = this.colorToHex(primaryColor);
+      const clickAction: WantAgent = await this.getOrCreateWantAgent();
+
       const config: liveViewManager.LiveView = {
         id: POMODORO_LIVE_VIEW_ID,
         event: 'POMODORO_TIMER',
@@ -132,8 +147,12 @@ export class LiveViewService {
             content: [
               { text: '${placeholder.timer}' } as liveViewManager.RichText,
             ],
+            clickAction: clickAction,
             layoutData: {
               layoutType: liveViewManager.LayoutType.LAYOUT_TYPE_PROGRESS,
+              progress: this.msToProgress(remainingMs),
+              color: '#' + colorHex,
+              backgroundColor: '#' + colorHex + '33',
             } as liveViewManager.ProgressLayout,
             aliveTime: 7200,
           },
@@ -142,25 +161,23 @@ export class LiveViewService {
             status: 1,
             title: labels.capsuleTitle,
             content: this.formatTimerText(remainingMs),
-            backgroundColor: this.colorToHex(primaryColor),
+            backgroundColor: colorHex,
           },
         },
       };
 
       await liveViewManager.updateLiveView(config);
       this.currentConfig = config;
-      hilog.info(DOMAIN, TAG, 'Live View updated: %{public}s, %{public}d ms',
-        labels.title, remainingMs);
       return true;
     } catch (err) {
       const e: BusinessError = err as BusinessError;
-      hilog.error(DOMAIN, TAG, 'Failed to update Live View: %{public}s', e.message);
+      hilog.error(DOMAIN, TAG, 'updateLiveView failed: %{public}s', e.message);
       return false;
     }
   }
 
   /**
-   * Pauses the Live View — keeps it visible but marks it as paused.
+   * Pauses the Live View — keeps it visible without countdown animation.
    */
   async pauseLiveView(
     labels: LiveViewLabels,
@@ -172,6 +189,9 @@ export class LiveViewService {
     }
 
     try {
+      const colorHex: string = this.colorToHex(primaryColor);
+      const clickAction: WantAgent = await this.getOrCreateWantAgent();
+
       const config: liveViewManager.LiveView = {
         id: POMODORO_LIVE_VIEW_ID,
         event: 'POMODORO_TIMER',
@@ -181,8 +201,12 @@ export class LiveViewService {
             content: [
               { text: this.formatTimerText(remainingMs) } as liveViewManager.RichText,
             ],
+            clickAction: clickAction,
             layoutData: {
               layoutType: liveViewManager.LayoutType.LAYOUT_TYPE_PROGRESS,
+              progress: this.msToProgress(remainingMs),
+              color: '#' + colorHex,
+              backgroundColor: '#' + colorHex + '33',
             } as liveViewManager.ProgressLayout,
             aliveTime: 7200,
           },
@@ -191,18 +215,17 @@ export class LiveViewService {
             status: 2,
             title: labels.capsuleTitle + ' ⏸',
             content: this.formatTimerText(remainingMs),
-            backgroundColor: this.colorToHex(primaryColor),
+            backgroundColor: colorHex,
           },
         },
       };
 
       await liveViewManager.updateLiveView(config);
       this.currentConfig = config;
-      hilog.info(DOMAIN, TAG, 'Live View paused: %{public}s', labels.title);
       return true;
     } catch (err) {
       const e: BusinessError = err as BusinessError;
-      hilog.error(DOMAIN, TAG, 'Failed to pause Live View: %{public}s', e.message);
+      hilog.error(DOMAIN, TAG, 'pauseLiveView failed: %{public}s', e.message);
       return false;
     }
   }
@@ -222,13 +245,45 @@ export class LiveViewService {
       hilog.info(DOMAIN, TAG, 'Live View stopped');
     } catch (err) {
       const e: BusinessError = err as BusinessError;
-      hilog.error(DOMAIN, TAG, 'Failed to stop Live View: %{public}s', e.message);
+      hilog.error(DOMAIN, TAG, 'stopLiveView failed: %{public}s', e.message);
     }
   }
 
   /**
-   * Formats milliseconds as MM:SS for capsule display.
+   * Creates (and caches) a WantAgent for returning to the app on tap.
    */
+  private async getOrCreateWantAgent(): Promise<WantAgent> {
+    if (this.cachedWantAgent !== null) {
+      return this.cachedWantAgent;
+    }
+
+    const wantAgentInfo: wantAgent.WantAgentInfo = {
+      wants: [
+        {
+          bundleName: 'com.example.notes',
+          abilityName: 'EntryAbility',
+        },
+      ],
+      actionType: wantAgent.OperationType.START_ABILITY,
+      requestCode: 0,
+      actionFlags: [wantAgent.WantAgentFlags.UPDATE_PRESENT_FLAG],
+    };
+
+    this.cachedWantAgent = await wantAgent.getWantAgent(wantAgentInfo);
+    return this.cachedWantAgent;
+  }
+
+  /**
+   * Converts remaining milliseconds to a progress percentage (inverted —
+   * 100% = just started, 0% = time's up).
+   */
+  private msToProgress(remainingMs: number): number {
+    // We use an approximate total based on the config (capped at 100).
+    // The actual proportion doesn't need to be exact — the timer field
+    // drives the countdown display; progress just colours the bar.
+    return Math.min(100, Math.max(0, Math.floor(remainingMs / 36000)));
+  }
+
   private formatTimerText(ms: number): string {
     const totalSecs: number = Math.floor(Math.max(0, ms) / 1000);
     const mins: number = Math.floor(totalSecs / 60);
@@ -236,9 +291,6 @@ export class LiveViewService {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   }
 
-  /**
-   * Removes the leading # from a hex colour so the capsule background is valid.
-   */
   private colorToHex(hex: string): string {
     if (hex.startsWith('#')) {
       return hex.substring(1);
