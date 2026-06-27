@@ -240,7 +240,7 @@ export struct SettingsPage {
               .fontWeight(FontWeight.Medium)
               .fontColor(this.themeConfig.textColor);
 
-            Text('版本 1.0.1 · HarmonyOS NEXT')
+            Text('版本 1.1.0 · HarmonyOS NEXT')
               .fontSize(13 * this.themeConfig.fontScale)
               .fontColor(this.themeConfig.textSecondaryColor)
               .margin({ top: 4 });
