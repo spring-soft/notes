@@ -2,7 +2,8 @@ import { TodosViewModel } from '../viewmodel/TodosViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { ReminderViewModel } from '../viewmodel/ReminderViewModel';
 import { TodoItem, TodoCategory, TodoPriority, TodoFilterType } from '../model/TodoModel';
-import { ThemeConfig } from '../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
+import { MaterialConstants } from '../constants/MaterialConstants';
 import { TodoRepository } from '../repository/TodoRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
 import { ReminderService } from '../service/ReminderService';
@@ -16,17 +17,17 @@ import { ICON } from '../utils/IconGlyphs';
 /**
  * Todos list page with category grouping, filter tabs, and add sheet.
  */
-@Component
+@ComponentV2
 export struct TodosPage {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @State viewModel: TodosViewModel = new TodosViewModel(
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Local viewModel: TodosViewModel = new TodosViewModel(
     new TodoRepository(DatabaseHelper.getInstance().getStore())
   );
-  @State showAddSheet: boolean = false;
-  @State activeTab: number = 0;
-  @State showCategoryManager: boolean = false;
-  @State newCategoryName: string = '';
-  @State newCategoryColor: string = '#4A90D9';
+  @Local showAddSheet: boolean = false;
+  @Local activeTab: number = 0;
+  @Local showCategoryManager: boolean = false;
+  @Local newCategoryName: string = '';
+  @Local newCategoryColor: string = '#4A90D9';
 
   aboutToAppear(): void {
     this.viewModel.loadData();
@@ -36,7 +37,7 @@ export struct TodosPage {
     NavDestination() {
       Stack() {
         Column() {
-          // Header
+          // Header — immersive blur surface
           Row() {
             Text('待办')
               .fontSize(28 * this.themeConfig.fontScale)
@@ -44,7 +45,9 @@ export struct TodosPage {
               .fontColor(this.themeConfig.textColor);
           }
           .width('100%')
-          .padding({ left: 20, right: 20, top: 44, bottom: 12 });
+          .padding({ left: 20, right: 20, top: 44, bottom: 12 })
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
           // Filter tabs
           Row() {
@@ -56,18 +59,15 @@ export struct TodosPage {
 
             // Category manager toggle
             Button() {
-              Text(this.showCategoryManager ? ICON.CLOSE : ICON.MENU)
+              SymbolGlyph(this.showCategoryManager ? ICON.CLOSE : ICON.MENU)
                 .fontSize(16)
-                .fontColor(this.themeConfig.textSecondaryColor);
+                .fontColor([this.themeConfig.textSecondaryColor]);
             }
             .width(32)
             .height(32)
             .borderRadius(16)
-            .backgroundColor(
-              this.themeConfig.isDarkMode
-                ? 'rgba(255, 255, 255, 0.08)'
-                : 'rgba(0, 0, 0, 0.04)'
-            )
+            .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
             .onClick(() => {
               this.showCategoryManager = !this.showCategoryManager;
             });
@@ -102,9 +102,9 @@ export struct TodosPage {
                           .fontColor(this.themeConfig.textColor);
 
                         Button() {
-                          Text(ICON.CLOSE)
+                          SymbolGlyph(ICON.CLOSE)
                             .fontSize(10)
-                            .fontColor(this.themeConfig.textSecondaryColor);
+                            .fontColor([this.themeConfig.textSecondaryColor]);
                         }
                         .width(18)
                         .height(18)
@@ -117,11 +117,8 @@ export struct TodosPage {
                       }
                       .padding({ left: 12, right: 12, top: 6, bottom: 6 })
                       .borderRadius(14)
-                      .backgroundColor(
-                        this.themeConfig.isDarkMode
-                          ? 'rgba(255,255,255,0.06)'
-                          : 'rgba(0,0,0,0.04)'
-                      )
+                      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
                       .margin({ right: 8 });
                     }, (cat: TodoCategory) => cat.id);
                   }
@@ -221,19 +218,15 @@ export struct TodosPage {
         // FAB
         Stack() {
           Button() {
-            Text(ICON.PLUS)
+            SymbolGlyph(ICON.PLUS)
               .fontSize(28)
-              .fontColor('#FFFFFF');
+              .fontColor([this.themeConfig.primaryColor]);
           }
           .width(60)
           .height(60)
           .borderRadius(30)
-          .backgroundColor(this.themeConfig.primaryColor)
-          .shadow({
-            radius: 16,
-            color: this.themeConfig.primaryColor + '40',
-            offsetY: 4,
-          })
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.FAB))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.FAB, this.themeConfig.isDarkMode))
           .onClick(() => {
             this.showAddSheet = true;
           });
@@ -257,8 +250,8 @@ export struct TodosPage {
             });
           }
           .borderRadius({ topLeft: 20, topRight: 20 })
-          .backgroundColor(this.themeConfig.surfaceColor)
-          .shadow({ radius: 20, color: 'rgba(0,0,0,0.3)', offsetY: -4 })
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.SHEET))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SHEET, this.themeConfig.isDarkMode))
           .position({ left: 0, right: 0, bottom: 0 })
           .transition(
             TransitionEffect.translate({ y: 400 })
@@ -273,7 +266,7 @@ export struct TodosPage {
     .onShown(() => {
       this.viewModel.loadData();
     })
-    .backgroundColor(this.themeConfig.backgroundColor)
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
   }
 
@@ -290,8 +283,13 @@ export struct TodosPage {
           ? (this.themeConfig.isDarkMode
             ? this.themeConfig.primaryColor + '30'
             : this.themeConfig.primaryColor + '1A')
-          : (this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
+          : Color.Transparent
       )
+      .backdropBlur(
+          this.activeTab === index
+            ? 0
+            : MaterialConstants.getBlur(MaterialConstants.CHIP)
+        )
       .margin({ right: 10 })
       .onClick(() => {
         this.activeTab = index;

@@ -1,99 +1,76 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 import { PomodoroState } from '../../model/PomodoroSessionModel';
 import { ICON } from '../../utils/IconGlyphs';
 
 /**
  * Control buttons for the pomodoro timer: start/pause, reset, skip.
- * The play/pause button animates smoothly between states.
+ * Press deformation is provided by systemMaterial interactive:true.
  */
-@Component
+@ComponentV2
 export struct PomodoroControls {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop currentState: PomodoroState = PomodoroState.IDLE;
-  @State private animScale: number = 1.0;
-  onStartPause: () => void = () => {
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param currentState: PomodoroState = PomodoroState.IDLE;
+  @Param isRunning: boolean = false;
+  @Param stateSignal: number = 0;
+  @Event onStartPause: () => void = () => {
   };
-  onReset: () => void = () => {
+  @Event onReset: () => void = () => {
   };
-  onSkip: () => void = () => {
+  @Event onSkip: () => void = () => {
   };
 
   build() {
     Row() {
       // Reset button
       Button() {
-        Text(ICON.RESET)
+        SymbolGlyph(ICON.RESET)
           .fontSize(22)
-          .fontColor(this.themeConfig.textColor);
+          .fontColor([this.themeConfig.primaryColor]);
       }
       .width(56)
       .height(56)
       .borderRadius(28)
-      .backgroundColor(
-        this.themeConfig.isDarkMode
-          ? 'rgba(255, 255, 255, 0.1)'
-          : 'rgba(0, 0, 0, 0.06)'
-      )
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.SURFACE))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
       .onClick(() => {
         this.onReset();
       });
 
       Blank().width(24);
 
-      // Start / Pause button (larger, primary) with animated icon transition
+      // Start / Pause button (larger, primary) — icon uses primaryColor for contrast
       Button() {
-        Text(this.isRunning ? ICON.PAUSE_BARS : ICON.PLAY)
+        SymbolGlyph(this.isRunning ? ICON.PAUSE : ICON.PLAY)
           .fontSize(28)
-          .fontColor('#FFFFFF')
-          .scale({ x: this.animScale, y: this.animScale })
-          .animation({ duration: 200, curve: Curve.EaseInOut });
+          .fontColor([this.themeConfig.primaryColor]);
       }
       .width(72)
       .height(72)
       .borderRadius(36)
-      .backgroundColor(this.themeConfig.primaryColor)
-      .shadow({
-        radius: 16,
-        color: this.themeConfig.primaryColor + '40',
-        offsetY: 4,
-      })
-      .animation({ duration: 300, curve: Curve.EaseInOut })
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.FAB))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.FAB, this.themeConfig.isDarkMode))
       .onClick(() => {
-        // Trigger a brief scale-down animation on each press
-        this.animScale = 0.85;
         this.onStartPause();
-        // Reset scale after a short delay
-        setTimeout(() => {
-          this.animScale = 1.0;
-        }, 150);
       });
 
       Blank().width(24);
 
       // Skip button
       Button() {
-        Text(ICON.SKIP)
+        SymbolGlyph(ICON.SKIP)
           .fontSize(22)
-          .fontColor(this.themeConfig.textColor);
+          .fontColor([this.themeConfig.primaryColor]);
       }
       .width(56)
       .height(56)
       .borderRadius(28)
-      .backgroundColor(
-        this.themeConfig.isDarkMode
-          ? 'rgba(255, 255, 255, 0.1)'
-          : 'rgba(0, 0, 0, 0.06)'
-      )
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.SURFACE))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
       .onClick(() => {
         this.onSkip();
       });
     }
     .justifyContent(FlexAlign.Center);
-  }
-
-  private get isRunning(): boolean {
-    return this.currentState === PomodoroState.WORKING ||
-      this.currentState === PomodoroState.SHORT_BREAK_RUNNING ||
-      this.currentState === PomodoroState.LONG_BREAK_RUNNING;
   }
 }

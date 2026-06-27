@@ -1,15 +1,16 @@
 import { TodoItem as TodoItemModel, TodoPriority } from '../../model/TodoModel';
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 import { formatDateLabel } from '../../utils/DateUtils';
 import { ICON } from '../../utils/IconGlyphs';
 
 /**
  * Single todo item row with checkbox, title, priority indicator, and due date.
  */
-@Component
+@ComponentV2
 export struct TodoItemView {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop todo: TodoItemModel = {
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param todo: TodoItemModel = {
     id: '',
     title: '',
     description: '',
@@ -22,9 +23,9 @@ export struct TodoItemView {
     dueDate: 0,
     completedAt: 0,
   };
-  onToggle: () => void = () => {
+  @Event onToggle: () => void = () => {
   };
-  onItemClick: () => void = () => {
+  @Event onItemClick: () => void = () => {
   };
 
   build() {
@@ -72,9 +73,9 @@ export struct TodoItemView {
               .fontColor(this.themeConfig.textSecondaryColor);
 
             if (this.todo.reminderTime > 0) {
-              Text(ICON.ALARM)
+              SymbolGlyph(ICON.ALARM)
                 .fontSize(12)
-                .fontColor(this.themeConfig.primaryColor)
+                .fontColor([this.themeConfig.primaryColor])
                 .margin({ left: 6 });
             }
           }
@@ -86,6 +87,9 @@ export struct TodoItemView {
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .borderRadius(this.themeConfig.borderRadius)
+    .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CARD))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CARD, this.themeConfig.isDarkMode))
     .onClick(() => {
       this.onItemClick();
     })

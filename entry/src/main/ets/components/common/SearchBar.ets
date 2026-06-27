@@ -1,29 +1,33 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 import { ICON } from '../../utils/IconGlyphs';
 
 /**
  * Reusable search input bar with solid styling.
  *
  * @param placeholder - Placeholder text (default: "搜索...")
- * @param query - Two-way bound search query
+ * @param query - Search query from parent
+ * @param onQueryChange - Callback when query changes (replaces @Link)
  * @param onSearch - Callback when text changes
  * @param onClear - Callback when clear button pressed
  */
-@Component
+@ComponentV2
 export struct SearchBar {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop placeholder: string = '搜索...';
-  @Link query: string;
-  onSearch: (value: string) => void = (_v: string) => {
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param placeholder: string = '搜索...';
+  @Param query: string = '';
+  @Event onQueryChange: (value: string) => void = (_v: string) => {
   };
-  onClear: () => void = () => {
+  @Event onSearch: (value: string) => void = (_v: string) => {
+  };
+  @Event onClear: () => void = () => {
   };
 
   build() {
     Row() {
-      Text(ICON.SEARCH)
+      SymbolGlyph(ICON.SEARCH)
         .fontSize(18)
-        .fontColor(this.themeConfig.textSecondaryColor)
+        .fontColor([this.themeConfig.textSecondaryColor])
         .margin({ right: 8 });
 
       TextInput({ text: this.query, placeholder: this.placeholder })
@@ -34,29 +38,24 @@ export struct SearchBar {
         .backgroundColor(Color.Transparent)
         .borderWidth(0)
         .onChange((value: string) => {
-          this.query = value;
+          this.onQueryChange(value);
           this.onSearch(value);
         });
 
       if (this.query !== '') {
-        Text(ICON.CLOSE)
+        SymbolGlyph(ICON.CLOSE)
           .fontSize(18)
-          .fontColor(this.themeConfig.textSecondaryColor)
+          .fontColor([this.themeConfig.textSecondaryColor])
           .margin({ left: 8 })
           .onClick(() => {
-            this.query = '';
+            this.onQueryChange('');
             this.onClear();
           });
       }
     }
     .padding({ left: 14, right: 14, top: 10, bottom: 10 })
     .borderRadius(this.themeConfig.borderRadius)
-    .backgroundColor(this.themeConfig.surfaceColor)
-    .borderWidth(1)
-    .borderColor(
-      this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.06)'
-        : 'rgba(0, 0, 0, 0.06)'
-    );
+    .backdropBlur(MaterialConstants.getBlur(MaterialConstants.SURFACE))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode));
   }
 }

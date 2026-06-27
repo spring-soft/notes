@@ -6,7 +6,7 @@ import { ReminderService } from '../service/ReminderService';
  * ViewModel for managing todo reminders.
  * Bridges between TodoViewModel and the ReminderService.
  */
-@Observed
+@ObservedV2
 export class ReminderViewModel {
   private reminderService: ReminderService;
 

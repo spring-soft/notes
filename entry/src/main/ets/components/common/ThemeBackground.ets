@@ -1,63 +1,77 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
+import { lightenColor } from '../../utils/ColorUtils';
 
 /**
  * Full-screen adaptive background with depth.
  *
- * Three layers from bottom to top:
- *   1. Custom image (optional) — user's chosen photo
- *   2. Colored gradient overlay — theme-tinted
- *   3. Soft light orbs — floating ambient light blobs for depth
+ * Two modes:
+ *   Custom image:   User photo fills the screen (respects backgroundImageOpacity).
+ *                   Gradient + orbs are hidden so the image is fully visible.
+ *   Default:        Theme gradient + soft light orbs for depth.
+ *                   Glass components above blur this rich background.
  *
- * The glass components above this will blur this rich background.
+ * Tablet / split-screen: uses `objectFit(ImageFit.Cover)` which handles
+ * aspect-ratio changes gracefully.
  */
-@Component
+@ComponentV2
 export struct ThemeBackground {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Consumer('isTablet') isTablet: boolean = false;
 
   build() {
     Stack() {
-      // ── Layer 1: Custom image (if set) ──
+      // ═══ Mode 1: Custom background image ═══
       if (this.themeConfig.backgroundImageUri !== '') {
         Image(this.themeConfig.backgroundImageUri)
           .width('100%')
           .height('100%')
           .objectFit(ImageFit.Cover)
-          .brightness(this.themeConfig.isDarkMode ? 0.35 : 0.85)
-          .saturate(this.themeConfig.isDarkMode ? 0.5 : 1.0);
-      }
+          .brightness(this.themeConfig.isDarkMode ? 0.35 : 0.9)
+          .saturate(this.themeConfig.isDarkMode ? 0.5 : 1.0)
+          .opacity(this.themeConfig.backgroundImageOpacity);
 
-      // ── Layer 2: Theme gradient ──
-      Column()
-        .width('100%')
-        .height('100%')
-        .linearGradient({
-          direction: GradientDirection.Bottom,
-          colors: [
-            [this.themeConfig.backgroundColor, 0.0],
-            [this.lighten(this.themeConfig.primaryColor, 0.6), 0.35],
-            [this.themeConfig.backgroundColor, 0.7],
-            [this.themeConfig.primaryColor + '18', 1.0],
-          ],
-        });
+        // Subtle dark/light scrim over the image for text readability
+        Column()
+          .width('100%')
+          .height('100%')
+          .backgroundColor(
+            this.themeConfig.isDarkMode
+              ? 'rgba(0,0,0,0.25)'
+              : 'rgba(255,255,255,0.15)'
+          );
+      } else {
+        // ═══ Mode 2: Default theme gradient + orbs ═══
+        // Layer 2a: Theme gradient
+        Column()
+          .width('100%')
+          .height('100%')
+          .linearGradient({
+            direction: GradientDirection.Bottom,
+            colors: [
+              [this.themeConfig.backgroundColor, 0.0],
+              [lightenColor(this.themeConfig.primaryColor, 0.6), 0.35],
+              [this.themeConfig.backgroundColor, 0.7],
+              [this.themeConfig.primaryColor + '18', 1.0],
+            ],
+          });
 
-      // ── Layer 3a: Top-left ambient orb (large, soft) ──
-      Circle()
-        .width(280)
-        .height(280)
-        .fill(this.themeConfig.primaryColor + '15')
-        .blur(60)
-        .position({ x: -60, y: -40 });
+        // Layer 2b: Top-left ambient orb
+        Circle()
+          .width(this.isTablet ? 320 : 280)
+          .height(this.isTablet ? 320 : 280)
+          .fill(this.themeConfig.primaryColor + '15')
+          .blur(60)
+          .position({ x: -60, y: -40 });
 
-      // ── Layer 3b: Bottom-right ambient orb (smaller, warmer) ──
-      Circle()
-        .width(200)
-        .height(200)
-        .fill(this.themeConfig.accentColor + '12')
-        .blur(50)
-        .position({ x: '60%', y: '70%' });
+        // Layer 2c: Bottom-right ambient orb
+        Circle()
+          .width(this.isTablet ? 240 : 200)
+          .height(this.isTablet ? 240 : 200)
+          .fill(this.themeConfig.accentColor + '12')
+          .blur(50)
+          .position({ x: '60%', y: '70%' });
 
-      // ── Layer 3c: Center accent orb (for glass to catch) ──
-      if (this.themeConfig.backgroundImageUri === '') {
+        // Layer 2d: Center accent orb
         Circle()
           .width(160)
           .height(160)
@@ -67,17 +81,6 @@ export struct ThemeBackground {
       }
     }
     .width('100%')
-    .height('100%')
-    .position({ x: 0, y: 0 });
-  }
-
-  private lighten(hex: string, ratio: number): string {
-    const r: number = parseInt(hex.substring(1, 3), 16);
-    const g: number = parseInt(hex.substring(3, 5), 16);
-    const b: number = parseInt(hex.substring(5, 7), 16);
-    const nr: number = Math.min(255, Math.floor(r + (255 - r) * ratio));
-    const ng: number = Math.min(255, Math.floor(g + (255 - g) * ratio));
-    const nb: number = Math.min(255, Math.floor(b + (255 - b) * ratio));
-    return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
+    .height('100%');
   }
 }

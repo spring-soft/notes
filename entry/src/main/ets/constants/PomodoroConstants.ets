@@ -16,7 +16,6 @@ export class PomodoroConstants {
   static readonly MAX_BREAK_DURATION: Seconds = 30 * 60;
 
   static readonly TIMER_TICK_INTERVAL_MS: number = 1000;
-  static readonly NOTIFICATION_UPDATE_INTERVAL_MS: number = 20000;
 }
 
 /**

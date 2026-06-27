@@ -1,58 +1,67 @@
-import { PomodoroViewModel } from '../viewmodel/PomodoroViewModel';
+import { PomodoroViewModel, getPomodoroViewModel } from '../viewmodel/PomodoroViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { PomodoroSessionType, PomodoroState, PomodoroConfig } from '../model/PomodoroSessionModel';
-import { ThemeConfig } from '../model/ThemeConfigModel';
-import { PomodoroRepository } from '../repository/PomodoroRepository';
-import { SettingsRepository } from '../repository/SettingsRepository';
-import { DatabaseHelper } from '../repository/DatabaseHelper';
-import { NotificationService } from '../service/NotificationService';
-import { BackgroundTaskService } from '../service/BackgroundTaskService';
-import { common } from '@kit.AbilityKit';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
+import { MaterialConstants } from '../constants/MaterialConstants';
 import { PomodoroCircle } from '../components/business/PomodoroCircle';
 import { PomodoroControls } from '../components/business/PomodoroControls';
 import { PomodoroSessionStats } from '../components/business/PomodoroSessionStats';
 
 /**
  * Pomodoro timer page with circular progress, controls, and session stats.
- * Timer state (@State) is updated directly by the setInterval tick callback
- * to reliably trigger ArkUI re-renders.
+ *
+ * The PomodoroViewModel is a module-level singleton (initialised by Index)
+ * so the timer survives tab switches — Tabs destroys non-visible TabContent.
  */
-@Component
+@ComponentV2
 export struct PomodoroPage {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @State viewModel: PomodoroViewModel = this.createViewModel();
-  @State displayRemaining: number = 0;
-  @State displayProgress: number = 0;
-  @State displayState: PomodoroState = PomodoroState.IDLE;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Local displayRemaining: number = 0;
+  @Local displayProgress: number = 0;
+  @Local displayState: PomodoroState = PomodoroState.IDLE;
+  @Local stateUpdateSignal: number = 0;
+  @Local currentType: PomodoroSessionType = PomodoroSessionType.WORK;
+
+  private viewModel: PomodoroViewModel = getPomodoroViewModel();
 
   aboutToAppear(): void {
+    // Reload config from Preferences BEFORE syncing display state.
+    // onShown() is unreliable across tab switches (Tabs destroys/recreates
+    // non-visible TabContent), so we reload here where it's guaranteed to run.
     this.viewModel.setTickHandler((remaining: number, progress: number, state: PomodoroState) => {
       this.displayRemaining = remaining;
       this.displayProgress = progress;
       this.displayState = state;
+      this.currentType = this.viewModel.currentType;
+      this.stateUpdateSignal++;
     });
-    this.viewModel.initialize();
+    this.reloadAndSync();
   }
 
   aboutToDisappear(): void {
-    this.viewModel.destroy();
+    // Only unregister the tick callback — the singleton ViewModel and its
+    // timer must stay alive so the countdown continues across tab switches.
+    this.viewModel.setTickHandler(null);
   }
 
-  private createViewModel(): PomodoroViewModel {
-    const context: common.Context = this.getUIContext().getHostContext() as common.Context;
-    const appContext: common.Context = context.getApplicationContext();
-    return new PomodoroViewModel(
-      new PomodoroRepository(DatabaseHelper.getInstance().getStore()),
-      new SettingsRepository(appContext),
-      new NotificationService(appContext),
-      new BackgroundTaskService(appContext)
-    );
+  /**
+   * Reloads config from Preferences and syncs all @State display fields.
+   * Called from aboutToAppear (guaranteed) and onShown (backup).
+   */
+  private async reloadAndSync(): Promise<void> {
+    await this.viewModel.reloadConfig();
+    this.displayRemaining = this.viewModel.remainingSeconds;
+    this.displayProgress = this.viewModel.progress;
+    this.displayState = this.viewModel.currentState;
+    this.currentType = this.viewModel.currentType;
+    this.stateUpdateSignal++;
   }
 
   build() {
     NavDestination() {
       Column() {
-        // Header
+
+        // Header — immersive blur surface
         Row() {
           Text('专注')
             .fontSize(28 * this.themeConfig.fontScale)
@@ -60,13 +69,15 @@ export struct PomodoroPage {
             .fontColor(this.themeConfig.textColor);
         }
         .width('100%')
-        .padding({ left: 20, right: 20, top: 44, bottom: 12 });
+        .padding({ left: 20, right: 20, top: 44, bottom: 12 })
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
         // Session type selector
         Row() {
-          this.sessionTypeChip(PomodoroSessionType.WORK, '专注', this.viewModel.config.workDuration);
-          this.sessionTypeChip(PomodoroSessionType.SHORT_BREAK, '短休息', this.viewModel.config.shortBreakDuration);
-          this.sessionTypeChip(PomodoroSessionType.LONG_BREAK, '长休息', this.viewModel.config.longBreakDuration);
+          this.sessionTypeChip(PomodoroSessionType.WORK, '专注', 0);
+          this.sessionTypeChip(PomodoroSessionType.SHORT_BREAK, '短休息', 0);
+          this.sessionTypeChip(PomodoroSessionType.LONG_BREAK, '长休息', 0);
         }
         .width('100%')
         .padding({ left: 20, right: 20, bottom: 24 })
@@ -83,11 +94,14 @@ export struct PomodoroPage {
         }
         .width('100%')
         .alignItems(HorizontalAlign.Center)
-        .padding({ top: 20, bottom: 32 });
+        .padding({ top: 20, bottom: 32 })
+        .animation({ duration: 300, curve: Curve.EaseInOut });
 
         // Controls — uses @State displayState for button state
         PomodoroControls({
           currentState: this.displayState,
+          isRunning: this.isTimerRunning(),
+          stateSignal: this.stateUpdateSignal,
           onStartPause: () => {
             if (this.isTimerRunning()) {
               this.viewModel.pauseTimer();
@@ -116,8 +130,11 @@ export struct PomodoroPage {
       .width('100%')
       .height('100%');
     }
+    .onShown(() => {
+      this.reloadAndSync();
+    })
     .hideTitleBar(true)
-    .backgroundColor(this.themeConfig.backgroundColor)
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
   }
 
@@ -126,37 +143,38 @@ export struct PomodoroPage {
     Column() {
       Text(label)
         .fontSize(14 * this.themeConfig.fontScale)
-        .fontWeight(this.viewModel.currentType === type ? FontWeight.Medium : FontWeight.Normal)
+        .fontWeight(this.currentType === type ? FontWeight.Medium : FontWeight.Normal)
         .fontColor(
-          this.viewModel.currentType === type
+          this.currentType === type
             ? this.themeConfig.primaryColor
             : this.themeConfig.textSecondaryColor
         );
-
-      Text(`${Math.floor(durationSeconds / 60)} 分钟`)
-        .fontSize(12 * this.themeConfig.fontScale)
-        .fontColor(this.themeConfig.textSecondaryColor)
-        .opacity(0.7)
-        .margin({ top: 2 });
     }
     .padding({ left: 16, right: 16, top: 10, bottom: 10 })
     .borderRadius(this.themeConfig.borderRadius)
     .backgroundColor(
-      this.viewModel.currentType === type
+      this.currentType === type
         ? (this.themeConfig.isDarkMode
           ? this.themeConfig.primaryColor + '25'
           : this.themeConfig.primaryColor + '15')
-        : (this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
-    )
-    .borderWidth(this.viewModel.currentType === type ? 1.5 : 0)
-    .borderColor(
-      this.viewModel.currentType === type
-        ? this.themeConfig.primaryColor
         : Color.Transparent
     )
+    .borderWidth(this.currentType === type ? 1.5 : 1)
+    .borderColor(
+      this.currentType === type
+        ? this.themeConfig.primaryColor
+        : this.themeConfig.isDarkMode
+          ? 'rgba(255, 255, 255, 0.12)'
+          : 'rgba(0, 0, 0, 0.08)'
+    )
+    .animation({ duration: 250, curve: Curve.EaseInOut })
     .onClick(() => {
-      if (!this.isTimerRunning()) {
+      if (this.displayState === PomodoroState.IDLE) {
         this.viewModel.setSessionType(type);
+        this.currentType = type;
+        this.displayRemaining = this.viewModel.remainingSeconds;
+        this.displayProgress = this.viewModel.progress;
+        this.stateUpdateSignal++;
       }
     });
   }

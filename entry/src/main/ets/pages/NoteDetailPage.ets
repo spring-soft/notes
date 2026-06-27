@@ -1,7 +1,8 @@
 import { NotesViewModel } from '../viewmodel/NotesViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { Note, NOTE_CATEGORIES } from '../model/NoteModel';
-import { ThemeConfig } from '../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
+import { MaterialConstants } from '../constants/MaterialConstants';
 import { NoteRepository } from '../repository/NoteRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
 import { NoteEditor } from '../components/business/NoteEditor';
@@ -17,25 +18,25 @@ import { generateId } from '../utils/IdGenerator';
  * Note create / edit / view page.
  * Hosted as a NavDestination inside a parent Navigation component.
  */
-@Component
+@ComponentV2
 export struct NoteDetailPage {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Consume('navStack') navStack: NavPathStack;
-  @State viewModel: NotesViewModel = new NotesViewModel(
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Consumer('navStack') navStack: NavPathStack = new NavPathStack();
+  @Local viewModel: NotesViewModel = new NotesViewModel(
     new NoteRepository(DatabaseHelper.getInstance().getStore())
   );
-  @State noteId: string = '';
-  @State title: string = '';
-  @State content: string = '';
-  @State colorTag: string = '#4A90D9';
-  @State categoryId: string = '未分类';
-  @State customCategoryName: string = '';
-  @State isNew: boolean = true;
-  @State showDeleteDialog: boolean = false;
-  @State showColorPicker: boolean = false;
-  @State hasChanges: boolean = false;
-  @State isSaving: boolean = false;
-  @State @Watch('handleDelete') isDeleting: boolean = false;
+  @Local noteId: string = '';
+  @Local title: string = '';
+  @Local content: string = '';
+  @Local colorTag: string = '#4A90D9';
+  @Local categoryId: string = '未分类';
+  @Local customCategoryName: string = '';
+  @Local isNew: boolean = true;
+  @Local showDeleteDialog: boolean = false;
+  @Local showColorPicker: boolean = false;
+  @Local hasChanges: boolean = false;
+  @Local isSaving: boolean = false;
+  @Local isDeleting: boolean = false;
   private loadedNote: Note | null = null;
   private dialogController: CustomDialogController | null = null;
 
@@ -128,10 +129,11 @@ export struct NoteDetailPage {
   }
 
   /**
-   * Called by @Watch when the delete dialog is confirmed and isDeleting
+   * Called by @Monitor when the delete dialog is confirmed and isDeleting
    * becomes true.  Performs the actual DB delete and stack pop after the
    * dialog close animation has started (avoiding overlapping animations).
    */
+  @Monitor('isDeleting')
   handleDelete(): void {
     if (this.isDeleting) {
       this.deleteNote();
@@ -165,21 +167,18 @@ export struct NoteDetailPage {
     NavDestination() {
       Stack() {
         Column() {
-        // Top bar
+        // Top bar — immersive blur surface
         Row() {
           Button() {
-            Text(ICON.BACK)
+            SymbolGlyph(ICON.BACK)
               .fontSize(28)
-              .fontColor(this.themeConfig.textColor);
+              .fontColor([this.themeConfig.textColor]);
           }
           .width(40)
           .height(40)
           .borderRadius(20)
-          .backgroundColor(
-            this.themeConfig.isDarkMode
-              ? 'rgba(255, 255, 255, 0.08)'
-              : 'rgba(0, 0, 0, 0.06)'
-          )
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
           .onClick(() => {
             this.navStack.pop();
           });
@@ -196,11 +195,8 @@ export struct NoteDetailPage {
           .width(40)
           .height(40)
           .borderRadius(20)
-          .backgroundColor(
-            this.themeConfig.isDarkMode
-              ? 'rgba(255, 255, 255, 0.08)'
-              : 'rgba(0, 0, 0, 0.06)'
-          )
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
           .margin({ right: 8 })
           .onClick(() => {
             this.showColorPicker = !this.showColorPicker;
@@ -223,9 +219,9 @@ export struct NoteDetailPage {
           if (!this.isNew) {
             // Delete button
             Button() {
-              Text(ICON.DELETE)
+              SymbolGlyph(ICON.DELETE)
                 .fontSize(20)
-                .fontColor('#F44336');
+                .fontColor(['#F44336']);
             }
             .width(40)
             .height(40)
@@ -241,7 +237,9 @@ export struct NoteDetailPage {
           }
         }
         .width('100%')
-        .padding({ left: 16, right: 16, top: 44, bottom: 8 });
+        .padding({ left: 16, right: 16, top: 44, bottom: 8 })
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
         // Color picker dropdown
         if (this.showColorPicker) {
@@ -311,8 +309,13 @@ export struct NoteDetailPage {
                     .backgroundColor(
                       this.categoryId === cat
                         ? this.themeConfig.primaryColor
-                        : (this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')
+                        : Color.Transparent
                     )
+                    .backdropBlur(
+          this.categoryId === cat
+            ? 0
+            : MaterialConstants.getBlur(MaterialConstants.CHIP)
+        )
                     .margin({ right: 8 })
                     .onClick(() => {
                       this.categoryId = cat;
@@ -347,7 +350,7 @@ export struct NoteDetailPage {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor(this.themeConfig.backgroundColor)
+      .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
       .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
 
         // Deleting overlay — shown while the delete DB operation completes

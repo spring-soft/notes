@@ -1,7 +1,8 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 
 /**
- * Solid button with press animation.
+ * Immersive button with system-provided press deformation.
  *
  * @param label - Button text
  * @param icon - Optional system symbol or resource icon
@@ -9,17 +10,15 @@ import { ThemeConfig } from '../../model/ThemeConfigModel';
  * @param disabled - Grayed out / non-interactive
  * @param onClick - Click callback
  */
-@Component
+@ComponentV2
 export struct GlassButton {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop label: string = '';
-  @Prop icon: ResourceStr = '';
-  @Prop type: string = 'primary';
-  @Prop disabled: boolean = false;
-  onButtonClick: () => void = () => {
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param label: string = '';
+  @Param icon: ResourceStr = '';
+  @Param type: string = 'primary';
+  @Param disabled: boolean = false;
+  @Event onButtonClick: () => void = () => {
   };
-
-  @State isPressed: boolean = false;
 
   build() {
     Row() {
@@ -27,75 +26,32 @@ export struct GlassButton {
         Image(this.icon)
           .width(20)
           .height(20)
-          .fillColor(this.type === 'primary' ? '#FFFFFF' : this.themeConfig.primaryColor)
+          .fillColor(this.themeConfig.primaryColor)
           .margin({ right: this.label !== '' ? 8 : 0 });
       }
       if (this.label !== '') {
         Text(this.label)
           .fontSize(16 * this.themeConfig.fontScale)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.type === 'primary' ? '#FFFFFF' : this.themeConfig.textColor);
+          .fontColor(this.type === 'primary' ? this.themeConfig.primaryColor : this.themeConfig.textColor);
       }
     }
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
     .padding({ left: 20, right: 20, top: 12, bottom: 12 })
     .borderRadius(this.themeConfig.borderRadius)
-    .backgroundColor(
-      this.type === 'primary'
-        ? (this.isPressed
-          ? this.darken(this.themeConfig.primaryColor, 0.1)
-          : this.themeConfig.primaryColor)
-        : (this.isPressed
-          ? (this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)')
-          : (this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'))
-    )
-    .borderWidth(1)
-    .borderColor(
-      this.type === 'primary'
-        ? 'rgba(255, 255, 255, 0.20)'
-        : (this.themeConfig.isDarkMode
-          ? 'rgba(255, 255, 255, 0.06)'
-          : 'rgba(0, 0, 0, 0.06)')
-    )
+    .backdropBlur(MaterialConstants.getBlur(
+      this.type === 'primary' ? MaterialConstants.FAB : MaterialConstants.SURFACE
+    ))
+    .backgroundColor(MaterialConstants.getOverlayColor(
+      this.type === 'primary' ? MaterialConstants.FAB : MaterialConstants.SURFACE,
+      this.themeConfig.isDarkMode
+    ))
     .opacity(this.disabled ? 0.4 : 1.0)
-    .scale({ x: this.isPressed ? 0.96 : 1.0, y: this.isPressed ? 0.96 : 1.0 })
-    .animation({ duration: 120, curve: Curve.EaseOut })
-    .shadow(
-      this.type === 'primary' ? {
-        radius: 12,
-        color: this.themeConfig.primaryColor + '40',
-        offsetY: 4,
-      } : {
-        radius: 0,
-        color: Color.Transparent,
-        offsetY: 0,
-      }
-    )
-    .onTouch((event: TouchEvent) => {
-      if (this.disabled) {
-        return;
-      }
-      if (event.type === TouchType.Down) {
-        this.isPressed = true;
-      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
-        this.isPressed = false;
-      }
-    })
     .onClick(() => {
       if (!this.disabled) {
         this.onButtonClick();
       }
     });
-  }
-
-  private darken(hex: string, ratio: number): string {
-    const r: number = parseInt(hex.substring(1, 3), 16);
-    const g: number = parseInt(hex.substring(3, 5), 16);
-    const b: number = parseInt(hex.substring(5, 7), 16);
-    const nr: number = Math.max(0, Math.floor(r * (1 - ratio)));
-    const ng: number = Math.max(0, Math.floor(g * (1 - ratio)));
-    const nb: number = Math.max(0, Math.floor(b * (1 - ratio)));
-    return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
   }
 }

@@ -3,8 +3,6 @@ import { Seconds } from '../model/AppConstantsModel';
 import { PomodoroRepository } from '../repository/PomodoroRepository';
 import { SettingsRepository } from '../repository/SettingsRepository';
 import { PomodoroTimerService } from '../service/PomodoroTimerService';
-import { NotificationService } from '../service/NotificationService';
-import { BackgroundTaskService } from '../service/BackgroundTaskService';
 import { generateId } from '../utils/IdGenerator';
 import { now, startOfToday, endOfToday } from '../utils/DateUtils';
 import { formatDuration } from '../utils/DateUtils';
@@ -12,19 +10,19 @@ import { getDefaultPomodoroConfig } from '../constants/PomodoroConstants';
 
 /**
  * ViewModel for the Pomodoro timer feature.
- * Manages timer state machine, session history, and background/notification sync.
+ * Manages timer state machine and session history.
  */
-@Observed
+@ObservedV2
 export class PomodoroViewModel {
-  currentState: PomodoroState = PomodoroState.IDLE;
-  currentType: PomodoroSessionType = PomodoroSessionType.WORK;
-  remainingSeconds: Seconds = 0;
-  totalSeconds: Seconds = 0;
-  progress: number = 0;
-  todaySessions: PomodoroSession[] = [];
-  todayCompletedCount: number = 0;
-  todayTotalMinutes: number = 0;
-  config: PomodoroConfig;
+  @Trace currentState: PomodoroState = PomodoroState.IDLE;
+  @Trace currentType: PomodoroSessionType = PomodoroSessionType.WORK;
+  @Trace remainingSeconds: Seconds = 0;
+  @Trace totalSeconds: Seconds = 0;
+  @Trace progress: number = 0;
+  @Trace todaySessions: PomodoroSession[] = [];
+  @Trace todayCompletedCount: number = 0;
+  @Trace todayTotalMinutes: number = 0;
+  @Trace config: PomodoroConfig;
 
   private currentSessionId: string = '';
   private completedWorkCount: number = 0;
@@ -32,19 +30,13 @@ export class PomodoroViewModel {
   private timerService: PomodoroTimerService;
   private repository: PomodoroRepository;
   private settingsRepository: SettingsRepository;
-  private notificationService: NotificationService;
-  private backgroundTaskService: BackgroundTaskService;
 
   constructor(
     repository: PomodoroRepository,
-    settingsRepository: SettingsRepository,
-    notificationService: NotificationService,
-    backgroundTaskService: BackgroundTaskService
+    settingsRepository: SettingsRepository
   ) {
     this.repository = repository;
     this.settingsRepository = settingsRepository;
-    this.notificationService = notificationService;
-    this.backgroundTaskService = backgroundTaskService;
     this.timerService = new PomodoroTimerService();
     this.config = getDefaultPomodoroConfig();
 
@@ -64,10 +56,8 @@ export class PomodoroViewModel {
 
   /**
    * Registers a direct callback that the page uses to update its @State fields.
-   * Called on every timer tick with current values — the page sets @State directly,
-   * which triggers ArkUI re-render reliably even from setInterval context.
    */
-  setTickHandler(handler: (remaining: Seconds, progress: number, state: PomodoroState) => void): void {
+  setTickHandler(handler: ((remaining: Seconds, progress: number, state: PomodoroState) => void) | null): void {
     this.tickHandler = handler;
   }
 
@@ -84,7 +74,9 @@ export class PomodoroViewModel {
    * Switches the session type and resets the timer.
    */
   setSessionType(type: PomodoroSessionType): void {
-    this.timerService.reset();
+    if (this.timerService.running || this.timerService.active) {
+      this.timerService.reset();
+    }
     this.currentType = type;
 
     switch (type) {
@@ -109,11 +101,10 @@ export class PomodoroViewModel {
   }
 
   /**
-   * Starts the timer.
+   * Starts the timer from IDLE or resumes from PAUSED.
    */
   startTimer(): void {
     if (this.currentState === PomodoroState.IDLE) {
-      // Create a new session
       this.currentSessionId = generateId();
       const session: PomodoroSession = {
         id: this.currentSessionId,
@@ -134,13 +125,7 @@ export class PomodoroViewModel {
         this.currentState = PomodoroState.LONG_BREAK_RUNNING;
       }
       this.timerService.start();
-
-      // Show notification if work session
-      if (this.currentType === PomodoroSessionType.WORK) {
-        this.notificationService.showTimerNotification(this.currentType, this.remainingSeconds);
-      }
     } else if (this.currentState === PomodoroState.PAUSED) {
-      // Resume from pause
       this.timerService.resume();
       if (this.currentType === PomodoroSessionType.WORK) {
         this.currentState = PomodoroState.WORKING;
@@ -174,9 +159,7 @@ export class PomodoroViewModel {
     this.remainingSeconds = this.totalSeconds;
     this.progress = 0;
     this.currentState = PomodoroState.IDLE;
-    this.notificationService.cancelTimerNotification();
 
-    // Mark current session as abandoned if exists
     if (this.currentSessionId !== '') {
       this.markSessionAbandoned(this.currentSessionId);
     }
@@ -189,14 +172,12 @@ export class PomodoroViewModel {
    * Skips to the next session.
    */
   skipToNext(): void {
-    this.notificationService.cancelTimerNotification();
+    // Cycle through all three session types: WORK → SHORT_BREAK → LONG_BREAK → WORK
     if (this.currentType === PomodoroSessionType.WORK) {
       this.completedWorkCount++;
-      if (this.completedWorkCount % this.config.longBreakInterval === 0) {
-        this.setSessionType(PomodoroSessionType.LONG_BREAK);
-      } else {
-        this.setSessionType(PomodoroSessionType.SHORT_BREAK);
-      }
+      this.setSessionType(PomodoroSessionType.SHORT_BREAK);
+    } else if (this.currentType === PomodoroSessionType.SHORT_BREAK) {
+      this.setSessionType(PomodoroSessionType.LONG_BREAK);
     } else {
       this.setSessionType(PomodoroSessionType.WORK);
     }
@@ -204,33 +185,21 @@ export class PomodoroViewModel {
       this.tickHandler(this.remainingSeconds, this.progress, this.currentState);
     }
   }
-  private async onSessionComplete(): Promise<void> {
-    this.notificationService.cancelTimerNotification();
 
+  private async onSessionComplete(): Promise<void> {
     if (this.currentType === PomodoroSessionType.WORK) {
       this.completedWorkCount++;
       await this.loadTodaySessions();
-      this.notificationService.showSessionCompleteNotification(
-        PomodoroSessionType.WORK,
-        this.todayCompletedCount
-      );
 
-      // Transition to break
       if (this.completedWorkCount % this.config.longBreakInterval === 0) {
         this.setSessionType(PomodoroSessionType.LONG_BREAK);
       } else {
         this.setSessionType(PomodoroSessionType.SHORT_BREAK);
       }
     } else {
-      // Break complete
-      this.notificationService.showSessionCompleteNotification(
-        this.currentType,
-        this.todayCompletedCount
-      );
       this.setSessionType(PomodoroSessionType.WORK);
     }
 
-    // Mark session as completed
     if (this.currentSessionId !== '') {
       this.markSessionCompleted(this.currentSessionId);
     }
@@ -295,33 +264,37 @@ export class PomodoroViewModel {
   }
 
   /**
-   * Called when app goes to background.
+   * Reloads config from persistent storage without altering timer state.
    */
-  async onBackground(): Promise<void> {
-    if (this.timerService.active) {
-      await this.backgroundTaskService.requestContinuousTask();
+  async reloadConfig(): Promise<void> {
+    const saved: PomodoroConfig = await this.settingsRepository.loadPomodoroConfig();
+    this.config = saved;
+    if (this.currentState === PomodoroState.IDLE) {
+      switch (this.currentType) {
+        case PomodoroSessionType.WORK:
+          this.totalSeconds = this.config.workDuration;
+          break;
+        case PomodoroSessionType.SHORT_BREAK:
+          this.totalSeconds = this.config.shortBreakDuration;
+          break;
+        case PomodoroSessionType.LONG_BREAK:
+          this.totalSeconds = this.config.longBreakDuration;
+          break;
+      }
+      this.remainingSeconds = this.totalSeconds;
+      this.progress = 0;
+      if (this.tickHandler !== null) {
+        this.tickHandler(this.remainingSeconds, this.progress, this.currentState);
+      }
     }
   }
 
   /**
-   * Called when app returns to foreground.
+   * Persists pomodoro config to Preferences without resetting the timer.
    */
-  async onForeground(): Promise<void> {
-    await this.backgroundTaskService.stopContinuousTask();
-    await this.loadTodaySessions();
-  }
-
-  /**
-   * Saves current pomodoro config.
-   */
-  async saveConfig(config: PomodoroConfig): Promise<void> {
+  async persistConfig(config: PomodoroConfig): Promise<void> {
     this.config = config;
     await this.settingsRepository.savePomodoroConfig(config);
-    // Reset to work with new duration
-    this.setSessionType(PomodoroSessionType.WORK);
-    if (this.tickHandler !== null) {
-      this.tickHandler(this.remainingSeconds, this.progress, this.currentState);
-    }
   }
 
   /**
@@ -330,4 +303,27 @@ export class PomodoroViewModel {
   destroy(): void {
     this.timerService.destroy();
   }
+}
+
+// ── Module-level singleton ──────────────────────────────────────────────
+// PomodoroPage is destroyed/recreated on tab switch because HarmonyOS Tabs
+// tears down non-visible TabContent.  Storing the ViewModel at module level
+// keeps the timer alive when the user switches to Notes or Todos.
+let _instance: PomodoroViewModel | null = null;
+
+export function initPomodoroViewModel(
+  repository: PomodoroRepository,
+  settingsRepository: SettingsRepository
+): PomodoroViewModel {
+  if (_instance === null) {
+    _instance = new PomodoroViewModel(repository, settingsRepository);
+  }
+  return _instance;
+}
+
+export function getPomodoroViewModel(): PomodoroViewModel {
+  if (_instance === null) {
+    throw new Error('PomodoroViewModel not initialized — call initPomodoroViewModel first');
+  }
+  return _instance;
 }

@@ -1,19 +1,20 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 
 /**
- * Solid surface container component.
+ * Immersive surface container with system material depth.
  *
  * @param borderRadius - Corner radius (defaults to themeConfig.borderRadius)
  * @param padding - Inner padding (default 16)
- * @param elevation - Depth level: 1=low, 2=mid, 3=high
+ * @param elevation - Depth level: 1=low(REGULAR), 2=mid(THICK), 3=high(ULTRA_THICK)
  * @param content - BuilderParam slot for child content
  */
-@Component
+@ComponentV2
 export struct GlassContainer {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop borderRadius: number = -1;
-  @Prop padding: number = 16;
-  @Prop elevation: number = 1;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param borderRadius: number = -1;
+  @Param padding: number = 16;
+  @Param elevation: number = 1;
   @BuilderParam content: () => void = this.defaultContent;
 
   @Builder
@@ -26,24 +27,23 @@ export struct GlassContainer {
     }
     .padding(this.padding)
     .borderRadius(this.effectiveRadius)
-    .backgroundColor(this.themeConfig.surfaceColor)
-    .border({
-      width: 1,
-      color: this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.08)'
-        : 'rgba(0, 0, 0, 0.06)',
-      style: BorderStyle.Solid,
-    })
-    .shadow({
-      radius: 8 + this.elevation * 6,
-      color: this.themeConfig.isDarkMode
-        ? 'rgba(0, 0, 0, 0.30)'
-        : 'rgba(0, 0, 0, 0.06)',
-      offsetY: 2 + this.elevation * 2,
-    });
+    .backdropBlur(MaterialConstants.getBlur(this.getMaterialStyle()))
+    .backgroundColor(MaterialConstants.getOverlayColor(
+      this.getMaterialStyle(), this.themeConfig.isDarkMode
+    ));
   }
 
   private get effectiveRadius(): number {
     return this.borderRadius > 0 ? this.borderRadius : this.themeConfig.borderRadius;
+  }
+
+  private getMaterialStyle(): number {
+    if (this.elevation >= 3) {
+      return MaterialConstants.CONTAINER_HIGH;
+    }
+    if (this.elevation >= 2) {
+      return MaterialConstants.CONTAINER_MID;
+    }
+    return MaterialConstants.CONTAINER_LOW;
   }
 }

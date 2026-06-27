@@ -1,17 +1,21 @@
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
-import { ThemeConfig, ThemePreset } from '../model/ThemeConfigModel';
+import { ThemeConfig, ThemePreset, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
 import { BreakpointType, WindowSize, calculateBreakpoint, isTablet } from '../model/BreakpointModel';
 import { SettingsRepository } from '../repository/SettingsRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
 import { TabItemConfig, getTabItems, NavDestinationNames } from '../constants/AppConstants';
 import { ThemeBackground } from '../components/common/ThemeBackground';
+import { MaterialConstants } from '../constants/MaterialConstants';
 import { ICON } from '../utils/IconGlyphs';
 import { common } from '@kit.AbilityKit';
+import { HdsTabs, HdsTabsController, hdsMaterial } from '@kit.UIDesignKit';
 import { NotesPage } from './NotesPage';
 import { NoteDetailPage } from './NoteDetailPage';
 import { TodosPage } from './TodosPage';
 import { PomodoroPage } from './PomodoroPage';
 import { SettingsPage } from './SettingsPage';
+import { initPomodoroViewModel, PomodoroViewModel } from '../viewmodel/PomodoroViewModel';
+import { PomodoroRepository } from '../repository/PomodoroRepository';
 
 /**
  * Root navigation shell for the app.
@@ -21,34 +25,22 @@ import { SettingsPage } from './SettingsPage';
  * - Tablet: Side navigation panel with per-section Navigation
  */
 @Entry
-@Component
+@ComponentV2
 struct Index {
-  @Provide('themeConfig') themeConfig: ThemeConfig = {
-    primaryColor: '#4A90D9',
-    backgroundColor: '#E8F0FE',
-    surfaceColor: '#FFFFFF',
-    textColor: '#1A2530',
-    textSecondaryColor: '#5F6B7A',
-    glassOpacity: 0.2,
-    glassBlurRadius: 20,
-    backgroundImageUri: '',
-    isDarkMode: false,
-    accentColor: '#4A90D9',
-    fontScale: 1.0,
-    borderRadius: 16,
-  };
-  @Provide('themeVM') themeVM: ThemeViewModel = new ThemeViewModel(
+  @Provider('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Provider('themeVM') themeVM: ThemeViewModel = new ThemeViewModel(
     new SettingsRepository(this.getAppContext()),
     this.getAppContext()
   );
-  @Provide('navStack') currentNavStack: NavPathStack = new NavPathStack();
-  @Provide('isTablet') isTablet: boolean = false;
+  @Provider('navStack') currentNavStack: NavPathStack = new NavPathStack();
+  @Provider('isTablet') isTablet: boolean = false;
 
-  @State currentTabIndex: number = 0;
-  @State windowSize: WindowSize = { width: 0, height: 0, breakpoint: BreakpointType.SM };
-  @State isInitialized: boolean = false;
-  @State themeUpdateSignal: number = 0;
+  @Local currentTabIndex: number = 0;
+  @Local windowSize: WindowSize = { width: 0, height: 0, breakpoint: BreakpointType.SM };
+  @Local isInitialized: boolean = false;
+  @Local themeUpdateSignal: number = 0;
 
+  private tabsController: HdsTabsController = new HdsTabsController();
   private tabItems: TabItemConfig[] = getTabItems();
   // Per-tab NavPathStacks (shared by phone + tablet layouts)
   private tabNavStacks: NavPathStack[] = [
@@ -68,6 +60,15 @@ struct Index {
     await DatabaseHelper.getInstance().initialize(appContext);
     await this.themeVM.loadTheme();
     this.themeConfig = this.themeVM.themeConfig;
+
+    // Initialize the module-level PomodoroViewModel singleton so the timer
+    // survives tab switches (Tabs destroys non-visible TabContent).
+    const pomodoroRepo: PomodoroRepository = new PomodoroRepository(DatabaseHelper.getInstance().getStore());
+    const settingsRepo: SettingsRepository = new SettingsRepository(appContext);
+    const pomodoroVM: PomodoroViewModel =
+      initPomodoroViewModel(pomodoroRepo, settingsRepo);
+    await pomodoroVM.initialize();
+
     // Sync @Provide('themeConfig') whenever themeVM changes
     // themeUpdateSignal forces Index + all children to re-render via @State
     this.themeVM.setThemeChangeListener((config: ThemeConfig) => {
@@ -132,7 +133,7 @@ struct Index {
 
   @Builder
   phoneLayout() {
-    Tabs({ index: this.currentTabIndex }) {
+    HdsTabs({ controller: this.tabsController, index: this.currentTabIndex }) {
       // Tab 0 — Notes
       TabContent() {
         Navigation(this.tabNavStacks[0]) {
@@ -178,10 +179,17 @@ struct Index {
       }
       .tabBar(this.tabBarBuilder(this.tabItems[3], 3));
     }
+    .barOverlap(true)
     .barPosition(BarPosition.End)
     .barHeight(64)
+    .barFloatingStyle({
+      barBottomMargin: 28,
+      systemMaterialEffect: {
+        materialType: hdsMaterial.MaterialType.ADAPTIVE,
+        materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
+      }
+    })
     .scrollable(false)
-    .animationDuration(200)
     .onChange((index: number) => {
       this.tabNavStacks[this.currentTabIndex].clear();
       this.currentTabIndex = index;
@@ -196,7 +204,7 @@ struct Index {
   @Builder
   tabletLayout() {
     Row() {
-      // Left side navigation panel
+      // Left side navigation panel — immersive material surface
       Column() {
         Text('MemoFlow')
           .fontSize(22)
@@ -210,11 +218,8 @@ struct Index {
       }
       .width(240)
       .height('100%')
-      .backgroundColor(
-        this.themeConfig.isDarkMode
-          ? 'rgba(20, 20, 20, 0.95)'
-          : 'rgba(255, 255, 255, 0.95)'
-      )
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
+      .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
       .border({
         width: { right: 1 },
         color: this.themeConfig.isDarkMode
@@ -295,13 +300,13 @@ struct Index {
   @Builder
   tabBarBuilder(tab: TabItemConfig, index: number) {
     Column() {
-      Text(this.getTabIcon(tab.id))
+      SymbolGlyph(this.getTabIcon(tab.id))
         .fontSize(24)
-        .fontColor(
+        .fontColor([
           this.currentTabIndex === index
             ? this.themeConfig.primaryColor
             : this.themeConfig.textSecondaryColor
-        );
+        ]);
       Text(tab.title)
         .fontSize(11)
         .fontColor(
@@ -319,13 +324,13 @@ struct Index {
   @Builder
   sideNavItem(tab: TabItemConfig, index: number) {
     Row() {
-      Text(this.getTabIcon(tab.id))
+      SymbolGlyph(this.getTabIcon(tab.id))
         .fontSize(22)
-        .fontColor(
+        .fontColor([
           this.currentTabIndex === index
             ? this.themeConfig.primaryColor
             : this.themeConfig.textSecondaryColor
-        )
+        ])
         .margin({ right: 12 });
 
       Text(tab.title)
@@ -360,7 +365,7 @@ struct Index {
   // Helpers
   // ═══════════════════════════════════════════════════════════════════
 
-  private getTabIcon(tabId: string): string {
+  private getTabIcon(tabId: string): Resource {
     if (tabId === 'notes') {
       return ICON.NOTES;
     } else if (tabId === 'todos') {
@@ -370,6 +375,6 @@ struct Index {
     } else if (tabId === 'settings') {
       return ICON.SETTINGS;
     }
-    return '';
+    return ICON.EMPTY_GENERAL;
   }
 }

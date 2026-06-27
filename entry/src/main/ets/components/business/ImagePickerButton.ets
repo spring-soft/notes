@@ -1,6 +1,7 @@
-import { picker } from '@kit.CoreFileKit';
+import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import { common } from '@kit.AbilityKit';
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 import { ICON } from '../../utils/IconGlyphs';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -9,15 +10,17 @@ const DOMAIN: number = 0x0003;
 const TAG: string = 'ImagePickerButton';
 
 /**
- * Button for selecting a custom background image from the device gallery.
+ * Button for selecting a custom background image from the device photo gallery.
+ * Uses photoAccessHelper.PhotoViewPicker — the HarmonyOS-recommended
+ * photo picker — so the returned URI is directly usable by Image().
  */
-@Component
+@ComponentV2
 export struct ImagePickerButton {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop currentImageUri: string = '';
-  onImagePicked: (uri: string) => void = (_uri: string) => {
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param currentImageUri: string = '';
+  @Event onImagePicked: (uri: string) => void = (_uri: string) => {
   };
-  onImageRemoved: () => void = () => {
+  @Event onImageRemoved: () => void = () => {
   };
 
   build() {
@@ -45,9 +48,9 @@ export struct ImagePickerButton {
           .alignItems(HorizontalAlign.Center)
           .margin({ right: 16 });
 
-        Text(ICON.IMAGE)
+        SymbolGlyph(ICON.IMAGE)
           .fontSize(28)
-          .fontColor(this.themeConfig.textSecondaryColor)
+          .fontColor([this.themeConfig.textSecondaryColor])
           .position({ x: 16, y: 16 });
       }
 
@@ -67,46 +70,36 @@ export struct ImagePickerButton {
     }
     .padding(16)
     .borderRadius(this.themeConfig.borderRadius)
-    .backgroundColor(
-      this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.06)'
-        : this.themeConfig.surfaceColor
-    )
-    .borderWidth(1)
-    .borderColor(
-      this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.08)'
-        : 'rgba(255, 255, 255, 0.2)'
-    )
+    .backdropBlur(MaterialConstants.getBlur(MaterialConstants.SURFACE))
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
     .onClick(() => {
       if (this.currentImageUri !== '') {
         this.onImageRemoved();
       } else {
-        this.openImagePicker();
+        this.openPhotoPicker();
       }
     });
   }
 
-  private openImagePicker(): void {
+  private openPhotoPicker(): void {
     try {
-      const documentSelectOptions: picker.DocumentSelectOptions = new picker.DocumentSelectOptions();
-      documentSelectOptions.maxSelectNumber = 1;
-      documentSelectOptions.defaultFilePathUri = '';
-      documentSelectOptions.fileSuffixFilters = ['.jpg', '.jpeg', '.png', '.webp', '.bmp'];
+      const photoPicker: photoAccessHelper.PhotoViewPicker = new photoAccessHelper.PhotoViewPicker();
+      const options: photoAccessHelper.PhotoSelectOptions = new photoAccessHelper.PhotoSelectOptions();
+      options.MIMEType = photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE;
+      options.maxSelectNumber = 1;
 
-      const documentViewPicker: picker.DocumentViewPicker = new picker.DocumentViewPicker();
-      documentViewPicker.select(documentSelectOptions).then((documentSelectResult: string[]) => {
-        if (documentSelectResult.length > 0) {
-          const uri: string = documentSelectResult[0];
-          hilog.info(DOMAIN, TAG, 'Image selected: %{public}s', uri);
+      photoPicker.select(options).then((result: photoAccessHelper.PhotoSelectResult) => {
+        if (result.photoUris.length > 0) {
+          const uri: string = result.photoUris[0];
+          hilog.info(DOMAIN, TAG, 'Photo selected: %{public}s', uri);
           this.onImagePicked(uri);
         }
       }).catch((err: BusinessError) => {
-        hilog.error(DOMAIN, TAG, 'Document picker failed: %{public}s', err.message);
+        hilog.error(DOMAIN, TAG, 'Photo picker failed: %{public}s', err.message);
       });
     } catch (err) {
       const e: BusinessError = err as BusinessError;
-      hilog.error(DOMAIN, TAG, 'Failed to open image picker: %{public}s', e.message);
+      hilog.error(DOMAIN, TAG, 'Failed to open photo picker: %{public}s', e.message);
     }
   }
 }

@@ -1,14 +1,14 @@
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 
 /**
  * Category group header for the todo list.
  */
-@Component
+@ComponentV2
 export struct TodoCategoryHeader {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop categoryName: string = '未分类';
-  @Prop categoryColor: string = '#90A4AE';
-  @Prop itemCount: number = 0;
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Param categoryName: string = '未分类';
+  @Param categoryColor: string = '#90A4AE';
+  @Param itemCount: number = 0;
 
   build() {
     Row() {

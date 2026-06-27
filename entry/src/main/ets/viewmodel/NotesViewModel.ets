@@ -8,14 +8,14 @@ import { now } from '../utils/DateUtils';
  * ViewModel for the Notes feature.
  * Manages note CRUD, search, filtering, and sorting.
  */
-@Observed
+@ObservedV2
 export class NotesViewModel {
-  notes: Note[] = [];
-  filteredNotes: Note[] = [];
-  searchQuery: string = '';
-  currentSortOrder: NoteSortOrder = NoteSortOrder.UPDATED_DESC;
-  isLoading: boolean = false;
-  isPinnedFilter: boolean = false;
+  @Trace notes: Note[] = [];
+  @Trace filteredNotes: Note[] = [];
+  @Trace searchQuery: string = '';
+  @Trace currentSortOrder: NoteSortOrder = NoteSortOrder.UPDATED_DESC;
+  @Trace isLoading: boolean = false;
+  @Trace isPinnedFilter: boolean = false;
 
   private repository: NoteRepository;
 

@@ -1,0 +1,2901 @@
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+要在代码中使用 HarmonyOS 的沉浸光感（Immersive Light Effects），你需要根据使用的组件类型选择不同的配置方式。沉浸光感从 HarmonyOS 6.1.0（API 23）开始提供，它通过**沉浸式系统材质**和**空间动效**为组件带来通透、精致的视觉效果。<rsup>1</rsup>
+
+## 一、开启沉浸光感
+
+### 1. 应用级开启（推荐）
+在 `module.json5` 中配置，对整个应用生效：
+```json5
+{
+  "module": {
+    "name": "entry",
+    "type": "entry",
+    "metadata": [{
+      "name": "ohos.arkui.UIMaterial.state",
+      "value": "enable" // 可选：default、enable、disable
+    }]
+  }
+}
+```
+
+### 2. 组件级开启
+#### 方式一：通过通用属性 `systemMaterial`
+```typescript
+import { uiMaterial } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct MyPage {
+  build() {
+    Column() {
+      // 为 Column 组件开启沉浸光感
+      Column() {
+        Text('沉浸光感')
+      }
+      .width(328)
+      .height(56)
+      .borderRadius(28)
+      .justifyContent(FlexAlign.Center)
+      .systemMaterial(new uiMaterial.ImmersiveMaterial({
+        style: uiMaterial.ImmersiveStyle.ULTRA_THIN, // 材质样式
+        interactive: true, // 启用交互形变
+        lightEffect: { color: undefined } // 光感交互反馈
+      }))
+    }
+  }
+}
+```
+
+#### 方式二：通过组件独有接口
+适用于弹窗类组件：
+```typescript
+// Toast 示例
+import { PromptAction, uiMaterial } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct MyPage {
+  promptAction: PromptAction = this.getUIContext().getPromptAction();
+  
+  build() {
+    Column() {
+      Button('显示Toast')
+        .onClick(() => {
+          this.promptAction.showToast({
+            message: '操作成功',
+            duration: 2000,
+            systemMaterial: new uiMaterial.ImmersiveMaterial({
+              style: uiMaterial.ImmersiveStyle.THIN
+            })
+          });
+        })
+    }
+  }
+}
+```
+
+## 二、HDS 组件使用沉浸光感
+
+### 1. HdsTabs（底部悬浮页签）
+```typescript
+import { hdsMaterial, HdsTabs, HdsTabsController } from '@kit.UIDesignKit';
+
+@Entry
+@Component
+struct Index {
+  private controller: HdsTabsController = new HdsTabsController();
+  
+  build() {
+    HdsTabs({ controller: this.controller }) {
+      TabContent() {
+        // 页面内容
+      }
+      .tabBar(new BottomTabBarStyle($r('sys.media.ohos_ic_public_camera'), '首页'))
+      
+      // 更多 TabContent...
+    }
+    .barOverlap(true)
+    .barPosition(BarPosition.End)
+    .barFloatingStyle({
+      barBottomMargin: 28,
+      // 核心配置：开启沉浸光感
+      systemMaterialEffect: {
+        materialType: hdsMaterial.MaterialType.ADAPTIVE,    // 自适应类型
+        materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE   // 自适应级别
+      }
+    })
+  }
+}
+```
+
+### 2. HdsNavigation（顶部导航栏）
+```typescript
+import { hdsMaterial, HdsNavigation, ScrollEffectType } from '@kit.UIDesignKit';
+
+@Entry
+@Component
+struct Index {
+  build() {
+    HdsNavigation() {
+      // 页面内容
+    }
+    .titleBar({
+      content: {
+        title: { mainTitle: '我的应用' },
+      },
+      style: {
+        scrollEffectOpts: {
+          enableScrollEffect: true,
+          scrollEffectType: ScrollEffectType.GRADIENT_BLUR,
+        },
+        // 开启沉浸光感
+        systemMaterialEffect: {
+          materialType: hdsMaterial.MaterialType.ADAPTIVE,
+          materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
+        }
+      }
+    })
+  }
+}
+```
+
+## 三、材质样式与级别
+
+### 1. 材质样式（ImmersiveStyle）
+| 样式 | 说明 | 适用场景 |
+|------|------|----------|
+| `ULTRA_THIN` | 超薄样式，透明度高 | 浮动工具栏、搜索框 |
+| `THIN` | 薄样式，透明度较高 | 需要较强透明的场景 |
+| `REGULAR` | 常规样式 | 通用场景 |
+| `THICK` | 厚样式，模糊效果强 | 菜单、卡片 |
+| `ULTRA_THICK` | 超厚样式，模糊很强 | 弹窗、半模态面板 |
+
+### 2. 材质级别（MaterialLevel）
+| 级别 | 说明 | 性能消耗 |
+|------|------|----------|
+| `ADAPTIVE` | 系统自适应（推荐） | 自动平衡 |
+| `EXQUISITE` | 精致效果 | 高 |
+| `GENTLE` | 柔和效果 | 中 |
+| `SMOOTH` | 流畅效果 | 低 |
+
+## 四、设备兼容性检查
+
+建议在使用自定义材质前检查设备支持情况：
+
+```typescript
+import { hdsMaterial } from '@kit.UIDesignKit';
+import { uiMaterial } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct MyPage {
+  @State customMaterialLevel: hdsMaterial.MaterialLevel = hdsMaterial.MaterialLevel.EXQUISITE;
+  
+  aboutToAppear(): void {
+    // 查询设备支持的材质类型
+    let materialTypes: Array<hdsMaterial.MaterialType> = hdsMaterial.getSystemMaterialTypes();
+    
+    // 如果不支持 IMMERSIVE，降级到 SMOOTH
+    if (materialTypes.indexOf(hdsMaterial.MaterialType.IMMERSIVE) < 0) {
+      this.customMaterialLevel = hdsMaterial.MaterialLevel.SMOOTH;
+    }
+  }
+  
+  build() {
+    Column() {
+      // 使用检查后的材质级别
+      Button('沉浸光感按钮')
+        .systemMaterial(new uiMaterial.ImmersiveMaterial({
+          style: uiMaterial.ImmersiveStyle.ULTRA_THIN,
+          materialLevel: this.customMaterialLevel
+        }))
+    }
+  }
+}
+```
+
+## 五、完整示例：带沉浸光感的页面
+
+```typescript
+import { hdsMaterial, HdsTabs, HdsTabsController } from '@kit.UIDesignKit';
+import { uiMaterial } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct ImmersivePage {
+  private controller: HdsTabsController = new HdsTabsController();
+  
+  build() {
+    Column() {
+      // 顶部沉浸光感区域
+      Column() {
+        Text('沉浸式标题')
+          .fontSize(24)
+          .fontColor(Color.White)
+      }
+      .width('100%')
+      .height(100)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor(Color.Black)
+      .systemMaterial(new uiMaterial.ImmersiveMaterial({
+        style: uiMaterial.ImmersiveStyle.ULTRA_THIN,
+        interactive: true
+      }))
+      
+      // 内容区域
+      Scroll() {
+        Column({ space: 20 }) {
+          // 沉浸光感按钮
+          Button('操作按钮')
+            .width('80%')
+            .height(56)
+            .backgroundColor(Color.Transparent)
+            .systemMaterial(new uiMaterial.ImmersiveMaterial({
+              style: uiMaterial.ImmersiveStyle.THIN,
+              interactive: true,
+              lightEffect: { color: undefined }
+            }))
+          
+          // 沉浸光感卡片
+          Column({ space: 10 }) {
+            Text('卡片标题')
+              .fontSize(18)
+            Text('卡片内容描述...')
+              .fontSize(14)
+              .fontColor('#666')
+          }
+          .width('90%')
+          .padding(20)
+          .backgroundColor(Color.White)
+          .borderRadius(16)
+          .systemMaterial(new uiMaterial.ImmersiveMaterial({
+            style: uiMaterial.ImmersiveStyle.REGULAR
+          }))
+        }
+        .width('100%')
+        .padding(20)
+      }
+      .layoutWeight(1)
+      
+      // 底部沉浸光感导航
+      HdsTabs({ controller: this.controller }) {
+        TabContent() {
+          Column() {
+            Text('首页内容')
+          }
+        }
+        .tabBar(new BottomTabBarStyle($r('sys.media.ohos_ic_public_home'), '首页'))
+        
+        TabContent() {
+          Column() {
+            Text('我的页面')
+          }
+        }
+        .tabBar(new BottomTabBarStyle($r('sys.media.ohos_ic_public_person'), '我的'))
+      }
+      .barOverlap(true)
+      .barPosition(BarPosition.End)
+      .barFloatingStyle({
+        barBottomMargin: 28,
+        systemMaterialEffect: {
+          materialType: hdsMaterial.MaterialType.ADAPTIVE,
+          materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
+        }
+      })
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#F5F5F5')
+  }
+}
+```
+
+## 六、注意事项
+
+1. **版本要求**：需要 HarmonyOS 6.1.0（API 23）或更高版本
+2. **性能优化**：低端设备建议使用 `ADAPTIVE` 或 `SMOOTH` 级别
+3. **属性冲突**：设置 `systemMaterial` 后，避免同时设置背景色、阴影等样式
+4. **深浅色适配**：沉浸光感会自动适配系统深浅色模式
+5. **自动反色**：薄材质（`ULTRA_THIN`、`THIN`）可开启 `colorInvert: true` 确保文字可读性
+
+## 七、最佳实践建议
+
+1. **优先使用自适应模式**：`materialType: hdsMaterial.MaterialType.ADAPTIVE`
+2. **焦点组件使用**：只在关键交互组件上使用，避免全屏滥用
+3. **暗色模式效果更佳**：沉浸光感在深色背景上表现更好
+4. **HDS组件优先**：对于导航栏和页签，优先使用 HDS 组件的 `systemMaterialEffect`<rsup>2</rsup><rsup>3</rsup>
+5. **降级处理**：使用 `getSystemMaterialTypes()` 检查设备支持情况
+
+通过以上配置，你可以轻松为应用添加高级的沉浸光感效果，提升用户体验和界面质感。
+
+
+
+
+
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+华为开发者官网提供的设计组件（UI Design Kit）是构建高端精致HarmonyOS应用的重要资源。下面为您详细说明如何获取和使用这些组件：<rsup>1</rsup><rsup>2</rsup>
+
+## 📦 什么是UI Design Kit？
+
+UI Design Kit是华为官方提供的符合HarmonyOS Design System规范的UI界面开发套件集合，包含：<rsup>3</rsup>
+
+- **增强型UI组件**：导航、侧边栏、底部页签、即时操作、列表、应用内多窗等<rsup>3</rsup>
+- **HDS沉浸视效**：物理光感系统、按压交互阴影、沉浸光感材质
+- **资源与图标能力**：应用图标处理、自定义Symbol图标
+
+## 📥 如何获取UI Design Kit？
+
+### 1. 从官网下载设计资源
+访问华为开发者联盟设计资源官网，下载`.pix`和`.sketch`格式的设计组件库文件。<rsup>4</rsup>
+
+### 2. 通过DevEco Studio集成
+在DevEco Studio中，可以通过以下方式使用：
+
+#### 方式一：命令行安装（ohpm）
+```bash
+ohpm install @kit.UIDesignKit
+```
+
+#### 方式二：组件市场可视化集成
+1. 安装组件市场插件
+2. 在IDE中选择Tools → Component Market
+3. 搜索所需组件，点击"Integrate SDK"完成集成
+
+## 🛠️ 如何使用UI Design Kit组件？
+
+### 基本使用步骤
+
+#### 1. 导入模块
+```typescript
+import { HdsNavigation, HdsTabs, HdsSideBar } from '@kit.UIDesignKit';
+```
+
+#### 2. 使用增强型导航组件示例
+```typescript
+// 使用HdsNavigation替代基础Navigation
+@Entry
+@Component
+struct MainPage {
+  build() {
+    HdsNavigation() {
+      // 页面内容
+      Column() {
+        Text('主页面内容')
+          .fontSize(20)
+      }
+    }
+    .title('我的应用')
+    .hideTitleBar(false)
+  }
+}
+```
+
+#### 3. 使用增强型底部页签
+```typescript
+@Entry
+@Component
+struct TabPage {
+  @State currentTabIndex: number = 0;
+  
+  build() {
+    HdsTabs({ index: this.currentTabIndex }) {
+      TabContent() {
+        HomePage()
+      }.tabBar(new BottomTabBarStyle({
+        normal: new SymbolGlyphModifier($r('sys.symbol.house')),
+        selected: new SymbolGlyphModifier($r('sys.symbol.house_fill'))
+      }, '首页'))
+      
+      TabContent() {
+        ProfilePage()
+      }.tabBar(new BottomTabBarStyle({
+        normal: new SymbolGlyphModifier($r('sys.symbol.person')),
+        selected: new SymbolGlyphModifier($r('sys.symbol.person_fill'))
+      }, '我的'))
+    }
+    .barOverlap(true)
+    .barPosition(BarPosition.End)
+    .onChange((index: number) => {
+      this.currentTabIndex = index;
+    })
+  }
+}
+```
+
+#### 4. 使用自定义Symbol图标
+```typescript
+import { SymbolGlyphModifier } from '@kit.ArkUI';
+
+// 注册自定义图标
+SymbolGlyphModifier.registerSymbol({
+  name: 'custom_heart',
+  svgPath: $rawfile('icons/heart.svg')
+});
+
+// 使用自定义图标
+Text('爱心')
+  .fontSize(20)
+  .symbolGlyph(new SymbolGlyphModifier('custom_heart'))
+```
+
+## 🔄 UI Design Kit与ArkUI基础组件的区别
+
+| 特性 | ArkUI基础组件 <rsup>5</rsup>| UI Design Kit组件 |
+|------|--------------|------------------|
+| **导航组件** | 基础跳转能力，静态标题栏 | 动态模糊标题栏、信息提醒、半模态样式 |
+| **底部页签** | 基础切换功能 | 分割线动态显隐、页签栏模糊、图标出血设计 |
+| **列表交互** | 普通展示 | 内置横滑删除、统一样式卡片、多设备适配 |
+| **光影视觉** | 基础平面/材质 | 点光源、流光、按压阴影等系统级沉浸渲染 |
+| **图标能力** | 依赖系统预置 | 应用内注册自定义Symbol，支持动态更新 |
+
+## 📝 实际开发示例：构建现代化界面
+
+### 示例1：带沉浸效果的导航页面
+```typescript
+import { HdsNavigation } from '@kit.UIDesignKit';
+
+@Entry
+@Component
+struct ProductDetailPage {
+  build() {
+    HdsNavigation() {
+      Scroll() {
+        Column() {
+          // 产品图片
+          Image($r('app.media.product'))
+            .width('100%')
+            .height(300)
+            .objectFit(ImageFit.Cover)
+          
+          // 产品信息
+          Column({ space: 12 }) {
+            Text('华为Mate 60 Pro')
+              .fontSize(24)
+              .fontWeight(FontWeight.Bold)
+            
+            Text('旗舰影像，鸿蒙智慧体验')
+              .fontSize(16)
+              .fontColor('#666666')
+            
+            // 价格区域
+            Row() {
+              Text('¥6999')
+                .fontSize(28)
+                .fontColor('#e11d48')
+                .fontWeight(FontWeight.Bold)
+              
+              Text('原价: ¥7999')
+                .fontSize(14)
+                .fontColor('#999999')
+                .decoration({ type: TextDecorationType.LineThrough })
+                .margin({ left: 12 })
+            }
+          }
+          .padding(20)
+        }
+      }
+    }
+    .title('商品详情')
+    .titleMode(NavigationTitleMode.Mini) // 滚动时标题缩小
+    .menus([
+      {
+        value: '分享',
+        icon: $r('sys.symbol.share'),
+        action: () => this.shareProduct()
+      },
+      {
+        value: '收藏',
+        icon: $r('sys.symbol.heart'),
+        action: () => this.addToFavorites()
+      }
+    ])
+  }
+  
+  private shareProduct() {
+    // 分享逻辑
+  }
+  
+  private addToFavorites() {
+    // 收藏逻辑
+  }
+}
+```
+
+### 示例2：带横滑删除的列表项
+```typescript
+import { HdsListItem } from '@kit.UIDesignKit';
+
+@Component
+struct MessageItem {
+  @Prop message: Message;
+  @State isDeleted: boolean = false;
+  
+  build() {
+    HdsListItem({
+      onDelete: () => {
+        this.isDeleted = true;
+        // 执行删除操作
+      }
+    }) {
+      Row({ space: 12 }) {
+        // 头像
+        Image(this.message.avatar)
+          .width(40)
+          .height(40)
+          .borderRadius(20)
+        
+        // 消息内容
+        Column({ space: 4 }) {
+          Row() {
+            Text(this.message.sender)
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .layoutWeight(1)
+            
+            Text(this.message.time)
+              .fontSize(12)
+              .fontColor('#999999')
+          }
+          
+          Text(this.message.content)
+            .fontSize(14)
+            .fontColor('#666666')
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .layoutWeight(1)
+      }
+      .padding(16)
+      .width('100%')
+    }
+    .backgroundColor(this.isDeleted ? '#f5f5f5' : Color.White)
+  }
+}
+```
+
+## ⚠️ 使用注意事项
+
+1. **平台支持**：
+   - UI Design Kit当前仅支持中国境内（港澳台除外）
+   - 不同组件支持不同的设备类型，请查阅官方兼容性列表
+
+2. **约束限制**：
+   - HdsNavigation在横屏Stack模式下不支持合并工具栏到菜单栏
+   - 标题栏默认采用层叠布局（位于内容区上层）
+   - 图标批量处理接口最大并发数为10，单次最大处理量500个
+
+3. **性能优化**：
+   - 合理使用组件复用（@Reusable装饰器）
+   - 对于长列表使用LazyForEach优化渲染性能
+   - 避免在build()中执行耗时操作
+
+## 🚀 最佳实践建议
+
+1. **渐进式采用**：从关键页面开始使用UI Design Kit，逐步替换基础组件<rsup>3</rsup>
+2. **保持一致性**：在整个应用中统一使用相同的设计语言和组件风格
+3. **适配多设备**：利用响应式布局和断点系统确保在不同设备上的良好体验
+4. **性能监控**：使用DevEco Profiler监控组件渲染性能，及时优化
+
+## 📚 学习资源推荐
+
+1. **官方文档**：华为开发者联盟官网的UI Design Kit文档<rsup>3</rsup>
+2. **设计规范**：HarmonyOS Design System设计指南
+3. **示例代码**：GitHub/Gitee上的开源项目参考
+4. **视频教程**：华为开发者学堂的相关课程
+
+通过合理使用UI Design Kit，您可以快速构建符合HarmonyOS设计规范的高质量应用界面，同时享受官方组件带来的性能优化和一致性保障。建议在实际项目中结合ArkUI基础组件和UI Design Kit组件，根据具体需求选择最合适的解决方案。<rsup>3</rsup><rsup>6</rsup>
+
+
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+**关于 HarmonyOS SDK 24（API 24）使用官方“沉浸光感”组件的说明**
+
+根据官方文档和开发者实践，**HarmonyOS SDK 24（对应 HarmonyOS 6.1.1）完全可以使用官方的“沉浸光感”组件**。该功能自 API 23（HarmonyOS 6.1.0）起正式引入，并在后续版本中持续增强。
+
+### 一、沉浸光感功能概述
+沉浸光感（Immersive Light Sensing）是 HarmonyOS Design System (HDS) 提供的一套高级视觉材质系统。它通过模拟真实物理光照模型，为 UI 组件（如导航栏、页签）带来通透的玻璃质感、细腻的光晕反射以及按压时的弹性光效反馈，显著提升界面的层次感和交互沉浸感。<rsup>1</rsup><rsup>2</rsup>
+
+### 二、版本支持与能力范围
+沉浸光感的能力随着 SDK 版本迭代而扩展：
+
+| 版本 | 支持范围 | 核心 API/属性 |
+| :--- | :--- | :--- |
+| **API 23 (HarmonyOS 6.1.0)** | **HDS 组件**：`HdsNavigation`（顶部导航栏）、`HdsTabs`（底部页签） | `systemMaterialEffect` |
+| **API 26 (HarmonyOS 7.0)** | **ArkUI 通用组件**：`Button`、`Column`、`Row`、`Toggle`、`Dialog`、`Popup` 等 | `systemMaterial` |
+
+**结论**：您的目标 SDK 24 位于这两个关键版本之间，因此**支持 HDS 组件（`HdsNavigation` 和 `HdsTabs`）的沉浸光感效果**。若需为更多普通 ArkUI 组件添加此效果，则需要将 `compileSdkVersion` 和 `targetSdkVersion` 升级至 API 26 或更高。
+
+### 三、在 SDK 24 项目中使用沉浸光感（HDS 组件）
+
+#### 1. 环境与依赖确认
+确保您的项目满足以下条件：
+- **DevEco Studio**：版本支持 HarmonyOS SDK 6.1.0 (API 23) 或更高。
+- **项目配置**：在 `build-profile.json5` 中，`compileSdkVersion` 和 `targetSdkVersion` 至少为 `6` (对应 API 23)。
+- **模块依赖**：`@kit.UIDesignKit` 已自动包含在 SDK 中，无需在 `oh-package.json5` 中额外声明。
+
+#### 2. 基础使用示例：为 HdsTabs 添加沉浸光感
+以下代码展示了如何为底部悬浮页签启用沉浸光感：<rsup>3</rsup>
+
+```typescript
+// 导入必要模块
+import { HdsTabs, HdsTabsController, hdsMaterial } from '@kit.UIDesignKit';
+import { BarPosition } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct Index {
+  private tabsController: HdsTabsController = new HdsTabsController();
+
+  build() {
+    HdsTabs({ controller: this.tabsController }) {
+      // 您的 TabContent 内容...
+      TabContent() {
+        Text('首页')
+      }
+      .tabBar('首页')
+
+      TabContent() {
+        Text('我的')
+      }
+      .tabBar('我的')
+    }
+    .barOverlap(true) // 关键：允许内容与页签重叠
+    .barPosition(BarPosition.End) // 页签位于底部
+    .barFloatingStyle({
+      barBottomMargin: 28, // 悬浮页签距离底部的间距
+      // 核心配置：启用沉浸光感
+      systemMaterialEffect: {
+        materialType: hdsMaterial.MaterialType.ADAPTIVE, // 材质类型：自适应
+        materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE // 材质等级：自适应
+      }
+    })
+  }
+}
+```
+
+#### 3. 关键参数说明
+- **`materialType`**：材质类型。
+  - `hdsMaterial.MaterialType.ADAPTIVE`：**推荐**。系统根据设备性能自动选择最佳效果。
+  - `hdsMaterial.MaterialType.IMMERSIVE`：强制使用沉浸材质（需设备支持）。
+- **`materialLevel`**：材质渲染等级。
+  - `hdsMaterial.MaterialLevel.ADAPTIVE`：**推荐**。系统自适应。
+  - `hdsMaterial.MaterialLevel.EXQUISITE`：精致（效果最强，性能要求高）。
+  - `hdsMaterial.MaterialLevel.GENTLE`：柔和（均衡效果与性能）。
+  - `hdsMaterial.MaterialLevel.SMOOTH`：流畅（最轻量，兼容低性能设备）。
+
+#### 4. 高级用法：查询设备能力与自定义
+如果希望在某些高性能设备上强制使用顶级效果（`EXQUISITE`），应先查询设备支持的能力。
+
+```typescript
+import { hdsMaterial } from '@kit.UIDesignKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+
+@State customMaterialLevel: hdsMaterial.MaterialLevel = hdsMaterial.MaterialLevel.EXQUISITE;
+
+aboutToAppear(): void {
+  // 1. 查询当前设备支持的系统材质类型
+  let materialTypes: Array<hdsMaterial.MaterialType> = hdsMaterial.getSystemMaterialTypes();
+  // 2. 判断是否支持 IMMERSIVE 类型
+  const isImmersiveSupported = materialTypes.includes(hdsMaterial.MaterialType.IMMERSIVE);
+  // 3. 如果不支持，则降级到 SMOOTH
+  if (!isImmersiveSupported) {
+    this.customMaterialLevel = hdsMaterial.MaterialLevel.SMOOTH;
+  }
+}
+
+// 在 barFloatingStyle 中使用自定义等级
+.barFloatingStyle({
+  systemMaterialEffect: {
+    materialType: hdsMaterial.MaterialType.IMMERSIVE,
+    materialLevel: this.customMaterialLevel // 使用动态判断后的等级
+  }
+})
+```
+
+### 四、重要注意事项与最佳实践
+1.  **设备兼容性**：沉浸光感效果（尤其是 `IMMERSIVE` 类型）需要设备硬件支持。务必使用 `hdsMaterial.getSystemMaterialTypes()` 查询并做好降级处理。
+2.  **性能考量**：`EXQUISITE` 等级效果最华丽，但GPU开销最大。在低端设备或复杂页面上，建议使用 `ADAPTIVE` 或 `GENTLE`。
+3.  **系统设置影响**：用户可在系统设置中调整“沉浸光感”强度（强/均衡/弱），这会对应用设置的 `materialLevel` 产生**向下压制**。例如，即使用户设备支持且代码设置为 `EXQUISITE`，若系统设置为“均衡”，实际效果将是 `GENTLE`。
+4.  **内容避让**：使用悬浮页签 (`barOverlap(true)`) 时，页面底部内容需要预留空间（如设置 `paddingBottom`），或使用 `expandSafeArea()` 等方法，防止内容被遮挡。
+5.  **真机验证**：沉浸光感效果在模拟器上可能无法完整呈现，**务必在真机上进行测试**。
+
+### 五、总结
+- **SDK 24（API 24）支持沉浸光感**，您可以立即在项目中使用 `HdsNavigation` 和 `HdsTabs` 组件的 `systemMaterialEffect` 属性来启用该效果。<rsup>4</rsup>
+- 对于更广泛的 ArkUI 组件（如 Button、Dialog），则需要升级至 **SDK 26（API 26，HarmonyOS 7.0）** 并使用 `systemMaterial` 属性。
+- 开发时，优先采用 **`ADAPTIVE`（自适应）** 模式，以兼顾视觉效果与设备性能，并提供优雅的降级方案，确保应用在不同设备上都有良好的体验。
+
+
+
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+**可以，但需要正确处理版本兼容性。**
+
+在 HarmonyOS 开发中，使用高版本 SDK（如 24）开发的应用，**可以调用在低版本 SDK 中已存在的组件（API）**。然而，如果您在代码中使用了 **仅在 SDK 24 或更高版本中新增的组件或 API**，并希望应用能在运行更低版本系统（例如 API 23、22 等）的设备上正常运行，则必须进行**主动的兼容性判断和降级处理**，否则应用在低版本设备上调用这些新 API 时会崩溃。<rsup>1</rsup><rsup>2</rsup>
+
+### 一、理解三个关键的 SDK 版本配置
+
+在 `build-profile.json5` 文件中，有三个核心配置决定了应用的兼容性行为：
+
+| 配置项 | 作用 | 与您问题的关系 |
+| :--- | :--- | :--- |
+| **`compileSdkVersion`** <rsup>3</rsup>| **编译版本**。决定编译时可以使用哪些 API。您设置为 24，意味着您可以使用 SDK 24 提供的所有 API 进行开发。 | 您可以使用 SDK 24 包含的所有组件（包括旧版本已有的）。 |
+| **`targetSdkVersion`** <rsup>3</rsup>| **目标版本**。告知系统应用是针对哪个 API 级别进行优化和测试的。系统会根据此值来决定是否启用新版本的行为变更。**建议与 `compileSdkVersion` 保持一致。** <rsup>4</rsup><rsup>5</rsup>| 影响系统对应用行为（如权限、后台限制等）的判定，通常与组件可用性直接关系不大。 |
+| **`compatibleSdkVersion`**<br>(打包后为 `minAPIVersion`) <rsup>3</rsup><rsup>6</rsup>| **最低兼容版本**。应用可以安装和运行的**最低**系统 API 版本。设备系统的 API 版本必须 ≥ 此值。 <rsup>1</rsup><rsup>2</rsup>| **这是兼容性的关键**。如果您设置为 20，则应用可以安装在 API 20 及以上的设备上。但在 API 20-23 的设备上，不能直接调用 SDK 24 新增的 API。 <rsup>2</rsup>|
+
+**它们的关系必须是：`compatibleSdkVersion` ≤ `targetSdkVersion` ≤ `compileSdkVersion`。**<rsup>3</rsup><rsup>5</rsup>
+
+### 二、HarmonyOS 的兼容性原则
+
+1.  **向后兼容（Forward Compatibility）**：基于**老版本** SDK 开发的应用，默认可以在**新版本**的 HarmonyOS 设备上正常运行。这是系统保证的。<rsup>2</rsup><rsup>1</rsup>
+2.  **向前兼容（Backward Compatibility）**：基于**新版本** SDK 开发的应用，若想运行在**老版本**设备上，**开发者必须对新增的 API 进行运行时版本判断和降级处理**。
+
+**结论：** 您用 SDK 24 编译的应用，可以在 `compatibleSdkVersion` 指定的低版本设备上安装运行。但对于 SDK 24 才引入的新组件/API，必须在代码中判断设备版本，并提供降级方案。<rsup>7</rsup><rsup>2</rsup>
+
+### 三、如何实现版本兼容性判断
+
+HarmonyOS 提供了运行时查询设备 API 版本的能力，您需要在调用**高版本 API** 前进行判断。<rsup>1</rsup><rsup>2</rsup>
+
+#### 1. 配置 `build-profile.json5`
+
+假设您的应用希望最低兼容到 API 20，但使用了 SDK 24 的新特性，配置如下：<rsup>7</rsup>
+
+```json
+// build-profile.json5
+{
+  "app": {
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "6.0.0(20)", // 最低支持到 API 20
+        "compileSdkVersion": "6.1.1(24)",    // 使用 SDK 24 编译
+        "targetSdkVersion": "6.1.1(24)",     // 目标版本设为与编译版本一致
+        // ... 其他配置
+      }
+    ]
+  }
+}
+```
+
+#### 2. 在代码中进行版本判断（核心）
+
+**推荐方法（API 26.0.0+ 首选）：使用 `apiAvailable`**
+从 API 26.0.0 开始，推荐使用统一的 `apiAvailable` 接口。
+
+```typescript
+import { deviceInfo } from '@kit.BasicServicesKit';
+
+// 判断是否支持某个版本
+if (deviceInfo.apiAvailable('6.1.1(24)')) { // 或 deviceInfo.apiAvailable(24)
+  // 设备系统版本 >= 6.1.1(24)，可以安全使用 SDK 24 新增的 API
+  // 例如：使用 HdsNavigation 的沉浸光感效果
+  this.enableImmersiveEffect();
+} else {
+  // 设备系统版本 < 6.1.1(24)，使用降级方案
+  this.useFallbackUI();
+}
+```
+
+**传统方法（API 26.0.0 之前）：根据接口类型选择**
+- **对于 HarmonyOS 专有接口**（标记为 `since M.F.S(N)`），使用 `distributionOSApiVersion`。
+- **对于 OpenHarmony 底座接口**（标记为 `since N`），使用 `sdkApiVersion`。
+
+```typescript
+import { deviceInfo } from '@kit.BasicServicesKit';
+import { HdsNavigation } from '@kit.UIDesignKit'; // 假设这是 SDK 24 新增组件
+
+// 示例：判断是否支持 HdsNavigation（HarmonyOS 专有接口）
+// 6.1.1(24) 对应的 distributionOSApiVersion 计算：6*10000 + 1*100 + 1 = 60101
+if (deviceInfo.distributionOSApiVersion >= 60101) {
+  // 使用 HdsNavigation 及其新特性（如沉浸光感）
+  HdsNavigation({ /* ... */ }).systemMaterialEffect({ /* ... */ });
+} else {
+  // 降级方案：使用旧的 Navigation 组件或普通容器
+  Column() {
+    // ... 旧版 UI
+  }
+}
+
+// 示例：判断是否支持某个 OpenHarmony 底座新 API（标记 since 24）
+if (deviceInfo.sdkApiVersion >= 24) {
+  // 调用 SDK 24 新增的 OpenHarmony 接口
+  someNewOpenHarmonyAPI();
+} else {
+  // 降级方案
+}
+```
+
+#### 3. 针对“沉浸光感”组件的具体示例
+
+结合您之前的目标，在 SDK 24 工程中使用 `HdsNavigation` 的沉浸光感，并兼容低版本：
+
+```typescript
+import { deviceInfo } from '@kit.BasicServicesKit';
+import { HdsNavigation, hdsMaterial } from '@kit.UIDesignKit';
+
+@Entry
+@Component
+struct MyPage {
+  @State showImmersiveEffect: boolean = false;
+
+  aboutToAppear(): void {
+    // 判断设备是否支持沉浸光感所需的 API 版本 (6.1.0 API 23 引入)
+    // 使用 distributionOSApiVersion 判断 HarmonyOS 专有接口
+    if (deviceInfo.distributionOSApiVersion >= 60100) { // 6.1.0 -> 60100
+      this.showImmersiveEffect = true;
+    } else {
+      this.showImmersiveEffect = false;
+    }
+  }
+
+  build() {
+    Column() {
+      if (this.showImmersiveEffect) {
+        // 设备支持沉浸光感 (API 23+)
+        HdsNavigation({ /* 配置 */ })
+          .systemMaterialEffect({
+            materialType: hdsMaterial.MaterialType.ADAPTIVE,
+            materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
+          })
+      } else {
+        // 设备不支持沉浸光感 (API 22 及以下)，使用降级 UI
+        Column() {
+          // 使用普通背景色或旧版毛玻璃效果模拟
+          // .background($r('sys.color.background_secondary'))
+          // .backdropBlur(10) // 旧版模拟效果
+        }
+        .width('100%')
+        .height(60)
+        .backgroundColor($r('sys.color.background_primary'))
+      }
+      // 页面其他内容...
+    }
+  }
+}
+```
+
+### 四、总结与最佳实践
+
+1.  **明确最低支持版本**：根据您的用户群体，在 `compatibleSdkVersion` 中设定合理的值。<rsup>3</rsup><rsup>5</rsup>
+2.  **始终进行版本判断**：对于任何标记 `since` 版本高于您 `compatibleSdkVersion` 的 API，都必须使用 `deviceInfo.apiAvailable()`（或 `distributionOSApiVersion`/`sdkApiVersion`）进行运行时保护。<rsup>4</rsup><rsup>6</rsup>
+3.  **提供优雅降级**：为不支持新特性的设备准备功能或视觉上的替代方案。
+4.  **善用开发工具**：DevEco Studio 的代码检查工具会帮助识别可能存在的兼容性问题。
+5.  **真机测试**：务必在您声明支持的最低版本设备上进行充分测试，确保降级逻辑正确。
+
+**直接回答您的问题：**
+**可以。** 使用 SDK 24 (`compileSdkVersion: 6.1.1(24)`) 开发时，您可以自由使用所有在 `compatibleSdkVersion` 指定的版本及之前就已存在的组件和 API。对于 SDK 24 **新增**的组件，只要通过上述版本判断进行保护，您的应用就能安全地在更低版本的设备上运行。<rsup>7</rsup><rsup>2</rsup>
+
+
+
+
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+要将华为官网中提到的系统能力特征（SystemCapability，简称SysCap）调用到你的HarmonyOS项目中，你需要了解SysCap机制并正确使用相关API。SysCap是HarmonyOS中用于管理设备能力差异的重要特性，它代表了操作系统中的每一个相对独立的特性，如蓝牙、WiFi、NFC、摄像头等。
+
+## 一、SysCap 核心概念
+
+SysCap机制允许开发者：
+- 查询设备是否支持特定能力
+- 根据设备能力差异提供不同的功能实现
+- 实现“一次开发，多端部署”
+
+## 二、在代码中调用系统能力
+
+### 1. 使用 `canIUse` API 判断能力支持
+
+```typescript
+import { abilityAccessCtrl, common } from '@kit.AbilityKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
+// 判断设备是否支持特定系统能力
+const isSupported = canIUse('SystemCapability.Communication.Bluetooth.Core');
+if (isSupported) {
+    // 设备支持蓝牙核心能力，可以调用相关API
+    hilog.info(0x0000, 'MyApp', '设备支持蓝牙功能');
+} else {
+    // 设备不支持，提供降级方案
+    hilog.warn(0x0000, 'MyApp', '设备不支持蓝牙功能');
+}
+```
+
+### 2. 根据API版本进行兼容性判断
+
+```typescript
+import { deviceInfo } from '@kit.DeviceCapabilityKit';
+
+// 判断HarmonyOS设备独有特性接口
+if (deviceInfo.distributionOSApiVersion >= 60000) {
+    // 支持API 6.0.0(20)及以上的新特性
+    // 调用新API
+}
+
+// 判断OpenHarmony底座接口
+if (deviceInfo.sdkApiVersion >= 20) {
+    // 支持API 20及以上的接口
+    // 调用新API
+}
+```
+
+## 三、实际应用示例
+
+### 示例1：相机功能的条件调用
+
+```typescript
+import { camera } from '@kit.CameraKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+
+@Component
+struct CameraComponent {
+  @State hasCameraCapability: boolean = false;
+  
+  aboutToAppear() {
+    // 检查设备是否支持相机能力
+    this.hasCameraCapability = canIUse('SystemCapability.Multimedia.Camera.Core');
+  }
+  
+  build() {
+    Column() {
+      if (this.hasCameraCapability) {
+        // 显示相机相关UI组件
+        Button('打开相机')
+          .onClick(() => {
+            this.openCamera();
+          })
+      } else {
+        Text('当前设备不支持相机功能')
+          .fontColor(Color.Red)
+      }
+    }
+  }
+  
+  async openCamera() {
+    try {
+      const cameraManager = camera.getCameraManager();
+      // 调用相机API...
+    } catch (error) {
+      const err = error as BusinessError;
+      hilog.error(0x0000, 'CameraComponent', `打开相机失败: ${err.message}`);
+    }
+  }
+}
+```
+
+### 示例2：地理位置服务
+
+```typescript
+import { geoLocationManager } from '@kit.LocationKit';
+
+async function getLocation() {
+  // 检查是否支持地理位置服务
+  if (!canIUse('SystemCapability.Location.Location.Core')) {
+    hilog.warn(0x0000, 'MyApp', '设备不支持地理位置服务');
+    return;
+  }
+  
+  try {
+    const requestInfo: geoLocationManager.LocationRequest = {
+      priority: geoLocationManager.LocationRequestPriority.FIRST_FIX,
+      scenario: geoLocationManager.LocationRequestScenario.UNSET,
+      timeInterval: 1,
+      distanceInterval: 0,
+      maxAccuracy: 0
+    };
+    
+    const location = await geoLocationManager.getCurrentLocation(requestInfo);
+    hilog.info(0x0000, 'MyApp', `当前位置: ${location.latitude}, ${location.longitude}`);
+  } catch (error) {
+    const err = error as BusinessError;
+    hilog.error(0x0000, 'MyApp', `获取位置失败: ${err.message}`);
+  }
+}
+```
+
+## 四、项目配置
+
+### 1. 在 `build-profile.json5` 中配置SDK版本
+
+```json5
+{
+  "app": {
+    "signingConfigs": [],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.5(17)",  // 最低兼容版本
+        "targetSdkVersion": "6.0.0(20)",       // 目标版本
+        "compileSdkVersion": "6.0.0(20)"       // 编译版本
+      }
+    ]
+  }
+}
+```
+
+**版本关系**：`compatibleSdkVersion ≤ targetSdkVersion ≤ compileSdkVersion`
+
+### 2. 模块配置文件中的设备能力声明
+
+在 `module.json5` 中声明需要的设备能力：
+
+```json5
+{
+  "module": {
+    "name": "entry",
+    "type": "entry",
+    "deviceTypes": [
+      "phone",
+      "tablet",
+      "car",
+      "wearable"
+    ],
+    "reqCapabilities": [
+      "location",
+      "camera",
+      "bluetooth"
+    ]
+  }
+}
+```
+
+## 五、最佳实践建议
+
+### 1. **渐进增强策略**
+```typescript
+function useFeature() {
+  // 优先检查高级特性
+  if (canIUse('SystemCapability.AI.HiAI.Foundation')) {
+    // 使用AI高级能力
+    return useAdvancedAIFeature();
+  } else if (canIUse('SystemCapability.AI.Basic')) {
+    // 使用基础AI能力
+    return useBasicAIFeature();
+  } else {
+    // 降级到非AI方案
+    return useFallbackSolution();
+  }
+}
+```
+
+### 2. **统一的能力管理工具**
+```typescript
+// capabilities.ts - 系统能力管理工具类
+export class CapabilityManager {
+  private static capabilities = new Map<string, boolean>();
+  
+  // 预检查常用能力
+  static async initialize() {
+    const commonCapabilities = [
+      'SystemCapability.Communication.Bluetooth.Core',
+      'SystemCapability.Multimedia.Camera.Core',
+      'SystemCapability.Location.Location.Core',
+      'SystemCapability.Notification.Notification',
+      'SystemCapability.FileManagement.File.FileIO'
+    ];
+    
+    for (const cap of commonCapabilities) {
+      this.capabilities.set(cap, canIUse(cap));
+    }
+  }
+  
+  static isSupported(capability: string): boolean {
+    return this.capabilities.get(capability) || false;
+  }
+  
+  static require(capability: string, featureName: string): void {
+    if (!this.isSupported(capability)) {
+      throw new Error(`设备不支持${featureName}功能，需要系统能力: ${capability}`);
+    }
+  }
+}
+
+// 使用示例
+CapabilityManager.require(
+  'SystemCapability.Multimedia.Camera.Core',
+  '相机拍摄'
+);
+```
+
+### 3. **条件编译与代码分割**
+```typescript
+// 使用条件编译标记
+// #if API_VERSION >= 60000
+import { newFeature } from '@kit.NewFeatureKit';
+// #endif
+
+@Component
+struct MyComponent {
+  build() {
+    Column() {
+      // 条件渲染
+      if (deviceInfo.distributionOSApiVersion >= 60000) {
+        // 新版本特性
+        NewFeatureComponent()
+      } else {
+        // 兼容旧版本
+        LegacyComponent()
+      }
+    }
+  }
+}
+```
+
+## 六、调试与测试
+
+### 1. 在开发者选项中启用调试功能
+- **USB调试**：通过计算机侧命令对移动设备进行调测
+- **无线调试**：通过Wi-Fi进行设备连接调试
+- **显示布局边界**：查看控件布局、空白空隙及控件重叠等问题
+- **过度绘制检测**：可视化应用可能进行的不必要渲染
+
+### 2. 使用 `hilog` 进行能力检测日志
+```typescript
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
+function checkAllCapabilities() {
+  const capabilities = [
+    { name: '蓝牙', key: 'SystemCapability.Communication.Bluetooth.Core' },
+    { name: 'NFC', key: 'SystemCapability.Communication.NFC.Core' },
+    { name: 'WiFi', key: 'SystemCapability.Communication.Wifi' },
+    { name: '相机', key: 'SystemCapability.Multimedia.Camera.Core' },
+    { name: '位置服务', key: 'SystemCapability.Location.Location.Core' }
+  ];
+  
+  capabilities.forEach(cap => {
+    const supported = canIUse(cap.key);
+    hilog.info(0x0000, 'CapabilityCheck', 
+      `${cap.name}: ${supported ? '✓ 支持' : '✗ 不支持'}`);
+  });
+}
+```
+
+## 七、常见系统能力列表
+
+| 能力分类 | 系统能力名称 | 描述 |
+|---------|-------------|------|
+| **通信** | `SystemCapability.Communication.Bluetooth.Core` | 蓝牙核心功能 |
+| | `SystemCapability.Communication.NFC.Core` | NFC功能 |
+| | `SystemCapability.Communication.Wifi` | WiFi功能 |
+| **多媒体** | `SystemCapability.Multimedia.Camera.Core` | 相机功能 |
+| | `SystemCapability.Multimedia.Audio.Core` | 音频功能 |
+| | `SystemCapability.Multimedia.Image.Core` | 图片处理 |
+| **位置** | `SystemCapability.Location.Location.Core` | 地理位置服务 |
+| **传感器** | `SystemCapability.Sensors.Sensor` | 传感器服务 |
+| **AI** | `SystemCapability.AI.HiAI.Foundation` | AI基础能力 |
+| **安全** | `SystemCapability.Security.CryptoFramework` | 加解密框架 |
+
+## 八、注意事项
+
+1. **运行时检查**：始终在调用特定API前使用 `canIUse()` 进行检查
+2. **优雅降级**：为不支持的能力提供替代方案或友好提示
+3. **版本兼容**：使用 `deviceInfo.distributionOSApiVersion` 或 `deviceInfo.sdkApiVersion` 进行版本判断
+4. **权限申请**：某些系统能力需要相应的权限，确保在 `module.json5` 中声明
+5. **真机测试**：SysCap检测在模拟器上可能不准确，建议在真机上测试
+
+通过以上方法，你可以将HarmonyOS的系统能力特征有效地集成到你的项目中，实现跨设备的兼容性和最佳用户体验。
+
+
+
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+根据您已申请的待机屏保卡片能力，在项目中启用此功能主要涉及**配置文件修改**和**卡片UI适配**两个核心步骤。待机屏保卡片是HarmonyOS Form Kit从API version 23开始提供的能力，允许应用在设备横屏充电锁屏状态下展示信息。<rsup>1</rsup><rsup>2</rsup>
+
+### 一、配置待机屏保卡片
+
+在项目的卡片配置文件 `entry/src/main/resources/base/profile/form_config.json` 中，为您希望展示在待机屏保的卡片配置 `standby` 字段。
+
+**关键配置项说明：**
+```json
+{
+  "forms": [
+    {
+      "name": "widget", // 卡片名称
+      "displayName": "$string:widget_display_name",
+      "description": "$string:widget_desc",
+      "src": "./ets/widget/pages/WidgetCard.ets", // 卡片UI页面路径
+      "uiSyntax": "arkts",
+      "isDynamic": true,
+      "isDefault": true,
+      "updateEnabled": false,
+      "renderingMode": "autoColor",
+      "defaultDimension": "2*2", // 必须为2*2
+      "supportDimensions": [
+        "2*2" // 待机屏保仅支持2*2尺寸
+      ],
+      "standby": { // 待机屏保配置
+        "isSupported": true, // 声明支持待机屏保展示
+        "isAdapted": true, // 声明已适配待机屏保UX规范（系统会移除backgroundImage）
+        "isPrivacySensitive": false // 若涉及隐私敏感信息，设置为true会添加蒙版
+      }
+    }
+  ]
+}
+```
+
+### 二、实现卡片UI (ArkTS)
+
+待机屏保卡片与普通桌面卡片共享同一套 `FormExtensionAbility` 数据管理逻辑。您需要确保卡片UI已适配待机屏保的设计规范。<rsup>3</rsup>
+
+**示例卡片页面 (`WidgetCard.ets`):**
+```typescript
+import { LocalStorage } from '@kit.ArkUI';
+
+// 使用LocalStorage进行数据管理
+let storageUpdateByMsg = new LocalStorage();
+
+@Entry(storageUpdateByMsg)
+@Component
+struct WidgetCard {
+  // 通过LocalStorageProp接收来自主应用或FormExtensionAbility的数据
+  @LocalStorageProp('finalWatchList') lockScreenStockList: WatchedStockInfo[] = []
+
+  readonly actionType = 'router';
+  readonly abilityName = 'EntryAbility';
+
+  build() {
+    Column({ space: 10 }) {
+      // 示例：展示股票信息列表（前3条）
+      ForEach(this.lockScreenStockList.slice(0, 3), (stock: WatchedStockInfo) => {
+        Column({ space: 2 }) {
+          Row() {
+            Text(stock.name)
+              .textAlign(TextAlign.Start)
+              .fontSize(14)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .fontColor(Color.White)
+            Text(stock.price)
+              .textAlign(TextAlign.Start)
+              .fontSize(14)
+              .fontColor(stock.rate.startsWith('+') ? Color.Red : Color.Green)
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.SpaceBetween)
+          Row() {
+            Text(stock.code)
+              .textAlign(TextAlign.Start)
+              .fontSize(11)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .fontColor('#999999')
+            Text(stock.rate)
+              .textAlign(TextAlign.Start)
+              .fontSize(11)
+              .fontColor(stock.rate.startsWith('+') ? Color.Red : Color.Green)
+          }
+        }
+        .width('100%')
+      }, (stock: WatchedStockInfo) => stock.code)
+    }
+    .width('100%')
+    .height('100%')
+    .onClick(() => {
+      // 点击卡片跳转到应用主页面
+      postCardAction(this, {
+        action: this.actionType,
+        abilityName: this.abilityName,
+      });
+    })
+  }
+}
+```
+
+### 三、数据更新与管理
+
+卡片数据更新通常通过 `FormExtensionAbility` 的 `onUpdateForm` 生命周期回调或主应用主动调用 `formProvider.updateForm()` 实现。
+
+**在FormExtensionAbility中管理数据 (`EntryFormAbility.ets`):**
+```typescript
+import { FormExtensionAbility, formBindingData } from '@kit.FormKit';
+import { Want } from '@kit.AbilityKit';
+
+export default class EntryFormAbility extends FormExtensionAbility {
+  onAddForm(want: Want) {
+    // 卡片添加时的初始化逻辑
+    const formData = '';
+    return formBindingData.createFormBindingData(formData);
+  }
+
+  onUpdateForm(formId: string) {
+    // 卡片更新逻辑，可在此处获取最新数据并更新卡片
+    // 例如：从网络或本地获取数据，然后通过formProvider.updateForm更新
+  }
+
+  onRemoveForm(formId: string) {
+    // 卡片移除时的清理逻辑
+  }
+}
+```
+
+### 四、重要注意事项
+
+1.  **尺寸限制**：待机屏保卡片**仅支持 2*2 尺寸**，务必在 `supportDimensions` 中正确配置。
+2.  **设计规范**：待机屏保界面默认为深色模式，不会跟随系统主题切换。设计时应遵循“清晰可见、沉浸视觉、轻量交互”原则：
+    *   **清晰可见**：为中远场浏览优化，放大关键信息。
+    *   **沉浸视觉**：避免大面积使用高明度浅色，防止视觉割裂。
+    *   **轻量交互**：卡片内**不要设计**滑动、长按、拖动等复杂手势，仅支持点击等轻量操作，避免与系统手势冲突。
+3.  **隐私安全**：不推荐在待机屏保卡片上展示个人隐私敏感数据。若涉及，请将 `isPrivacySensitive` 设置为 `true`。
+4.  **UX适配**：当 `isAdapted` 设置为 `true` 时，系统会自动移除卡片布局组件中的 `backgroundImage`，以确保在待机屏保下的显示效果。
+
+### 五、测试与验证
+
+1.  **进入待机屏保界面**：<rsup>1</rsup>
+    *   设备插入充电器或开启“设置 > 桌面和个性化 > 待机屏保设置”中的“不充电可显示”开关。
+    *   将设备横屏锁屏，并与桌面呈45°~90°夹角稳定摆放（折叠屏需切换为外屏）。
+2.  **添加卡片**：
+    *   在待机屏保界面长按或双指捏合进入编辑界面。
+    *   上滑左侧或右侧列表至最后，点击“+”进入卡片中心。
+    *   找到您的应用，选择对应的2*2卡片并点击“添加”。
+3.  **调试**：您可以通过 `formProvider.updateForm` 主动刷新卡片，或在 `FormExtensionAbility` 的生命周期回调中打印日志，以验证功能是否正常工作。
+
+### 总结
+
+在项目中调用待机屏保卡片功能的核心是：<rsup>1</rsup><rsup>2</rsup>
+1.  在 `form_config.json` 中为卡片配置 `"standby": {"isSupported": true, "isAdapted": true}`。
+2.  确保卡片尺寸为 `2*2`。
+3.  按照待机屏保的UX规范设计卡片UI（深色模式适配、信息突出、交互简洁）。<rsup>1</rsup>
+
+完成以上配置后，编译并安装应用到支持该功能的设备上，即可按照上述测试步骤在待机屏保界面添加并使用您的卡片。<rsup>4</rsup>
+
+
+
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+申请到待机屏保卡片的开放能力后，**并不能直接自动使用**，您还需要在项目中完成必要的配置和开发工作。<rsup>1</rsup><rsup>2</rsup>
+
+### 一、申请权限 ≠ 自动生效
+
+您在AppGallery Connect中申请并获批的“待机屏保卡片”开放能力，仅代表您的应用**获得了在待机屏保界面展示卡片的资格**。要使卡片真正在待机屏保上显示，您必须在项目中进行以下配置和开发。<rsup>3</rsup><rsup>1</rsup>
+
+### 二、必须完成的配置与开发步骤
+
+#### 1. 配置卡片信息 (`form_config.json`)
+在项目的卡片配置文件 `entry/src/main/resources/base/profile/form_config.json` 中，为您希望展示在待机屏保的卡片添加 `standby` 字段。
+
+**关键配置项：**
+- `"isSupported": true`：**必须设置为 `true`**，以声明此卡片支持在待机屏保界面展示。
+- `"isAdapted": true`：如果您的卡片UI已遵循待机屏保的UX设计规范（如适配深色模式、移除复杂背景图等），建议设置为 `true`。系统会将卡片布局组件中的 `backgroundImage` 移除。
+- `"isPrivacySensitive": false`：若卡片内容涉及用户隐私敏感信息（如个人健康数据、财务信息），可设置为 `true`，系统会在待机屏保显示时添加蒙版保护。
+
+**配置示例：**
+```json
+{
+  "forms": [
+    {
+      "name": "widget",
+      "src": "./ets/widget/pages/WidgetCard.ets",
+      "uiSyntax": "arkts",
+      "isDynamic": true,
+      "defaultDimension": "2*2", // 待机屏保仅支持2*2尺寸
+      "supportDimensions": ["2*2"], // 必须包含2*2
+      "standby": {
+        "isSupported": true, // 核心：启用待机屏保支持
+        "isAdapted": true,
+        "isPrivacySensitive": false
+      }
+    }
+  ]
+}
+```
+
+#### 2. 确保卡片尺寸为 `2*2`
+待机屏保卡片**仅支持 2*2 一种尺寸**。您必须在 `supportDimensions` 中配置 `"2*2"`，并将 `defaultDimension` 也设置为 `"2*2"`。
+
+#### 3. 遵循待机屏保UX规范设计卡片UI
+待机屏保界面默认为深色模式，且用户在中远距离观看。您的卡片UI（`.ets`文件）应遵循以下原则：<rsup>2</rsup>
+- **清晰可见**：放大关键信息，确保在中远距离下可读。
+- **沉浸视觉**：避免大面积使用高明度浅色，防止视觉割裂。建议使用深色背景与高对比度文字。
+- **轻量交互**：卡片内**不要设计**滑动、长按、拖动等复杂手势，仅支持点击等轻量操作，避免与系统手势冲突。
+
+#### 4. 用户手动添加卡片
+即使完成以上所有配置，卡片也不会自动出现在待机屏保上。用户需要**手动进入待机屏保编辑界面，找到您的应用，并选择对应的2*2卡片进行添加**。具体操作路径通常为：设备横屏锁屏充电 → 在待机屏保界面长按或双指捏合进入编辑态 → 上滑列表找到您的应用 → 点击“添加”。
+
+### 三、总结：申请权限后的完整流程
+
+1.  **项目配置**：在 `form_config.json` 中为卡片配置 `"standby": {"isSupported": true}`。
+2.  **尺寸限定**：确保卡片尺寸配置为 `2*2`。
+3.  **UI适配**：按照待机屏保规范（深色模式、信息突出、交互简洁）开发或调整卡片UI。<rsup>4</rsup><rsup>2</rsup>
+4.  **编译与安装**：将应用编译并安装到支持该功能的设备上。
+5.  **用户添加**：引导用户在设备的待机屏保界面手动添加您的卡片。<rsup>1</rsup>
+
+**简单来说，申请开放能力是“拿到入场券”，而配置 `standby` 字段和适配UI是“布置展台”，两者缺一不可，用户最后还需要“走进来参观”（手动添加）。**
+
+
+
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+沉浸光感（Immersive Light）是 HarmonyOS ArkUI 提供的一套**高品质视觉与动效体系**，它通过**沉浸式系统材质（ImmersiveMaterial）** 与**空间动效**的结合，为应用组件带来通透、精致的视觉表现。它**不是一个可以直接拖拽使用的独立 UI 组件**，而是一套需要通过配置和 API 调用来启用的**系统级材质效果**。<rsup>1</rsup><rsup>2</rsup>
+
+## 🎨 沉浸光感的核心构成
+
+| 能力 | 说明 |
+| :--- | :--- |
+| **沉浸式系统材质** | 影响组件的背景色、边框、阴影和材质滤镜，呈现层次感和通透感。 |
+| **空间动效** | 为组件的弹出过程增添形变、流光等动态表现，使动画更加灵动。 |
+| **自适应** | 根据设备算力档位和用户在系统设置中配置的沉浸光感强弱，自动调整表现程度。 |
+
+## 🚀 如何使用沉浸光感？
+
+使用沉浸光感需要完成以下两个步骤：
+
+### 1. 应用级开启（必须）
+在项目的 `module.json5`（entry 类型 module）中配置 metadata，全局控制沉浸式系统材质的开启状态。
+
+```json5
+// module.json5
+{
+  "module": {
+    "name": "entry",
+    "type": "entry",
+    // ...
+    "metadata": [{
+      "name": "ohos.arkui.UIMaterial.state",
+      "value": "enable" // 可选值：default、enable、disable
+    }],
+    // ...
+  }
+}
+```
+
+- **enable**：强制开启沉浸式系统材质。
+- **disable**：全局禁用。
+- **default**：部分组件（如 Dialog、Toast）在未设置背景色等属性时默认开启。
+
+> **注意**：此配置仅在 `entry` 类型的 module 中生效，且要求 `targetAPIVersion` ≥ 26.0.0。
+
+### 2. 组件级使用
+开启应用级开关后，即可在具体的组件上应用沉浸光感效果。根据组件类型，设置方式分为两种：
+
+#### 方式一：通过通用属性 `systemMaterial`（适用于大多数 ArkUI 组件）
+```typescript
+import { uiMaterial } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct ImmersiveDemo {
+  build() {
+    Column() {
+      // 对 Column 组件应用超薄材质样式
+      Column() {
+        Text('沉浸光感示例')
+      }
+      .width(200)
+      .height(80)
+      .borderRadius(20)
+      .justifyContent(FlexAlign.Center)
+      .systemMaterial(new uiMaterial.ImmersiveMaterial({
+        style: uiMaterial.ImmersiveStyle.ULTRA_THIN, // 材质样式
+        interactive: true,      // 启用按压弹性形变
+        lightEffect: { color: undefined } // 启用光感交互反馈（自动颜色）
+      }))
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+  }
+}
+```
+
+**材质样式（ImmersiveStyle）** 从薄到厚共有五档：
+- `ULTRA_THIN`：超薄，高度透明（适合浮动工具栏）
+- `THIN`：薄，较强透明（适合搜索框、Toast）
+- `REGULAR`：常规厚度（通用场景）
+- `THICK`：厚，模糊效果强（适合菜单）
+- `ULTRA_THICK`：超厚，完全模糊（适合弹窗、半模态页面）
+
+#### 方式二：通过组件独有接口（适用于弹窗类组件）
+```typescript
+// Toast 示例
+import { PromptAction, uiMaterial } from '@kit.ArkUI';
+
+PromptAction.showToast({
+  message: '操作成功',
+  duration: 2000,
+  systemMaterial: new uiMaterial.ImmersiveMaterial({
+    style: uiMaterial.ImmersiveStyle.THIN
+  })
+});
+
+// Popup 示例
+import { uiMaterial } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct PopupDemo {
+  @State isShow: boolean = false;
+
+  build() {
+    Button('弹出')
+      .onClick(() => { this.isShow = !this.isShow; })
+      .bindPopup(this.isShow, {
+        message: '这是一个带材质的弹窗',
+        systemMaterial: new uiMaterial.ImmersiveMaterial({
+          style: uiMaterial.ImmersiveStyle.THICK
+        })
+      })
+  }
+}
+```
+
+#### 方式三：HDS 组件的 `systemMaterialEffect`（适用于 HdsTabs、HdsNavigation）
+```typescript
+import { hdsMaterial, HdsTabs, HdsTabsController } from '@kit.UIDesignKit';
+
+@Entry
+@Component
+struct HdsDemo {
+  private controller: HdsTabsController = new HdsTabsController();
+
+  build() {
+    HdsTabs({ controller: this.controller }) {
+      // TabContent...
+    }
+    .barOverlap(true)
+    .barPosition(BarPosition.End)
+    .barFloatingStyle({
+      barBottomMargin: 28,
+      // 关键配置：开启沉浸光感
+      systemMaterialEffect: {
+        materialType: hdsMaterial.MaterialType.ADAPTIVE,   // 材质类型
+        materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE // 材质等级（系统自适应）
+      }
+    })
+  }
+}
+```
+
+## ⚠️ 注意事项与常见问题
+
+1.  **背景色冲突**：设置 `systemMaterial` 后，建议将组件的 `backgroundColor` 设为 `Color.Transparent` 或移除背景色设置，否则会覆盖材质效果。
+2.  **materialColor 透明度**：若使用 `materialColor` 为材质赋色，**必须使用带透明度的颜色**（如 `'#80FFFFFF'`），纯不透明色会完全遮挡材质滤镜效果。<rsup>2</rsup><rsup>1</rsup>
+3.  **自动反色（colorInvert）**：仅当材质足够薄（`THIN` 或 `ULTRA_THIN`）且系统沉浸光感配置较强时，组件内的文字颜色会自动适配背景反色，确保可读性。
+4.  **设备自适应**：效果会根据设备算力（高/中/低档）自动分级渲染，开发者无需手动适配不同性能设备。
+5.  **关闭单个组件的材质**：在 `ENABLE` 模式下，若想单独关闭某个默认开启材质的组件（如 Select），可设置 `systemMaterial(uiMaterial.Material.empty)`。
+
+## 📝 快速上手清单
+
+1.  **检查版本**：确保 `build-profile.json5` 中 `targetAPIVersion` ≥ 26.0.0。
+2.  **修改配置**：在 `module.json5` 中添加 `metadata`，将 `ohos.arkui.UIMaterial.state` 设为 `"enable"`。
+3.  **导入模块**：在代码中导入 `@kit.ArkUI` 中的 `uiMaterial` 或 `@kit.UIDesignKit` 中的 `hdsMaterial`。<rsup>2</rsup>
+4.  **应用材质**：对目标组件调用 `.systemMaterial()` 或设置 `systemMaterialEffect`。
+5.  **运行预览**：在支持 API 26+ 的设备或模拟器上运行查看效果。
+
+## 💎 总结
+
+沉浸光感**不能直接使用**，需要：
+- **配置开启**：在 `module.json5` 中设置应用级开关。
+- **代码调用**：通过 `systemMaterial` 通用属性或组件特定接口（如 `systemMaterialEffect`）为具体组件应用材质效果。
+
+这套体系能显著提升应用的视觉质感和交互反馈，且具备良好的设备自适应能力，是打造高端 HarmonyOS 应用体验的重要特性。<rsup>3</rsup>
+
+
+
+
+鸿蒙（HarmonyOS）提供的**设计组件（ArkUI 组件、HDS 组件等）都是可以直接使用的，不需要额外申请权限或审批**。它们属于 HarmonyOS SDK 的标准 API，开发者只需在项目中正确引入即可。
+
+## ✅ 使用条件与方式
+
+| 组件类型 | 说明 | 如何使用 |
+| :--- | :--- | :--- |
+| **ArkUI 基础组件**（Button、Text、Column 等） | 随 SDK 提供，无需任何额外配置即可使用。 | 直接导入 `@kit.ArkUI` 并在代码中声明。 |
+| **HDS 组件**（HdsTabs、HdsNavigation 等） | HarmonyOS Design System 组件，从 SDK 6.1.0(23) 开始提供，可直接使用。 | 导入 `@kit.UIDesignKit` 并调用对应组件。 |
+| **沉浸光感等高级效果** | 属于系统材质能力，需满足 API 版本要求，并在 `module.json5` 中配置开关，但**无需申请**。 | 1. 配置 `metadata`；<br>2. 调用 `systemMaterial` 或 `systemMaterialEffect`。 |
+| **系统能力（SystemCapability）** | 如网络、传感器等，需要在 `module.json5` 中声明对应的 `requestPermissions`，但**不属于设计组件范畴**。 | 在 `module.json5` 的 `requestPermissions` 字段中添加权限声明。 |
+
+## 📦 直接使用的示例
+
+### 1. 基础 ArkUI 组件
+```typescript
+// 直接使用，无需任何前置申请
+import { Button, Text, Column } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct MyPage {
+  build() {
+    Column() {
+      Text('Hello HarmonyOS')
+        .fontSize(30)
+      Button('点击')
+        .onClick(() => {
+          // 处理点击
+        })
+    }
+  }
+}
+```
+
+### 2. HDS 组件（如悬浮页签）
+```typescript
+// 直接使用，只需导入对应 kit
+import { HdsTabs, HdsTabsController } from '@kit.UIDesignKit';
+
+@Entry
+@Component
+struct TabPage {
+  private controller: HdsTabsController = new HdsTabsController();
+
+  build() {
+    HdsTabs({ controller: this.controller }) {
+      // TabContent...
+    }
+    .barOverlap(true)
+    .barPosition(BarPosition.End)
+  }
+}
+```
+
+### 3. 沉浸光感材质
+```typescript
+// 1. 在 module.json5 中配置（非申请，只是启用开关）
+// "metadata": [{ "name": "ohos.arkui.UIMaterial.state", "value": "enable" }]
+
+// 2. 代码中直接使用
+import { uiMaterial } from '@kit.ArkUI';
+
+Column()
+  .systemMaterial(new uiMaterial.ImmersiveMaterial({
+    style: uiMaterial.ImmersiveStyle.REGULAR
+  }))
+```
+
+## ⚠️ 注意事项（非“申请”，但需关注）
+
+1.  **SDK 版本**：部分高级组件（如 HDS、沉浸光感）需要 **HarmonyOS SDK 6.1.0(23) 或更高版本**（对应 API 23+）。请在项目的 `build-profile.json5` 中确认 `targetAPIVersion` 符合要求。
+2.  **模块导入**：使用前需在代码文件顶部导入对应的模块（如 `@kit.ArkUI`、`@kit.UIDesignKit`）。
+3.  **设备兼容性**：某些效果（如沉浸光感的完整空间动效）会在低算力设备上自动降级，这是系统自适应行为，开发者无需处理。
+4.  **权限声明**：设计组件本身**不需要权限**，但如果组件涉及网络、存储等系统能力，则需在 `module.json5` 中声明对应权限（这与组件使用是分开的）。
+
+## 📚 官方资源
+
+- **组件文档**：在 [HarmonyOS 开发者官网](https://developer.harmonyos.com) 的“文档”中搜索对应组件名称（如“HdsTabs”、“Button”）即可查看完整用法。
+- **设计资源**：HarmonyOS Design 网站提供设计规范、Symbol 图标库等，可直接在项目中使用。
+- **示例代码**：DevEco Studio 的“Sample”中提供了大量组件的实际用法示例，可直接运行学习。
+
+## 💎 总结
+
+**鸿蒙提供的所有设计组件都是开箱即用的，无需任何形式的申请或审批。** 你只需要：
+
+1.  确保 DevEco Studio 安装了对应版本的 SDK。
+2.  在代码中导入正确的模块（如 `@kit.ArkUI`）。
+3.  按照官方文档的示例使用组件即可。
+
+如果在使用中遇到问题，通常是因为版本不匹配、模块未导入或配置遗漏（如沉浸光感需在 `module.json5` 中配置开关），而非权限问题。
+
+
+
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+鸿蒙（HarmonyOS）应用的代码操作规范是确保应用稳定性、性能、可维护性和符合平台设计理念的关键。以下是根据官方文档和最佳实践总结的核心规范，涵盖了从语法、架构到安全的全方位要求。
+
+---
+
+## 一、声明式UI与状态管理规范
+
+### 1. 严格遵循声明式UI原则
+- **UI是状态的函数**：所有界面变化必须通过状态驱动，禁止直接操作DOM或View实例（如`findViewById`、`ref`操作子组件内部）。
+- **正确示例**：通过`@State`变量控制`Text`内容。
+- **错误示例**：在按钮点击后“直接修改某个Text的文本”。
+- 若需获取组件尺寸或位置，应使用`GeometryTransition`或`onAreaChange`回调，而非命令式查询。
+
+### 2. 合理管理状态作用域
+- **局部状态**：使用`@State`，仅限当前组件。
+- **父子通信**：使用`@Prop`（单向）、`@Link`（双向）。
+- **跨组件/跨页面共享**：使用`AppStorage` + `@StorageLink`。
+- **复杂对象响应式更新**：配合`@Observed`类与`@ObjectLink`。
+- **避免**将所有状态提升到全局，防止状态污染和不必要的重绘。
+
+### 3. 避免在`build`中引入逻辑和副作用
+- `build`方法应仅包含UI描述代码，不得包含：
+  - 网络请求、文件读写
+  - 状态赋值（如`this.count = 10`）
+  - 路由跳转（`router.pushUrl`）
+  - 定时器、事件订阅
+- 这些操作应移至`aboutToAppear`、`onPageShow`或事件回调中，并在`aboutToDisappear`中清理资源。
+
+---
+
+## 二、ArkTS语法与编码规范
+
+### 1. 命名规范
+- **类名**：大驼峰，如`BankAccountManager`。
+- **方法名**：小驼峰，动词或动词短语，如`calculateInterest()`。
+- **变量名**：小驼峰，如`accountBalance`。
+- **常量**：全大写，下划线分隔，如`MAX_TRANSACTION_AMOUNT`。
+- **枚举**：全大写，如`TRANSACTION_TYPE`。
+- **禁止**使用拼音、无意义命名、系统关键字（如`onClick`）。
+
+### 2. 代码风格与格式
+- **缩进**：使用空格（建议2格），禁止使用Tab。
+- **分号**：除`build()`外，每行代码必须以分号结束。
+- **代码块**：即使只有一行，也必须使用大括号`{}`。
+- **条件语句**：避免在控制性条件表达式中执行赋值操作；及时返回，减少嵌套。
+- **类型标注**：显式标注函数参数、返回值及重要变量的类型，增强可读性。
+- **装饰器顺序**：注意装饰器的应用顺序，不同装饰器可能有不同的执行顺序和影响。
+
+### 3. ArkTS语法约束（违反将无法编译）
+- **不支持`any`和`unknown`类型**：必须显式指定类型。
+- **不支持解构赋值**：请改用临时变量或逐字段操作。
+- **不支持动态字段访问**：禁止`obj["field"]`，请使用`obj.field`。
+- **不支持`var`关键字**：请使用`let`或`const`。
+- **不支持函数表达式**：请改用箭头函数。
+- **不支持`is`运算符**：必须替换为`instanceof`。
+- **不支持`with`语句**。
+- **不支持`eval`、`new Function`等动态执行代码**。
+- **所有`import`语句必须在程序开头**。
+- **更多约束**：详见官方ArkTS语法约束列表。
+
+### 4. 代码数量与重复限制
+- **函数体不超过80行**：过长函数应拆分。
+- **大括号嵌套不超过4层**：通过提前返回等方式减少嵌套。
+- **重复代码提取**：三行以上重复三次，或五行以上重复两次，必须提取为共用函数或组件。
+
+---
+
+## 三、性能优化规范
+
+### 1. 列表渲染
+- **少量静态数据**：使用`ForEach`。
+- **长列表（>50项）**：必须使用`LazyForEach` + `IDataSource`，否则会导致内存暴涨、滚动卡顿。
+
+### 2. 避免不必要的对象创建
+- 避免在高频回调（如滑动、动画）中创建新对象。
+- 使用`cachedCount`优化`Tabs`性能。
+- 图片加载使用`Image`组件内置能力，避免`base64`。
+
+### 3. 异步与并发
+- 大数据处理移至后台任务（`Worker`或`TaskPool`）。
+- 使用`DevEco Profiler`定期分析启动时间、帧率、内存泄漏。
+
+### 4. 动画与渲染
+- 优先使用HarmonyOS提供的原生动画API和高级模板。
+- 优先使用声明式UI和`@State`驱动动画。
+- 对于包含复杂子组件的动画，将其设置为`renderGroup(true)`，减少渲染批次。
+- **禁止**在动画过程中频繁改变组件的`width`、`height`、`padding`、`margin`等布局属性。
+
+---
+
+## 四、组件与生命周期规范
+
+### 1. 生命周期正确使用
+- `aboutToAppear`：组件即将显示，用于初始化。
+- `aboutToDisappear`：组件即将销毁，用于清理。
+- `onPageShow` / `onPageHide`：页面级前后台切换。
+- `UIAbility.onCreate`：应用全局初始化。
+- **注意**：`build`不是生命周期方法，可能被多次调用。
+
+### 2. 弹窗与模态层使用规范
+- **简单提示**：用`Popup`（瞬时、无交互）。
+- **确认/输入/多步操作**：用`CustomDialogController`，且控制器应作为组件成员变量复用。
+- 避免在弹窗中嵌套复杂状态或异步逻辑；弹窗关闭后应及时清理定时器、订阅等资源。
+
+### 3. 组件复用
+- 代码逻辑如果复制三次以上，需要提取共有函数或组件进行复用。
+
+---
+
+## 五、资源与权限规范
+
+### 1. 资源引用
+- 图片、字符串、颜色等应通过`$r('app.media.xxx')`、`$r('app.string.xxx')`引用。
+- **禁止**硬编码路径或字符串。
+- 多语言、多分辨率适配依赖资源目录结构（如`en_US`、`zh_CN`、`drawable-xxhdpi`）。
+
+### 2. 权限与隐私合规
+- 敏感权限（位置、相机、存储）需在`module.json5`中声明。
+- 运行时动态申请权限（使用`requestPermissionsFromUser`）。
+- 用户拒绝后应提供替代方案，不得强制退出。
+- 遵循HarmonyOS隐私政策，禁止未经同意的数据上传。
+- 应用申请的权限必须有明确、合理的使用场景和功能说明。
+- **遵循最小化原则**：只申请业务功能所必要的权限，禁止申请不必要的权限。
+
+---
+
+## 六、工程与架构规范
+
+### 1. 文件与目录结构
+- **模块划分**：合理划分功能模块（如`views`、`services`、`models`）。
+- **文件命名**：小写字母和下划线组合，如`user_service.ets`。
+- **目录结构**：保持清晰，按功能或模块组织。
+
+### 2. 代码注释与文档
+- **不言自明的方法、变量不需要注释**。
+- 注释主要是为了说明变量名、方法名无法阐述的含义，不要直接翻译。
+- 文件头部添加注释，说明文件功能、作者、创建日期、修改历史等。
+
+### 3. 异常处理与日志
+- 使用`try-catch`语句捕获和处理可能出现的异常。
+- 使用`hiLog`替代`console.log`（生产环境可配置过滤）。
+- 关键路径添加埋点，便于线上问题追踪。
+- 避免在`release`包中保留调试代码。
+
+### 4. 类型安全与ArkTS语法约束
+- 启用严格类型检查，避免`any`类型。
+- 接口定义优先于字面量对象。
+- 使用`?.`和`??`处理可空值。
+
+---
+
+## 七、安全与兼容性规范
+
+### 1. Web组件安全
+- **URL白名单校验**：使用`setUrlTrustList`配置可信域名，仅允许`https`协议。
+- **参数转义**：所有外部可控的JS调用参数必须通过`JSON.stringify()`标准化转义，禁止直接字符串拼接。
+- **函数名白名单**：若必须开放可指定函数名的接口，优先使用固定白名单机制。
+
+### 2. 兼容性与版本管理
+- 明确`target API Version`，避免使用未发布特性。
+- 测试覆盖主流设备（手机、平板、折叠屏）。
+- 注意不同API Version的行为差异（如路由、状态管理）。
+- 第三方库需确认是否支持鸿蒙（无AOSP依赖）。
+
+### 3. 内存管理
+- 使用`HiDumper`和`DevEco Profiler`进行内存分析。
+- 实现`onMemoryLevel`回调，响应系统内存告急，分级释放资源。
+- 避免内存泄漏，及时清理定时器、事件监听器等资源。
+
+---
+
+## 八、其他重要规范
+
+### 1. 使用最新状态管理V2（如适用）
+- **必须使用**：`@ComponentV2`、`@Local`、`@Param`、`@Event`、`@Provider`、`@Consumer`、`@Monitor`、`@Computed`。
+- **严禁使用**：V1版本的装饰器（如`@State`、`@Prop`、`@Link`、`@ObjectLink`、`@Observed`、`@Provide`、`@Consume`、`@Watch`等）。
+
+### 2. 路由方案：仅限Navigation
+- **必须使用**：基于`Navigation`组件和`NavPathStack`的路由管理方案；使用`NavDestination`作为子页面的根容器。
+- **严禁使用**：传统的`router`模块（`@ohos.router`）进行页面跳转。
+
+### 3. 工具使用规范
+- **hdc**：设备连接、文件传输、应用安装/卸载。
+- **codelinter**：静态代码检查，识别潜在错误和规范问题。
+- **bytrace**：性能追踪，定位性能瓶颈。
+- **ohpm**：第三方依赖库管理。
+
+### 4. 开发注意事项
+- 优先使用HarmonyOS官方提供的API、UI组件、动画、代码模板。
+- 对于任何不肯定的语法和API使用，不要猜测或自行构造API，请尝试使用搜索工具获取华为开发者官方文档并进行确认。
+- 使用API前请确认是否需要在文件头添加`import`语句。
+- 调用API前请确认是否需要对应权限，在对应模块的`module.json5`中确认权限配置。
+
+---
+
+## 总结
+
+遵循以上规范不仅能提升代码质量、应用性能和可维护性，还能确保应用顺利通过审核、稳定运行于多设备。建议开发者：
+
+1.  **使用IDE格式化**：快捷键`Ctrl+Alt+L`快速格式化代码。
+2.  **定期代码审查**：确保代码符合规范。
+3.  **利用官方工具**：如`CodeGenie` AI辅助编程、`DevEco Profiler`性能分析。
+4.  **参考官方示例和文档**：保持对最新API和最佳实践的了解。
+
+通过严格遵守这些规范，开发者可以更好地融入HarmonyOS生态，构建出高质量、高性能的鸿蒙应用。
+
+
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+鸿蒙（HarmonyOS）应用性能优化是一个系统工程，涉及UI渲染、内存管理、启动速度、网络请求、包体积等多个维度。以下是基于官方最佳实践和开发经验的全面优化指南。<rsup>1</rsup><rsup>2</rsup>
+
+## 一、UI渲染优化
+
+### 1. **布局扁平化**
+- **问题**：过深的嵌套层级会增加布局计算时间。
+- **优化**：使用扁平化布局，减少不必要的容器嵌套。
+
+```typescript
+// ❌ 冗余嵌套（性能差）
+Column() {
+  Row() {
+    Column() {
+      Text('Hello')
+    }
+  }
+}
+
+// ✅ 扁平化（性能优）
+Text('Hello')
+```
+
+- 优先使用 `Column`、`Row`、`Grid`、`RelativeContainer` 等高效布局组件
+- 布局层级建议控制在 **5-8层以内**
+
+### 2. **列表性能优化**
+- **必须使用 `LazyForEach`** 替代 `ForEach` 处理长列表
+- 设置合理的 `cachedCount` 预缓存项数
+
+```typescript
+List() {
+  LazyForEach(this.dataSource, (item: ItemData) => {
+    ListItem() {
+      ItemComponent({ item: item })
+    }
+  }, (item: ItemData) => item.id.toString())
+}
+.cachedCount(5) // 预缓存屏幕外5个项
+```
+
+### 3. **组件复用与优化**
+- 使用 `@Reusable` 装饰器实现组件复用
+- 使用 `@Builder` 替代轻量级自定义组件
+
+```typescript
+@Reusable
+@Component
+struct ReusableItem {
+  @Reusable reuseId: string = "item_template"
+  
+  build() {
+    // 组件内容
+  }
+}
+```
+
+### 4. **状态管理精细化**
+- 精准控制状态更新范围，避免不必要的重渲染
+- 合理选择状态装饰器：
+  - 组件内部：`@State`
+  - 父子组件：`@Prop`/`@Link`
+  - 跨层级：`@Provide`/`@Consume`
+
+```typescript
+// 使用 @Watch 监听特定变化
+@State @Watch('onDataChange') data: DataType[] = []
+
+onDataChange() {
+  // 仅当数据变化时才执行特定逻辑
+  this.updateRelatedComponents()
+}
+```
+
+## 二、内存管理优化
+
+### 1. **及时释放资源**
+```typescript
+aboutToDisappear() {
+  // 清理定时器
+  if (this.timer) {
+    clearInterval(this.timer)
+    this.timer = undefined
+  }
+  
+  // 取消事件监听
+  this.eventEmitter.off('customEvent', this.handler)
+  
+  // 关闭文件/网络连接
+  this.fileHandle.close()
+}
+```
+
+### 2. **避免内存泄漏**
+- 使用 `WeakRef` 管理回调引用
+- 及时清理全局事件监听
+
+```typescript
+private callbackRef = new WeakRef(() => {
+  console.log('Callback executed')
+})
+
+onClick() {
+  this.callbackRef.deref()?.()
+}
+```
+
+### 3. **图片资源优化**
+- 使用 WebP 格式替代 PNG/JPEG（体积减少 25%-35%）
+- 按屏幕密度加载适配图片
+- 实现图片懒加载
+
+```typescript
+Image($r('app.media.image'))
+  .loadMode(ImageLoadMode.LAZY) // 懒加载模式
+  .interpolation(ImageInterpolation.HIGH) // 高质量缩放
+```
+
+### 4. **内存监控与响应**
+```typescript
+// 监听内存级别变化
+onMemoryLevel(level: AbilityConstant.MemoryLevel) {
+  switch (level) {
+    case AbilityConstant.MemoryLevel.MEMORY_LEVEL_MODERATE:
+      // 释放非核心缓存
+      this.cacheManager.releaseLevelOneCache()
+      break
+    case AbilityConstant.MemoryLevel.MEMORY_LEVEL_LOW:
+      // 释放大部分缓存，暂停后台任务
+      this.cacheManager.clearMostCaches()
+      break
+    case AbilityConstant.MemoryLevel.MEMORY_LEVEL_CRITICAL:
+      // 释放所有非必要资源，保存关键状态
+      this.saveCriticalState()
+      break
+  }
+}
+```
+
+## 三、启动性能优化
+
+### 1. **精简初始化任务**
+```typescript
+aboutToAppear() {
+  // 关键初始化（<100ms）
+  this.initCoreServices()
+  
+  // 非关键任务延迟执行
+  setTimeout(() => {
+    this.initNonCriticalServices()
+  }, 1000)
+}
+```
+
+### 2. **资源预加载**
+```typescript
+// 预加载关键资源
+async preloadCriticalResources() {
+  await Promise.all([
+    this.preloadImages(['icon_home', 'icon_profile']),
+    this.preloadData('user_profile'),
+    this.preloadWebProcess() // 预启动Web渲染进程
+  ])
+}
+```
+
+### 3. **模块懒加载**
+```typescript
+// 动态导入非关键模块
+async loadFeatureModule() {
+  const module = await import('./features/HeavyFeature')
+  module.initialize()
+}
+```
+
+### 4. **启用AOT编译**
+在 `build-profile.json5` 中配置：
+```json
+{
+  "buildOption": {
+    "arkOptions": {
+      "compileMode": "aot",  // 启用AOT编译
+      "obfuscation": {
+        "ruleOptions": {
+          "enable": true,    // 开启代码混淆
+          "files": ["obfuscation-rules.txt"]
+        }
+      }
+    }
+  }
+}
+```
+
+## 四、网络与数据优化
+
+### 1. **请求合并与缓存**
+```typescript
+// 使用缓存策略
+const CACHE_TTL = 5 * 60 * 1000 // 5分钟
+
+async fetchWithCache(url: string): Promise<any> {
+  const cacheKey = `cache_${url}`
+  const cached = AppStorage.Get(cacheKey)
+  
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data
+  }
+  
+  const data = await this.fetchFromNetwork(url)
+  AppStorage.SetOrCreate(cacheKey, {
+    data: data,
+    timestamp: Date.now()
+  })
+  
+  return data
+}
+```
+
+### 2. **数据库优化**
+```typescript
+// 使用事务批量操作
+async bulkInsertUsers(users: User[]) {
+  const rdbStore = await this.getRdbStore()
+  
+  try {
+    rdbStore.beginTransaction()
+    
+    for (const user of users) {
+      const valueBucket: ValuesBucket = {
+        'name': user.name,
+        'age': user.age,
+        'email': user.email
+      }
+      await rdbStore.insert('users', valueBucket)
+    }
+    
+    rdbStore.markAsCommit()
+  } catch (error) {
+    rdbStore.rollback()
+    throw error
+  } finally {
+    rdbStore.endTransaction()
+  }
+}
+
+// 创建索引提升查询性能
+await rdbStore.executeSql('CREATE INDEX idx_user_name ON users(name)')
+```
+
+### 3. **Web组件优化**
+```typescript
+// 预启动Web渲染进程
+let preloadWebView: webview.WebviewController | null = null
+
+function preLaunchWebProcess() {
+  preloadWebView = webview.createWebview()
+  preloadWebView.loadUrl('about:blank')
+}
+
+// 资源预加载与拦截
+webViewController.onInterceptRequest((request) => {
+  const url = request.requestUrl
+  if (this.cache.has(url)) {
+    return {
+      data: this.cache.get(url),
+      mimeType: this.getMimeType(url),
+      statusCode: 200
+    }
+  }
+  return null
+})
+```
+
+## 五、包体积优化
+
+### 1. **资源压缩策略**
+- 图片转 WebP 格式
+- 移除未使用的资源文件
+- 按密度分级提供资源
+
+### 2. **代码混淆与裁剪**
+```json
+{
+  "buildOption": {
+    "arkOptions": {
+      "obfuscation": {
+        "ruleOptions": {
+          "enable": true,
+          "files": ["obfuscation-rules.txt"]
+        }
+      },
+      "runtimeOnly": {
+        "packages": ["@ohos/dynamic-module"]
+      }
+    },
+    "compressNativeLibs": true
+  }
+}
+```
+
+### 3. **模块化与分包**
+- 使用 HAR（Harmony Archive）共享公共代码
+- 对于多模块应用，考虑使用 HSP（Harmony Shared Package）
+- 动态加载非核心功能模块
+
+## 六、并发与多线程优化
+
+### 1. **合理使用 TaskPool**
+```typescript
+import taskpool from '@ohos.taskpool'
+
+@Concurrent
+function processLargeData(data: number[]): number[] {
+  // CPU密集型计算
+  return data.map(x => x * x).filter(x => x > 1000)
+}
+
+async function handleData() {
+  const data = this.getLargeData()
+  const task = new taskpool.Task(processLargeData, data)
+  const result = await taskpool.execute(task)
+  this.updateUI(result)
+}
+```
+
+### 2. **Worker线程处理IO操作**
+```typescript
+// 创建Worker处理文件操作
+const worker = new worker.ThreadWorker('scripts/fileWorker.js')
+
+worker.onmessage = (message) => {
+  console.log('Worker result:', message.data)
+  worker.terminate()
+}
+
+worker.postMessage({ type: 'processFile', path: 'largefile.txt' })
+```
+
+### 3. **Sendable对象优化跨线程传递**
+```typescript
+// 实现Sendable接口减少序列化开销
+class ProcessData implements Sendable {
+  id: number = 0
+  values: number[] = []
+  
+  constructor(id: number, values: number[]) {
+    this.id = id
+    this.values = values
+  }
+}
+
+// 跨线程传递时效率更高
+const data = new ProcessData(1, [1, 2, 3, 4, 5])
+taskpool.execute(processFunction, [data])
+```
+
+## 七、工具与调试
+
+### 1. **性能分析工具**
+- **DevEco Profiler**：分析CPU、内存、帧率
+- **ArkUI Inspector**：检查布局层级
+- **HiDumper**：命令行查看内存详情
+- **SmartPerf**：整体性能评估
+
+```bash
+# 查看应用内存占用
+hdc shell "hidumper --mem <PID>"
+
+# 性能追踪
+hdc shell hitrace --trace_begin app
+# 执行操作...
+hdc shell hitrace --trace_dump
+```
+
+### 2. **代码检查工具**
+- **CodeLinter**：静态代码分析，检测性能隐患
+- **AppAnalyzer**：应用体检，发现性能瓶颈
+
+### 3. **性能监控代码**
+```typescript
+// 关键路径打点
+import { hiTraceMeter } from '@kit.PerformanceAnalysisKit'
+
+hiTraceMeter.startTrace('load_data')
+try {
+  await this.loadData()
+} finally {
+  hiTraceMeter.finishTrace()
+}
+
+// 函数耗时测量
+console.time('expensiveCalculation')
+this.performExpensiveCalculation()
+console.timeEnd('expensiveCalculation')
+```
+
+## 八、最佳实践总结
+
+### 1. **性能优化四板斧**
+- **第一板斧**：并行化、预加载与缓存<rsup>3</rsup>
+  - 使用 `TaskPool` 处理计算密集型任务
+  - 关键资源预加载，列表设置 `cachedCount`
+  - 合理使用内存缓存和持久化缓存
+
+- **第二板斧**：布局扁平化
+  - 嵌套层级 ≤ 8层
+  - 使用 `Grid`、`RelativeContainer` 替代复杂嵌套
+  - 移除无背景/无约束的冗余容器
+
+- **第三板斧**：状态变量精细管理
+  - 单个状态变量关联组件 ≤ 20个
+  - 大对象拆分为原子状态
+  - 循环内缓存状态到局部变量
+
+- **第四板斧**：系统接口高效使用
+  - 高频回调中禁用 `console.log`
+  - Release版本删除所有Trace
+  - 避免注册空回调监听
+
+### 2. **关键性能指标**
+- **冷启动时间**：≤ 800ms（理想值）
+- **帧率稳定性**：≥ 55fps
+- **内存峰值**：根据设备内存合理控制
+- **包体积**：尽可能压缩，首屏资源 ≤ 300KB
+
+### 3. **持续优化流程**
+```
+测量 → 定位 → 优化 → 验证
+    ↓
+建立性能基线
+    ↓
+CI/CD集成检查
+    ↓
+版本对比监控
+```
+
+### 4. **常见优化检查清单**
+- [ ] 是否使用 `LazyForEach` 处理长列表？
+- [ ] 布局嵌套是否超过8层？
+- [ ] 图片资源是否使用WebP格式？
+- [ ] 是否开启代码混淆和资源压缩？
+- [ ] 耗时操作是否移出主线程？
+- [ ] 内存泄漏是否定期检查？
+- [ ] 网络请求是否有缓存策略？
+- [ ] 数据库查询是否使用索引？
+- [ ] 是否实现 `onMemoryLevel` 响应？
+- [ ] 包体积是否在合理范围内？
+
+## 九、实战案例参考
+
+### 案例1：长列表优化（万级数据）
+```typescript
+@Entry
+@Component
+struct OptimizedList {
+  @State private data: Item[] = []
+  private dataSource: MyDataSource = new MyDataSource(this.data)
+  
+  build() {
+    List({ space: 10 }) {
+      LazyForEach(this.dataSource, (item: Item) => {
+        ListItem() {
+          OptimizedListItem({ item: item })
+        }
+      }, (item: Item) => item.id.toString())
+    }
+    .cachedCount(8) // 缓存8个屏幕外项
+    .onScrollIndex((start: number, end: number) => {
+      // 动态预加载
+      this.prefetchItems(start, end)
+    })
+  }
+}
+
+@Reusable
+@Component
+struct OptimizedListItem {
+  @Prop item: Item
+  
+  build() {
+    Row({ space: 8 }) {
+      Image(this.item.thumbnail)
+        .width(60)
+        .height(60)
+        .loadMode(ImageLoadMode.LAZY)
+      
+      Column({ space: 4 }) {
+        Text(this.item.title)
+          .fontSize(16)
+          .fontColor(Color.Black)
+        Text(this.item.description)
+          .fontSize(12)
+          .fontColor(Color.Gray)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }
+      .layoutWeight(1)
+    }
+    .padding(12)
+    .backgroundColor(Color.White)
+    .borderRadius(8)
+  }
+}
+```
+
+### 案例2：内存敏感型应用
+```typescript
+@Component
+struct MemorySensitiveApp {
+  @State private cache: LRUCache<string, any> = new LRUCache(50) // 最大50个条目
+  private weakRefs: Map<string, WeakRef<any>> = new Map()
+  
+  aboutToDisappear() {
+    // 清理资源
+    this.cache.clear()
+    this.weakRefs.clear()
+    this.releaseNativeResources()
+  }
+  
+  onMemoryLevel(level: AbilityConstant.MemoryLevel) {
+    switch (level) {
+      case AbilityConstant.MemoryLevel.MEMORY_LEVEL_MODERATE:
+        this.cache.shrinkTo(25) // 缩减缓存
+        break
+      case AbilityConstant.MemoryLevel.MEMORY_LEVEL_LOW:
+        this.cache.clear() // 清空缓存
+        this.releaseTemporaryResources()
+        break
+      case AbilityConstant.MemoryLevel.MEMORY_LEVEL_CRITICAL:
+        this.saveCriticalState() // 保存关键状态
+        this.releaseAllNonEssentialResources()
+        break
+    }
+  }
+  
+  // 使用对象池复用
+  private objectPool: Item[] = []
+  
+  private getItemFromPool(): Item {
+    return this.objectPool.pop() || new Item()
+  }
+  
+  private returnItemToPool(item: Item) {
+    item.reset() // 重置状态
+    this.objectPool.push(item)
+  }
+}
+```
+
+通过实施上述优化策略，可以显著提升鸿蒙应用的性能表现。建议在开发过程中持续使用性能分析工具监控应用状态，建立性能基线，并在每个版本发布前进行性能回归测试。<rsup>1</rsup><rsup>4</rsup>
+
+**记住优化黄金法则**：先测量后优化、优先解决瓶颈点、保持代码简洁、持续监控改进。
+
+
+
+
+
+鸿蒙 ArkUI：V1 与 V2 装饰器全面对比与迁移指南
+浏览22发布于2026-06-15 14:58北京
+鸿蒙 ArkUI：V1 与 V2 装饰器全面对比与迁移指南
+前言
+在鸿蒙 ArkTS 开发中，官方在 API 11 / HarmonyOS NEXT 阶段推出了全新的 V2 状态管理体系，对原有 V1 体系进行了系统性重构。两套体系在装饰器命名、响应式粒度、数据流方向等核心设计上均有显著变化。
+
+本文从实际项目出发，系统梳理 V1 和 V2 的差异、各装饰器的使用方法，以及迁移时的注意事项。
+
+一、为什么要有 V2？
+V1 体系存在以下痛点：
+
+响应式粒度粗：@State 标记整个对象，对象内任意属性变化都会触发整个组件重渲染，性能差
+数据流不透明：@Link 双向绑定容易形成"数据迷宫"，难以追踪变更来源
+嵌套对象不响应：@Observed + @ObjectLink 才能处理嵌套对象，使用繁琐
+跨组件通信受限：@Provide/@Consume 与 @StorageLink 的能力边界模糊
+V2 的目标是：精准响应、单向数据流、更清晰的组件契约。
+
+二、组件声明：@Component vs @ComponentV2
+V1 写法
+@Component
+struct MyCard {
+  @State count: number = 0
+
+  build() {
+    Text(`${this.count}`)
+      .onClick(() => this.count++)
+  }
+}
+V2 写法
+@ComponentV2
+struct MyCard {
+  @Local count: number = 0
+
+  build() {
+    Text(`${this.count}`)
+      .onClick(() => this.count++)
+  }
+}
+关键区别：
+
+@ComponentV2 是 V2 的入口，只能使用 V2 装饰器（@Local、@Param 等）
+@Component 只能使用 V1 装饰器（@State、@Prop 等）
+两套体系不可混用，同一个 struct 内不能混合 V1/V2 装饰器
+三、组件内部状态：@State vs @Local
+V1 — @State
+@Component
+struct Counter {
+  @State count: number = 0  // 整个变量被监听
+
+  build() {
+    Button(`count: ${this.count}`)
+      .onClick(() => this.count++)
+  }
+}
+V2 — @Local
+@ComponentV2
+struct Counter {
+  @Local count: number = 0  // 组件内部私有状态
+
+  build() {
+    Button(`count: ${this.count}`)
+      .onClick(() => this.count++)
+  }
+}
+差异对比：
+
+特性	@State（V1）	@Local（V2）
+是否可从外部传入	✅ 可以（但不推荐）	❌ 严格私有，不接受外部传入
+响应粒度	对象整体	对象整体（配合 @Trace 实现字段级）
+语义	组件状态	组件内部私有状态（更明确）
+四、父子传参：@Prop / @Link vs @Param / @Event
+这是 V1 到 V2 变化最大的地方。
+
+V1 — @Prop（单向）和 @Link（双向）
+// 父组件
+@Component
+struct Parent {
+  @State value: string = 'hello'
+
+  build() {
+    Column() {
+      // @Prop 单向传入，子组件修改不影响父
+      ChildA({ value: this.value })
+      // @Link 双向绑定，子组件修改同步到父
+      ChildB({ value: $this.value })
+    }
+  }
+}
+
+@Component
+struct ChildA {
+  @Prop value: string = ''  // 拷贝，修改不影响父
+  build() { Text(this.value) }
+}
+
+@Component
+struct ChildB {
+  @Link value: string  // 引用，修改直接影响父
+  build() {
+    Text(this.value)
+      .onClick(() => this.value = 'world')
+  }
+}
+V2 — @Param（只读传入）和 @Event（事件回调）
+V2 彻底移除了 @Link，统一为单向数据流 + 事件回调：
+
+// 父组件
+@ComponentV2
+struct Parent {
+  @Local value: string = 'hello'
+
+  build() {
+    Child({
+      value: this.value,
+      onValueChange: (newVal: string) => {
+        this.value = newVal  // 父组件自己决定是否更新
+      }
+    })
+  }
+}
+
+// 子组件
+@ComponentV2
+struct Child {
+  @Param value: string = ''          // 只读，不可直接修改
+  @Event onValueChange: (v: string) => void = () => {}  // 事件回调
+
+  build() {
+    Text(this.value)
+      .onClick(() => this.onValueChange('world'))  // 通过事件通知父组件
+  }
+}
+差异对比：
+
+特性	V1	V2
+父→子传值	@Prop（拷贝）	@Param（引用，只读）
+子→父通信	@Link（双向绑定）	@Event（单向事件）
+数据流方向	双向（@Link）	强制单向
+子组件能否直接修改父状态	✅ 能（@Link）	❌ 不能，必须通过 @Event
+@Param 使用要点：
+
+标注了 @Require 则调用方必须传入，否则编译报错
+子组件不得直接对 @Param 赋值，只能读取
+如需在子组件内修改，拷贝到 @Local 变量再操作
+五、可观察对象：@Observed vs @ObservedV2 + @Trace
+这是 V2 响应式最核心的改进：字段级精准响应。
+
+V1 — @Observed（对象级）
+@Observed
+class UserInfo {
+  name: string = ''
+  age: number = 0
+  // name 或 age 任一变化，引用此对象的组件全部重渲染
+}
+
+@Component
+struct UserCard {
+  @ObjectLink user: UserInfo
+
+  build() {
+    Column() {
+      Text(this.user.name)
+      Text(`${this.user.age}`)
+    }
+  }
+}
+V1 的问题：修改 user.age 会导致显示 name 的 Text 也重渲染，即使 name 没变。
+
+V2 — @ObservedV2 + @Trace（字段级）
+@ObservedV2
+class UserInfo {
+  @Trace name: string = ''   // 只有这个字段变化才触发相关组件更新
+  @Trace age: number = 0     // 独立追踪，互不影响
+  role: string = 'user'      // 未标 @Trace，变化不触发更新
+}
+
+@ComponentV2
+struct UserCard {
+  @Param user: UserInfo = new UserInfo()
+
+  build() {
+    Column() {
+      Text(this.user.name)      // 只在 name 变化时更新
+      Text(`${this.user.age}`)  // 只在 age 变化时更新
+    }
+  }
+}
+差异对比：
+
+特性	@Observed（V1）	@ObservedV2 + @Trace（V2）
+响应粒度	整个对象	单个字段（只有 @Trace 字段被追踪）
+使用复杂度	需配合 @ObjectLink	直接 @Param 传入即可
+嵌套对象	需每层都加 @Observed	嵌套类也加 @ObservedV2 + @Trace
+性能	粗粒度，容易过度渲染	细粒度，精准更新
+六、跨组件状态：@Provide/@Consume vs @Provider/@Consumer
+V1 — @Provide / @Consume
+@Component
+struct GrandParent {
+  @Provide('theme') theme: string = 'light'
+
+  build() { Parent() }
+}
+
+@Component
+struct Child {
+  @Consume('theme') theme: string  // 跨层级直接消费，可直接修改
+
+  build() {
+    Text(this.theme)
+      .onClick(() => this.theme = 'dark')  // 双向，影响所有使用者
+  }
+}
+V2 — @Provider / @Consumer
+@ComponentV2
+struct GrandParent {
+  @Provider() selectedIndex: number = 0  // 默认用变量名作 key
+
+  build() { Parent() }
+}
+
+@ComponentV2
+struct Child {
+  @Consumer() selectedIndex: number = 0  // 读写，变化同步到 Provider
+
+  build() {
+    Text(`${this.selectedIndex}`)
+      .onClick(() => this.selectedIndex = 1)
+  }
+}
+差异对比：
+
+特性	@Provide/@Consume（V1）	@Provider/@Consumer（V2）
+命名方式	字符串 key	默认变量名（可指定别名）
+修改方向	双向（Consume 可直接改）	双向（Consumer 可直接改）
+初始值	Consume 不设初始值	Consumer 必须设默认值（Provider 未找到时使用）
+七、监听变化：@Watch vs @Monitor
+V1 — @Watch
+@Component
+struct Page {
+  @State @Watch('onCountChange') count: number = 0
+
+  onCountChange() {
+    console.log('count 变了:', this.count)
+  }
+
+  build() { /* ... */ }
+}
+V2 — @Monitor
+@ComponentV2
+struct Page {
+  @Local count: number = 0
+  @Local name: string = ''
+
+  // 监听单个字段
+  @Monitor('count')
+  onCountChange(monitor: IMonitor) {
+    const prev = monitor.value()?.before  // 变化前的值
+    const curr = monitor.value()?.now     // 变化后的值
+    console.log(`count: ${prev} → ${curr}`)
+  }
+
+  // 同时监听多个字段
+  @Monitor('count', 'name')
+  onAnyChange(monitor: IMonitor) {
+    console.log('count 或 name 变化了')
+  }
+
+  build() { /* ... */ }
+}
+差异对比：
+
+特性	@Watch（V1）	@Monitor（V2）
+绑定方式	标注在被监听字段上	独立方法，参数指定监听目标
+获取变化前后值	❌ 不支持	✅ 通过 IMonitor 获取 before/now
+监听多个字段	需要多个 @Watch	一个 @Monitor 可指定多个字段名
+监听嵌套字段	❌ 不支持	✅ 支持路径（如 'user.name'）
+八、计算属性：getter vs @Computed
+V1 — 普通 getter
+@Component
+struct Page {
+  @State firstName: string = '张'
+  @State lastName: string = '三'
+
+  // 普通 getter，每次访问都重新计算
+  get fullName(): string {
+    return this.firstName + this.lastName
+  }
+
+  build() {
+    Text(this.fullName)
+  }
+}
+V2 — @Computed
+@ComponentV2
+struct Page {
+  @Local firstName: string = '张'
+  @Local lastName: string = '三'
+
+  // 自动缓存：只有依赖的字段变化时才重新计算
+  @Computed
+  get fullName(): string {
+    return this.firstName + this.lastName
+  }
+
+  build() {
+    Text(this.fullName)
+  }
+}
+@Computed 的优势： 结果被缓存，依赖未变化时直接返回缓存值，避免重复计算。这在渲染列表或复杂 UI 时性能收益明显。
+
+九、全局存储：AppStorage vs AppStorageV2
+V1 — AppStorage
+// 存入
+AppStorage.setOrCreate('userInfo', new UserInfo())
+
+// 组件中读取（双向绑定）
+@Component
+struct Page {
+  @StorageLink('userInfo') userInfo: UserInfo = new UserInfo()
+}
+V2 — AppStorageV2
+// 存入/获取（connect 模式，不存在则用工厂函数创建）
+const userInfo = AppStorageV2.connect(UserInfo, () => new UserInfo())!
+
+// 组件中读取
+@ComponentV2
+struct Page {
+  userInfo: UserInfo = AppStorageV2.connect(UserInfo, () => new UserInfo())!
+
+  build() {
+    // userInfo 是 @ObservedV2 类，@Trace 字段自动响应
+    Text(this.userInfo.nickname)
+  }
+}
+差异对比：
+
+特性	AppStorage（V1）	AppStorageV2（V2）
+Key 方式	字符串	类型本身（类名作 key）或自定义字符串
+响应式	@StorageLink 双向绑定	依赖 @ObservedV2 + @Trace 响应
+类型安全	弱类型（any）	强类型（泛型）
+十、完整对照表
+功能	V1 装饰器	V2 装饰器	说明
+声明组件	@Component	@ComponentV2	两套不可混用
+内部状态	@State	@Local	V2 严格私有
+父→子传值	@Prop	@Param	V2 为只读引用
+必传参数	—	@Require @Param	V2 可标注必传
+子→父通信	@Link	@Event	V2 强制单向
+双向绑定语法	$变量名	—	V2 不支持
+可观察类	@Observed	@ObservedV2	—
+字段追踪	@Track（可选）	@Trace（显式标注）	V2 只追踪 @Trace 字段
+嵌套引用	@ObjectLink	@Param	V2 更简洁
+跨层共享	@Provide/@Consume	@Provider/@Consumer	—
+监听变化	@Watch	@Monitor	V2 支持获取变化前后值
+计算属性	普通 getter	@Computed	V2 有缓存
+全局存储	AppStorage + @StorageLink	AppStorageV2.connect()	V2 类型更安全
+十一、迁移建议
+1. 新项目直接用 V2
+V2 是官方推荐的现代写法，新项目无需考虑 V1。
+
+2. 老项目渐进迁移
+V1 和 V2 组件可以在同一应用中共存（但不能在同一个 struct 内混用），可以按模块逐步替换。
+
+3. 迁移检查清单
+□ @Component        →  @ComponentV2
+□ @State            →  @Local（内部状态）
+□ @Prop             →  @Param（父传子，只读）
+□ @Link             →  删除，改为 @Param + @Event 组合
+□ @Observed         →  @ObservedV2
+□ @Track / 无标注   →  @Trace（显式标注需要追踪的字段）
+□ @ObjectLink       →  @Param（直接传 @ObservedV2 对象）
+□ @Provide/@Consume →  @Provider/@Consumer
+□ @Watch            →  @Monitor
+□ 普通 getter       →  @Computed
+□ AppStorage        →  AppStorageV2
+4. 常见踩坑
+踩坑一：@Param 不可赋值
+
+// ❌ 错误：直接修改 @Param
+@Param value: string = ''
+this.value = 'new'  // 运行时报错
+
+// ✅ 正确：通过 @Event 通知父组件修改
+@Event onChange: (v: string) => void = () => {}
+this.onChange('new')
+踩坑二：@ObservedV2 类中忘记加 @Trace
+
+@ObservedV2
+class Config {
+  theme: string = 'light'       // ❌ 没有 @Trace，修改不触发 UI 更新
+  @Trace language: string = 'zh'  // ✅ 有 @Trace，修改触发更新
+}
+踩坑三：V1/V2 组件混用
+
+@ComponentV2
+struct MyComp {
+  @State count: number = 0  // ❌ V2 组件内不能用 @State
+  @Local count: number = 0  // ✅ 正确
+}
+十二、总结
+V2 体系的核心设计理念是：明确的数据流方向 + 精准的响应粒度 + 清晰的组件契约。
+
+单向数据流：通过删除 @Link、强制使用 @Event，让数据流向一目了然
+精准响应：@ObservedV2 + @Trace 实现字段级响应，大幅减少不必要的重渲染
+类型安全：AppStorageV2、@Require @Param 等让组件接口更加明确
+如果你正在开发新的鸿蒙应用，建议直接采用 V2 体系；如果是维护老项目，也可以按模块逐步迁移，两套体系可以在应用层面共存。
+
+
+
+

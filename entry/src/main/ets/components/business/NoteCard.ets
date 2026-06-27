@@ -1,15 +1,22 @@
 import { Note } from '../../model/NoteModel';
-import { ThemeConfig } from '../../model/ThemeConfigModel';
+import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { formatRelativeTime } from '../../utils/DateUtils';
 import { ICON } from '../../utils/IconGlyphs';
 
 /**
- * Note card with solid background, color tag border, and shadow.
+ * Lightweight note card — border-left accent + subtle surface, no heavy blur frame.
+ *
+ * gridMode=false — list: title + 1-line preview + footer
+ * gridMode=true  — grid: title + footer only (ultra-compact)
+ *
+ * The accent color is implemented as a left border (not an inner Column with
+ * height:100%) to avoid any vertical-stretch side-effects in Scroll layouts.
  */
-@Component
+@ComponentV2
 export struct NoteCard {
-  @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop note: Note = {
+  @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
+  @Consumer('isTablet') isTabletCard: boolean = false;
+  @Param note: Note = {
     id: '',
     title: '',
     content: '',
@@ -19,78 +26,61 @@ export struct NoteCard {
     isPinned: false,
     categoryId: '未分类',
   };
-  @Prop gridMode: boolean = false;
-  onCardClick: () => void = () => {
+  @Param gridMode: boolean = false;
+  @Event onCardClick: () => void = () => {
   };
 
   build() {
     Column() {
-      // Title
       Text(this.note.title !== '' ? this.note.title : '无标题')
-        .fontSize((this.gridMode ? 14 : 17) * this.themeConfig.fontScale)
+        .fontSize((this.gridMode ? 12 : 14) * this.themeConfig.fontScale)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.themeConfig.textColor)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis });
 
-      // Content preview
-      if (this.note.content !== '') {
+      if (!this.gridMode && this.note.content !== '') {
         Text(this.note.content)
-          .fontSize((this.gridMode ? 12 : 14) * this.themeConfig.fontScale)
+          .fontSize(12 * this.themeConfig.fontScale)
           .fontColor(this.themeConfig.textSecondaryColor)
-          .maxLines(this.gridMode ? 1 : 2)
+          .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .margin({ top: this.gridMode ? 4 : 6 });
+          .margin({ top: 3 });
       }
 
-      // Footer
       Row() {
         Text(formatRelativeTime(this.note.updatedAt))
-          .fontSize((this.gridMode ? 11 : 12) * this.themeConfig.fontScale)
+          .fontSize(11 * this.themeConfig.fontScale)
           .fontColor(this.themeConfig.textSecondaryColor)
           .opacity(0.7);
 
         if (this.note.isPinned) {
-          Text(ICON.PIN)
-            .fontSize(12)
-            .fontColor(this.themeConfig.primaryColor)
-            .margin({ left: 8 });
+          SymbolGlyph(ICON.PIN)
+            .fontSize(10)
+            .fontColor([this.themeConfig.primaryColor])
+            .margin({ left: 4 });
         }
       }
-      .margin({ top: this.gridMode ? 6 : 10 });
+      .margin({ top: this.gridMode ? 2 : 4 });
     }
     .width('100%')
-    .padding(this.gridMode ? 12 : 16)
-    .borderRadius(this.themeConfig.borderRadius)
-    .backgroundColor(this.themeConfig.surfaceColor)
+    .padding({
+      left: 11,   // 3px border + 8px gap
+      right: 10,
+      top: this.gridMode ? 6 : 10,
+      bottom: this.gridMode ? 6 : 10
+    })
+    .borderRadius(8)
     .border({
-      width: { left: this.gridMode ? 3 : 4 },
+      width: { left: 3 },
       color: this.note.colorTag,
-      style: BorderStyle.Solid,
+      style: BorderStyle.Solid
     })
-    .borderWidth({
-      top: 1,
-      right: 1,
-      bottom: 1,
-    })
-    .borderColor({
-      top: this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.06)'
-        : 'rgba(0, 0, 0, 0.06)',
-      right: this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.06)'
-        : 'rgba(0, 0, 0, 0.06)',
-      bottom: this.themeConfig.isDarkMode
-        ? 'rgba(255, 255, 255, 0.06)'
-        : 'rgba(0, 0, 0, 0.06)',
-    })
-    .shadow({
-      radius: this.gridMode ? 4 : 6,
-      color: this.themeConfig.isDarkMode
-        ? 'rgba(0, 0, 0, 0.20)'
-        : 'rgba(0, 0, 0, 0.06)',
-      offsetY: 1,
-    })
+    .backgroundColor(
+      this.themeConfig.isDarkMode
+        ? 'rgba(255, 255, 255, 0.04)'
+        : 'rgba(0, 0, 0, 0.02)'
+    )
     .onClick(() => {
       this.onCardClick();
     });
