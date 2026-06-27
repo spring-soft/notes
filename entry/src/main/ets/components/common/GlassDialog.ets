@@ -107,7 +107,7 @@ export struct GlassDialog {
         })
         .hitTestBehavior(HitTestMode.None);
     }
-    .constraintSize({ maxWidth: 380 })
+    .constraintSize({ maxWidth: 380, maxHeight: 420 })
     .shadow({
       radius: 30,
       color: 'rgba(0, 0, 0, 0.35)',
