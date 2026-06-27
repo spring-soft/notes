@@ -26,14 +26,14 @@ export struct GlassButton {
         Image(this.icon)
           .width(20)
           .height(20)
-          .fillColor(this.type === 'primary' ? '#FFFFFF' : this.themeConfig.primaryColor)
+          .fillColor(this.themeConfig.primaryColor)
           .margin({ right: this.label !== '' ? 8 : 0 });
       }
       if (this.label !== '') {
         Text(this.label)
           .fontSize(16 * this.themeConfig.fontScale)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.type === 'primary' ? '#FFFFFF' : this.themeConfig.textColor);
+          .fontColor(this.type === 'primary' ? this.themeConfig.primaryColor : this.themeConfig.textColor);
       }
     }
     .justifyContent(FlexAlign.Center)

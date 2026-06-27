@@ -26,7 +26,7 @@ export struct PomodoroControls {
       Button() {
         SymbolGlyph(ICON.RESET)
           .fontSize(22)
-          .fontColor([this.themeConfig.textColor]);
+          .fontColor([this.themeConfig.primaryColor]);
       }
       .width(56)
       .height(56)
@@ -39,11 +39,11 @@ export struct PomodoroControls {
 
       Blank().width(24);
 
-      // Start / Pause button (larger, primary) — systemMaterial handles press
+      // Start / Pause button (larger, primary) — icon uses primaryColor for contrast
       Button() {
         SymbolGlyph(this.isRunning ? ICON.PAUSE_BARS : ICON.PLAY)
           .fontSize(28)
-          .fontColor(['#FFFFFF']);
+          .fontColor([this.themeConfig.primaryColor]);
       }
       .width(72)
       .height(72)
@@ -60,7 +60,7 @@ export struct PomodoroControls {
       Button() {
         SymbolGlyph(ICON.SKIP)
           .fontSize(22)
-          .fontColor([this.themeConfig.textColor]);
+          .fontColor([this.themeConfig.primaryColor]);
       }
       .width(56)
       .height(56)

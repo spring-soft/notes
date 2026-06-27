@@ -152,7 +152,7 @@ export struct NotesPage {
 
       // ── FAB ──
       Button() {
-        SymbolGlyph(ICON.PLUS).fontSize(28).fontColor(['#FFFFFF']);
+        SymbolGlyph(ICON.PLUS).fontSize(28).fontColor([this.themeConfig.primaryColor]);
       }
       .width(60).height(60).borderRadius(30)
       .backdropBlur(MaterialConstants.getBlur(MaterialConstants.FAB))

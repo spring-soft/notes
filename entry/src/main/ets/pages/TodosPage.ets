@@ -220,7 +220,7 @@ export struct TodosPage {
           Button() {
             SymbolGlyph(ICON.PLUS)
               .fontSize(28)
-              .fontColor(['#FFFFFF']);
+              .fontColor([this.themeConfig.primaryColor]);
           }
           .width(60)
           .height(60)
