@@ -7,6 +7,7 @@ import { TabItemConfig, getTabItems, NavDestinationNames } from '../constants/Ap
 import { ThemeBackground } from '../components/common/ThemeBackground';
 import { ICON } from '../utils/IconGlyphs';
 import { common } from '@kit.AbilityKit';
+import { HdsTabs, HdsTabsController, hdsMaterial } from '@kit.UIDesignKit';
 import { NotesPage } from './NotesPage';
 import { NoteDetailPage } from './NoteDetailPage';
 import { TodosPage } from './TodosPage';
@@ -53,6 +54,7 @@ struct Index {
   @State isInitialized: boolean = false;
   @State themeUpdateSignal: number = 0;
 
+  private tabsController: HdsTabsController = new HdsTabsController();
   private tabItems: TabItemConfig[] = getTabItems();
   // Per-tab NavPathStacks (shared by phone + tablet layouts)
   private tabNavStacks: NavPathStack[] = [
@@ -145,7 +147,7 @@ struct Index {
 
   @Builder
   phoneLayout() {
-    Tabs({ index: this.currentTabIndex }) {
+    HdsTabs({ controller: this.tabsController, index: this.currentTabIndex }) {
       // Tab 0 — Notes
       TabContent() {
         Navigation(this.tabNavStacks[0]) {
@@ -191,10 +193,11 @@ struct Index {
       }
       .tabBar(this.tabBarBuilder(this.tabItems[3], 3));
     }
+    .barOverlap(true)
     .barPosition(BarPosition.End)
     .barHeight(64)
+    .barBackgroundBlurStyle(BlurStyle.Thick)
     .scrollable(false)
-    .animationDuration(200)
     .onChange((index: number) => {
       this.tabNavStacks[this.currentTabIndex].clear();
       this.currentTabIndex = index;
