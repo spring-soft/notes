@@ -3,7 +3,7 @@
 ## Project
 - **Name**: MemoFlow — HarmonyOS NEXT memo app with liquid glass UI
 - **Path**: `E:\program\notes`
-- **Version**: 1.0.1
+- **Version**: 1.1.0
 - **Platform**: HarmonyOS NEXT 6.1.1 (SDK API 24), Stage model
 - **Language**: ArkTS strict mode (no `any`, no spread `...`, no indexed access `obj['key']`)
 - **Target**: phone + tablet (responsive breakpoints at 600/840 vp)
@@ -114,7 +114,7 @@ TodoAddSheet save:
 | `components/business/TodoAddSheet.ets` | Bottom sheet: custom category TextInput + preset chips + filtered user chips |
 | `components/business/TodoItem.ets` | Todo list item with description display |
 | `components/common/GlassDialog.ets` | CustomDialog — themeConfig via param (not @Consume) |
-| `constants/AppConstants.ets` | Version 1.0.1, route names, limits |
+| `constants/AppConstants.ets` | Version 1.1.0, route names, limits |
 | `model/NoteModel.ets` | Note interface + NOTE_CATEGORIES presets + NoteSortOrder enum |
 | `model/TodoModel.ets` | TodoItem, TodoCategory, PRESET_TODO_CATEGORIES, TodoPriority, TodoFilterType |
 
@@ -159,8 +159,8 @@ TodoAddSheet save:
 - Key icons: BACK=‹, MENU=☰, PLUS=+, DELETE=✕, NOTES=☷, TODOS=☑, POMODORO=◷, VOICE=🎤, SETTINGS=⚙, PAUSE_BARS=❚❚, EMPTY_NOTES=📝, CLOSE=✕, PIN=📌
 
 ## Version
-- `AppScope/app.json5`: versionCode=1000001, versionName="1.0.1"
-- `entry/oh-package.json5`: version="1.0.1"
-- `constants/AppConstants.ets`: APP_VERSION='1.0.1'
-- `pages/SettingsPage.ets`: displays "版本 1.0.1 · HarmonyOS NEXT"
+- `AppScope/app.json5`: versionCode=1000001, versionName="1.1.0"
+- `entry/oh-package.json5`: version="1.1.0"
+- `constants/AppConstants.ets`: APP_VERSION='1.1.0'
+- `pages/SettingsPage.ets`: displays "版本 1.1.0 · HarmonyOS NEXT"
 - App icon: `111.png` in `AppScope/resources/base/media/` and `entry/src/main/resources/base/media/`
