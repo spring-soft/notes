@@ -44,7 +44,6 @@ export class ICON {
   static readonly PLAY: Resource = $r('sys.symbol.play_fill');
   static readonly PAUSE: Resource = $r('sys.symbol.pause_fill');
   static readonly STOP: Resource = $r('sys.symbol.stop_circle');
-  static readonly PAUSE_BARS: Resource = $r('sys.symbol.pause_fill');
 
   // ── Timer ──
   static readonly START: Resource = $r('sys.symbol.play_fill');

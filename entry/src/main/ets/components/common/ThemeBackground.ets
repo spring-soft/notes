@@ -1,4 +1,5 @@
 import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
+import { lightenColor } from '../../utils/ColorUtils';
 
 /**
  * Full-screen adaptive background with depth.
@@ -48,7 +49,7 @@ export struct ThemeBackground {
             direction: GradientDirection.Bottom,
             colors: [
               [this.themeConfig.backgroundColor, 0.0],
-              [this.lighten(this.themeConfig.primaryColor, 0.6), 0.35],
+              [lightenColor(this.themeConfig.primaryColor, 0.6), 0.35],
               [this.themeConfig.backgroundColor, 0.7],
               [this.themeConfig.primaryColor + '18', 1.0],
             ],
@@ -81,15 +82,5 @@ export struct ThemeBackground {
     }
     .width('100%')
     .height('100%');
-  }
-
-  private lighten(hex: string, ratio: number): string {
-    const r: number = parseInt(hex.substring(1, 3), 16);
-    const g: number = parseInt(hex.substring(3, 5), 16);
-    const b: number = parseInt(hex.substring(5, 7), 16);
-    const nr: number = Math.min(255, Math.floor(r + (255 - r) * ratio));
-    const ng: number = Math.min(255, Math.floor(g + (255 - g) * ratio));
-    const nb: number = Math.min(255, Math.floor(b + (255 - b) * ratio));
-    return '#' + nr.toString(16).padStart(2, '0') + ng.toString(16).padStart(2, '0') + nb.toString(16).padStart(2, '0');
   }
 }

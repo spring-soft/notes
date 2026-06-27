@@ -41,7 +41,7 @@ export struct PomodoroControls {
 
       // Start / Pause button (larger, primary) — icon uses primaryColor for contrast
       Button() {
-        SymbolGlyph(this.isRunning ? ICON.PAUSE_BARS : ICON.PLAY)
+        SymbolGlyph(this.isRunning ? ICON.PAUSE : ICON.PLAY)
           .fontSize(28)
           .fontColor([this.themeConfig.primaryColor]);
       }

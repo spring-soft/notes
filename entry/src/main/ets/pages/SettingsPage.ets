@@ -50,11 +50,11 @@ export struct SettingsPage {
   }
 
   /**
-   * Save immediately on every slider change — no debounce.
-   * Debouncing with setTimeout was unsafe because Tabs destroys this
+   * Persists pomodoro config immediately on every slider change.
+   * No debounce: setTimeout is unsafe because Tabs destroys this
    * component on tab switch, causing the timer callback to be dropped.
    */
-  private schedulePomodoroSave(): void {
+  private persistPomodoroConfig(): void {
     const config: PomodoroConfig = {
       workDuration: this.workMinutes * 60,
       shortBreakDuration: this.shortBreakMinutes * 60,
@@ -308,7 +308,7 @@ export struct SettingsPage {
               step: 1,
               sliderType: SliderType.WORK_MINUTES,
               onSliderChanged: () => {
-                this.schedulePomodoroSave();
+                this.persistPomodoroConfig();
               },
             });
             SettingSliderComponent({
@@ -320,7 +320,7 @@ export struct SettingsPage {
               step: 1,
               sliderType: SliderType.SHORT_BREAK,
               onSliderChanged: () => {
-                this.schedulePomodoroSave();
+                this.persistPomodoroConfig();
               },
             });
             SettingSliderComponent({
@@ -332,7 +332,7 @@ export struct SettingsPage {
               step: 1,
               sliderType: SliderType.LONG_BREAK,
               onSliderChanged: () => {
-                this.schedulePomodoroSave();
+                this.persistPomodoroConfig();
               },
             });
             SettingSliderComponent({
@@ -344,7 +344,7 @@ export struct SettingsPage {
               step: 1,
               sliderType: SliderType.LONG_BREAK_INTERVAL,
               onSliderChanged: () => {
-                this.schedulePomodoroSave();
+                this.persistPomodoroConfig();
               },
             });
           }
