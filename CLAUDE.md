@@ -1,7 +1,7 @@
 # MemoFlow Project Context
 
 ## Project
-- **Name**: MemoFlow — HarmonyOS NEXT memo app with liquid glass UI
+- **Name**: MemoFlow — HarmonyOS NEXT memo app with solid surface UI
 - **Path**: `E:\program\notes`
 - **Version**: 1.1.0
 - **Platform**: HarmonyOS NEXT 6.1.1 (SDK API 24), Stage model
@@ -37,6 +37,7 @@ Index provides:
   @Provide('themeConfig') themeConfig: ThemeConfig
   @Provide('themeVM') themeVM: ThemeViewModel
   @Provide('navStack') currentNavStack: NavPathStack
+  @Provide('isTablet') isTablet: boolean
   @State themeUpdateSignal: number  ← forces re-render when theme changes
 ```
 - 29 components consume `@Consume('themeConfig')`
@@ -44,11 +45,13 @@ Index provides:
 - `@Provide` alone may not trigger re-render across Navigation boundaries → `themeUpdateSignal++` guarantees it
 - Theme change chain: slider → themeVM.update*() → saveTheme() → notifyThemeChange() → Index listener → @Provide update + themeUpdateSignal++
 
-### Settings page sliders (instant preview)
-- Glass containers use **local @State** (`blurRadius`, `borderRadiusValue`, `glassOpacity`) for instant visual feedback
-- `SettingSliderComponent` uses `@Component` + `@Link` (NOT @Builder — parameters are snapshots)
-- themeVM.update*() called simultaneously for persistence + other pages
-- Added `createGlassBg(opacity, isDark)` helper for dynamic glass background color
+### UI Style (v1.1.0 — solid surface, no glass effects)
+- All components use solid `surfaceColor` background (no semi-transparency)
+- No `backdropBlur()` anywhere — removed across entire app
+- No specular highlight Stack overlays — all flattened to single-layer components
+- `createGlassColor()` utility removed from ColorUtils
+- Glass effect sliders (opacity/blur) removed from SettingsPage
+- Glass components renamed but class names kept for compatibility
 
 ### Notes data flow
 ```
@@ -67,6 +70,14 @@ NoteDetailPage save/delete:
 - **Scroll+Column+ForEach** instead of List+ListItemGroup+ForEach — List+ListItem has a HarmonyOS rendering bug where only the first child renders.
 - **refreshSignal** (@State number) increments after loadNotes() completes to force UI rebuild.
 - NoteEditor uses `@Watch('syncInitialContent')` to display async-loaded content (DB load completes after component is already visible).
+
+### Tablet Notes layout (v1.1.0)
+- `@Provide('isTablet')` detected via `onAreaChange` breakpoint calculation
+- `@State viewMode: number` — 0=list, 1=grid (tablet only, toggled via header button)
+- List mode: Scroll+Column+ForEach, NoteCard `.width('100%').margin({ left: 20, right: 20, bottom: 12 })`
+- Grid mode: `getNotePairs()` splits notes into 2-column Row pairs, NoteCard `.layoutWeight(1)`
+- Grid NoteCard: compact (title 14fp, content 12fp maxLines 1, padding 12, border-left 3px, shadow 4)
+- ICON.VIEW_GRID='▦', ICON.VIEW_LIST='☰'
 
 ### Database
 - `DatabaseHelper` singleton → `relationalStore.RdbStore`
@@ -98,25 +109,30 @@ TodoAddSheet save:
 
 | File | Role |
 |------|------|
-| `pages/Index.ets` | Root, @Provide source, tab+nav layout, theme sync listener |
-| `pages/NotesPage.ets` | Notes list with search, sort filter, FAB, LazyForEach |
-| `pages/NoteDetailPage.ets` | Note create/edit NavDestination, save via navStack.pop() |
-| `pages/SettingsPage.ets` | Theme presets, glass sliders (local @State), pomodoro config |
+| `pages/Index.ets` | Root, @Provide source, tab+nav layout, theme sync, tablet detection |
+| `pages/NotesPage.ets` | Notes list with search, sort filter, FAB, tablet grid/list toggle |
+| `pages/NoteDetailPage.ets` | Note create/edit NavDestination, delete via GlassDialog with customStyle |
+| `pages/SettingsPage.ets` | Theme presets (8 colors), dark mode toggle, pomodoro config, background image |
+| `pages/TodosPage.ets` | Todos grouped list with filter tabs, add sheet, category manager |
+| `pages/PomodoroPage.ets` | Pomodoro timer with start/pause/reset, session stats |
 | `viewmodel/ThemeViewModel.ets` | @Observed, listener pattern, all update methods create new ThemeConfig |
 | `viewmodel/NotesViewModel.ets` | @Observed, CRUD, search, sort, filter |
 | `repository/DatabaseHelper.ets` | RDB singleton, getStore() throws if not initialized |
 | `repository/NoteRepository.ets` | Notes SQL CRUD |
 | `repository/SettingsRepository.ets` | Preferences read/write for theme + pomodoro |
-| `utils/IconGlyphs.ets` | ICON static class — 25+ Unicode icon chars |
+| `utils/IconGlyphs.ets` | ICON static class — 28+ Unicode icon chars (added EDIT, VIEW_GRID, VIEW_LIST) |
 | `utils/NavParams.ets` | Static noteId + needsNotesRefresh + triggerNotesRefresh callback |
+| `utils/ColorUtils.ets` | hexToRgba, lightenColor, darkenColor, isDarkColor (createGlassColor removed) |
+| `components/business/NoteCard.ets` | Solid card with color tag left border + shadow, gridMode compact variant |
 | `components/business/NoteEditor.ets` | TextArea with @Watch sync, borderRadius(0), isUserEditing guard |
-| `components/business/NoteCard.ets` | Liquid-glass note card with color tag border + specular highlight |
 | `components/business/TodoAddSheet.ets` | Bottom sheet: custom category TextInput + preset chips + filtered user chips |
 | `components/business/TodoItem.ets` | Todo list item with description display |
-| `components/common/GlassDialog.ets` | CustomDialog — themeConfig via param (not @Consume) |
+| `components/common/GlassDialog.ets` | CustomDialog — solid surface, customStyle:true, themeConfig via param |
+| `components/common/GlassContainer.ets` | Solid surface container (was liquid glass, now flat) |
+| `components/common/GlassCard.ets` | Solid card with accent stripe (was liquid glass, now flat) |
+| `components/common/GlassButton.ets` | Solid button with press animation (was glass, now flat) |
+| `components/common/SearchBar.ets` | Search input with solid surface background |
 | `constants/AppConstants.ets` | Version 1.1.0, route names, limits |
-| `model/NoteModel.ets` | Note interface + NOTE_CATEGORIES presets + NoteSortOrder enum |
-| `model/TodoModel.ets` | TodoItem, TodoCategory, PRESET_TODO_CATEGORIES, TodoPriority, TodoFilterType |
 
 ## Fixed Bugs (all verified with BUILD SUCCESSFUL)
 
@@ -144,6 +160,9 @@ TodoAddSheet save:
 18. **Database migration for category_id** — Added migrateDatabase() with ALTER TABLE ADD COLUMN for COL_NOTES_CATEGORY_ID on existing DB files. Added defensive getColumnIndex check in rowToNote().
 19. **DatabaseHelper concurrent init race** — EntryAbility (fire-and-forget) and Index (awaited) both call initialize() → added initPromise field for deduplication.
 20. **App icon** — Changed from $media:layered_image to $media:111.png in AppScope/app.json5 and module.json5.
+21. **Tablet UI layout — one card per screen** — List+ListItem+ForEach bug combined with GlassContainer causing cards to stretch full height → rewrote NotesPage with Scroll+Column+ForEach, removed GlassContainer wrapper, added tablet grid/list toggle, NoteCard gridMode compact variant.
+22. **GlassDialog tablet full-screen stretch** — @CustomDialog system container + Stack specular highlight .height('100%') caused dialog to fill screen on tablet → added customStyle:true, removed Stack+specular highlight, added explicit .width(340), constraintSize maxWidth/maxHeight, compact padding.
+23. **All liquid glass effects removed** — User disliked glass effects → removed backdropBlur() across all 16 files, removed createGlassColor(), removed all specular highlight Stack overlays, removed glass sliders (opacity/blur) from SettingsPage, flattened all multi-layer glass components to single-layer solid surface.
 
 ## ArkTS Strict Rules
 - No spread operator `...` → explicit property copy when creating new ThemeConfig
@@ -156,10 +175,10 @@ TodoAddSheet save:
 
 ## Icon System
 - `import { ICON } from '../utils/IconGlyphs'`
-- Key icons: BACK=‹, MENU=☰, PLUS=+, DELETE=✕, NOTES=☷, TODOS=☑, POMODORO=◷, VOICE=🎤, SETTINGS=⚙, PAUSE_BARS=❚❚, EMPTY_NOTES=📝, CLOSE=✕, PIN=📌
+- Key icons: BACK=‹, MENU=☰, PLUS=+, DELETE=✕, NOTES=☷, TODOS=☑, POMODORO=◷, VOICE=🎤, SETTINGS=⚙, PAUSE_BARS=❚❚, EMPTY_NOTES=☷, CLOSE=✕, PIN=📌, EDIT=✎, VIEW_GRID=▦, VIEW_LIST=☰
 
 ## Version
-- `AppScope/app.json5`: versionCode=1000001, versionName="1.1.0"
+- `AppScope/app.json5`: versionCode=1001000, versionName="1.1.0"
 - `entry/oh-package.json5`: version="1.1.0"
 - `constants/AppConstants.ets`: APP_VERSION='1.1.0'
 - `pages/SettingsPage.ets`: displays "版本 1.1.0 · HarmonyOS NEXT"
