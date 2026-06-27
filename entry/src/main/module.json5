@@ -15,28 +15,7 @@
       "name": "ohos.arkui.UIMaterial.state",
       "value": "enable"
     }],
-    "requestPermissions": [
-      {
-        "name": "ohos.permission.KEEP_BACKGROUND_RUNNING",
-        "reason": "$string:keep_background_running_reason",
-        "usedScene": {
-          "abilities": [
-            "EntryAbility"
-          ],
-          "when": "always"
-        }
-      },
-      {
-        "name": "ohos.permission.SYSTEM_FLOAT_WINDOW",
-        "reason": "$string:liveview_permission_reason",
-        "usedScene": {
-          "abilities": [
-            "EntryAbility"
-          ],
-          "when": "always"
-        }
-      }
-    ],
+    "requestPermissions": [],
     "abilities": [
       {
         "name": "EntryAbility",
@@ -47,9 +26,6 @@
         "startWindowIcon": "$media:111",
         "startWindowBackground": "$color:start_window_background",
         "exported": true,
-        "backgroundModes": [
-          "taskKeeping"
-        ],
         "skills": [
           {
             "entities": [

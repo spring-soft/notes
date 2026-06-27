@@ -29,14 +29,6 @@
       "value": "设置"
     },
     {
-      "name": "keep_background_running_reason",
-      "value": "用于在后台持续运行番茄钟计时"
-    },
-    {
-      "name": "liveview_permission_reason",
-      "value": "用于在灵动岛和锁屏显示番茄钟计时状态"
-    },
-    {
       "name": "app_name",
       "value": "MemoFlow"
     }
