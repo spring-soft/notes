@@ -13,36 +13,31 @@ const TAG: string = 'NotificationService';
  * Service for managing pomodoro timer notifications.
  *
  * The ongoing timer notification is updated every tick so the user can see
- * the countdown in the notification bar even when the app is in the background.
- * Tapping the notification returns the user to the app via a WantAgent.
+ * the countdown in the notification bar.  A WantAgent is attached to
+ * completion notifications only (timer notifications stay lightweight).
  */
 export class NotificationService {
   private context: common.Context;
   private timerNotificationActive: boolean = false;
-  private returnWantAgent: WantAgent | null = null;
 
   constructor(context: common.Context) {
     this.context = context;
   }
 
   /**
-   * Shows the ongoing timer notification with a WantAgent to return to the app.
+   * Shows the ongoing timer notification (no WantAgent — lightweight,
+   * always succeeds as long as the app has notification permission).
    */
   async showTimerNotification(
     sessionType: PomodoroSessionType,
     remainingSeconds: Seconds
   ): Promise<void> {
     try {
-      if (this.returnWantAgent === null) {
-        this.returnWantAgent = await this.createReturnWantAgent();
-      }
-
       const label: string = this.getSessionLabel(sessionType);
       const timeStr: string = this.formatRemainingTime(remainingSeconds);
 
       const request: notificationManager.NotificationRequest = {
         id: AppConstants.NOTIFICATION_TIMER_ID,
-        notificationSlotType: notificationManager.SlotType.SOCIAL_COMMUNICATION,
         content: {
           notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
           normal: {
@@ -51,21 +46,21 @@ export class NotificationService {
           },
         },
         isOngoing: true,
-        isUnremovable: false,
-        wantAgent: this.returnWantAgent ?? undefined,
+        isUnremovable: true,
       };
 
       await notificationManager.publish(request);
       this.timerNotificationActive = true;
+      hilog.info(DOMAIN, TAG, 'Timer notification published: %{public}s', timeStr);
     } catch (err) {
       const e: BusinessError = err as BusinessError;
-      hilog.error(DOMAIN, TAG, 'Failed to publish timer notification: %{public}s', e.message);
+      hilog.error(DOMAIN, TAG, 'Failed to publish timer notification: code=%{public}d msg=%{public}s',
+        e.code, e.message);
     }
   }
 
   /**
    * Updates the ongoing timer notification with the latest remaining time.
-   * Called on every timer tick to keep the notification bar countdown current.
    */
   async updateTimerNotification(
     sessionType: PomodoroSessionType,
@@ -81,7 +76,6 @@ export class NotificationService {
 
       const request: notificationManager.NotificationRequest = {
         id: AppConstants.NOTIFICATION_TIMER_ID,
-        notificationSlotType: notificationManager.SlotType.SOCIAL_COMMUNICATION,
         content: {
           notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
           normal: {
@@ -90,14 +84,14 @@ export class NotificationService {
           },
         },
         isOngoing: true,
-        isUnremovable: false,
-        wantAgent: this.returnWantAgent ?? undefined,
+        isUnremovable: true,
       };
 
       await notificationManager.publish(request);
     } catch (err) {
       const e: BusinessError = err as BusinessError;
-      hilog.error(DOMAIN, TAG, 'Failed to update timer notification: %{public}s', e.message);
+      hilog.error(DOMAIN, TAG, 'Failed to update timer notification: code=%{public}d msg=%{public}s',
+        e.code, e.message);
     }
   }
 
@@ -115,7 +109,7 @@ export class NotificationService {
   }
 
   /**
-   * Shows a session-complete notification.
+   * Shows a session-complete notification with WantAgent for tap-to-return.
    */
   async showSessionCompleteNotification(
     sessionType: PomodoroSessionType,
@@ -127,22 +121,29 @@ export class NotificationService {
       ? `已完成 ${completedCount} 个番茄钟，该休息一下了。`
       : '休息时间结束，准备开始新的专注吧！';
 
-    const request: notificationManager.NotificationRequest = {
-      id: AppConstants.NOTIFICATION_SESSION_COMPLETE_ID,
-      notificationSlotType: notificationManager.SlotType.SOCIAL_COMMUNICATION,
-      content: {
-        notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
-        normal: {
-          title: title,
-          text: text,
-        },
-      },
-      isOngoing: false,
-      isUnremovable: false,
-      wantAgent: this.returnWantAgent ?? undefined,
-    };
-
     try {
+      let agent: WantAgent | undefined = undefined;
+      try {
+        agent = await this.createReturnWantAgent();
+      } catch (e) {
+        // WantAgent is a nice-to-have; notification still works without it.
+        hilog.warn(DOMAIN, TAG, 'WantAgent creation failed, notification will lack tap-to-return');
+      }
+
+      const request: notificationManager.NotificationRequest = {
+        id: AppConstants.NOTIFICATION_SESSION_COMPLETE_ID,
+        content: {
+          notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
+          normal: {
+            title: title,
+            text: text,
+          },
+        },
+        isOngoing: false,
+        isUnremovable: false,
+        wantAgent: agent,
+      };
+
       await notificationManager.publish(request);
     } catch (err) {
       const e: BusinessError = err as BusinessError;
@@ -163,9 +164,6 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Creates a WantAgent that opens the app when the notification is tapped.
-   */
   private async createReturnWantAgent(): Promise<WantAgent> {
     const wantAgentInfo: wantAgent.WantAgentInfo = {
       wants: [
