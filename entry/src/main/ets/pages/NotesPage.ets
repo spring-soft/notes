@@ -116,10 +116,10 @@ export struct NotesPage {
                       onCardClick: () => { this.navigateToDetail(note.id); },
                     })
                     .layoutWeight(1)
-                    .margin({ left: _ni === 0 ? 20 : 4, right: _ni === 0 ? 4 : 20 });
+                    .margin({ left: _ni === 0 ? 16 : 4, right: _ni === 0 ? 4 : 16 });
                   }, (note: Note) => note.id + 'gc_' + String(note.updatedAt) + '_' + String(this.refreshSignal));
                   if (pair.length === 1) {
-                    Column().layoutWeight(1).margin({ left: 4, right: 20 });
+                    Column().layoutWeight(1).margin({ left: 4, right: 16 });
                   }
                 }
                 .width('100%').margin({ bottom: 12 });
@@ -139,7 +139,7 @@ export struct NotesPage {
                   onCardClick: () => { this.navigateToDetail(note.id); },
                 })
                 .width('100%')
-                .margin({ left: 20, right: 20, bottom: 12 });
+                .margin({ left: 16, right: 16, bottom: 10 });
               }, (note: Note) => note.id + '_' + String(note.updatedAt) + '_' + String(this.refreshSignal));
             }
             .width('100%');

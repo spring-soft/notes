@@ -28,17 +28,17 @@ export struct NoteCard {
     Row() {
       // Accent color stripe
       Column()
-        .width(this.gridMode ? 3 : 4)
+        .width(this.gridMode ? 2 : 3)
         .height('100%')
         .backgroundColor(this.note.colorTag)
         .borderRadius(2)
-        .margin({ right: this.gridMode ? 8 : 12 });
+        .margin({ right: this.gridMode ? 6 : 10 });
 
       // Content
       Column() {
         // Title
         Text(this.note.title !== '' ? this.note.title : '无标题')
-          .fontSize((this.gridMode ? 14 : 17) * this.themeConfig.fontScale)
+          .fontSize((this.gridMode ? 13 : 15) * this.themeConfig.fontScale)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.themeConfig.textColor)
           .maxLines(1)
@@ -47,11 +47,11 @@ export struct NoteCard {
         // Content preview
         if (this.note.content !== '') {
           Text(this.note.content)
-            .fontSize((this.gridMode ? 12 : 14) * this.themeConfig.fontScale)
+            .fontSize((this.gridMode ? 12 : 13) * this.themeConfig.fontScale)
             .fontColor(this.themeConfig.textSecondaryColor)
             .maxLines(this.gridMode ? 1 : 2)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .margin({ top: this.gridMode ? 4 : 6 });
+            .margin({ top: this.gridMode ? 3 : 4 });
         }
 
         // Footer
@@ -63,17 +63,17 @@ export struct NoteCard {
 
           if (this.note.isPinned) {
             SymbolGlyph(ICON.PIN)
-              .fontSize(12)
+              .fontSize(11)
               .fontColor([this.themeConfig.primaryColor])
-              .margin({ left: 8 });
+              .margin({ left: 6 });
           }
         }
-        .margin({ top: this.gridMode ? 6 : 10 });
+        .margin({ top: this.gridMode ? 4 : 8 });
       }
       .layoutWeight(1);
     }
     .width('100%')
-    .padding(this.gridMode ? 10 : 14)
+    .padding(this.gridMode ? 8 : 10)
     .borderRadius(this.themeConfig.borderRadius)
     .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CARD))
     .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CARD, this.themeConfig.isDarkMode))
