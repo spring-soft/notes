@@ -173,7 +173,9 @@ export struct PomodoroPage {
         : Color.Transparent
     )
     .onClick(() => {
-      if (!this.isTimerRunning()) {
+      // Only allow switching modes when the timer is completely IDLE.
+      // Running or paused sessions must be stopped/reset first.
+      if (this.displayState === PomodoroState.IDLE) {
         this.viewModel.setSessionType(type);
       }
     });

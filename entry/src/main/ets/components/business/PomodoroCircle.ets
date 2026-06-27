@@ -29,9 +29,17 @@ export struct PomodoroCircle {
 
   /**
    * Builds an SVG arc path from 12-o'clock clockwise to the progress angle.
-   * Returns path commands string usable by Path().commands().
+   *
+   * The first two "M" commands (M 0 0 M 280 280) are empty moves that anchor
+   * the Path viewport to exactly (0,0)–(280,280).  Without them ArkUI would
+   * auto-size the viewport to the arc's own bounding-box, causing the drawing
+   * to shift into the upper-left corner.
    */
   private arcCommands(): string {
+    if (this.progress <= 0) {
+      // Nothing to draw — return an empty path anchored to 280×280
+      return 'M 0 0 M 280 280';
+    }
     // Angles in radians: 0 = 3-o'clock, π/2 = 6-o'clock (y-down screen coords)
     // 12-o'clock = -π/2
     const startAngle: number = -Math.PI / 2;
@@ -45,7 +53,7 @@ export struct PomodoroCircle {
     // large-arc-flag: 1 when arc sweeps more than 180°
     const largeArc: number = this.progress > 0.5 ? 1 : 0;
 
-    return `M ${x1} ${y1} A ${this.r} ${this.r} 0 ${largeArc} 1 ${x2} ${y2}`;
+    return `M 0 0 M 280 280 M ${x1} ${y1} A ${this.r} ${this.r} 0 ${largeArc} 1 ${x2} ${y2}`;
   }
 
   build() {
