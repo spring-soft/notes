@@ -57,7 +57,7 @@ export class PomodoroViewModel {
   /**
    * Registers a direct callback that the page uses to update its @State fields.
    */
-  setTickHandler(handler: (remaining: Seconds, progress: number, state: PomodoroState) => void): void {
+  setTickHandler(handler: ((remaining: Seconds, progress: number, state: PomodoroState) => void) | null): void {
     this.tickHandler = handler;
   }
 
@@ -304,4 +304,27 @@ export class PomodoroViewModel {
   destroy(): void {
     this.timerService.destroy();
   }
+}
+
+// ── Module-level singleton ──────────────────────────────────────────────
+// PomodoroPage is destroyed/recreated on tab switch because HarmonyOS Tabs
+// tears down non-visible TabContent.  Storing the ViewModel at module level
+// keeps the timer alive when the user switches to Notes or Todos.
+let _instance: PomodoroViewModel | null = null;
+
+export function initPomodoroViewModel(
+  repository: PomodoroRepository,
+  settingsRepository: SettingsRepository
+): PomodoroViewModel {
+  if (_instance === null) {
+    _instance = new PomodoroViewModel(repository, settingsRepository);
+  }
+  return _instance;
+}
+
+export function getPomodoroViewModel(): PomodoroViewModel {
+  if (_instance === null) {
+    throw new Error('PomodoroViewModel not initialized — call initPomodoroViewModel first');
+  }
+  return _instance;
 }

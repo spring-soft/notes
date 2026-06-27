@@ -12,6 +12,8 @@ import { NoteDetailPage } from './NoteDetailPage';
 import { TodosPage } from './TodosPage';
 import { PomodoroPage } from './PomodoroPage';
 import { SettingsPage } from './SettingsPage';
+import { initPomodoroViewModel, PomodoroViewModel } from '../viewmodel/PomodoroViewModel';
+import { PomodoroRepository } from '../repository/PomodoroRepository';
 
 /**
  * Root navigation shell for the app.
@@ -68,6 +70,15 @@ struct Index {
     await DatabaseHelper.getInstance().initialize(appContext);
     await this.themeVM.loadTheme();
     this.themeConfig = this.themeVM.themeConfig;
+
+    // Initialize the module-level PomodoroViewModel singleton so the timer
+    // survives tab switches (Tabs destroys non-visible TabContent).
+    const pomodoroRepo: PomodoroRepository = new PomodoroRepository(DatabaseHelper.getInstance().getStore());
+    const settingsRepo: SettingsRepository = new SettingsRepository(appContext);
+    const pomodoroVM: PomodoroViewModel =
+      initPomodoroViewModel(pomodoroRepo, settingsRepo);
+    await pomodoroVM.initialize();
+
     // Sync @Provide('themeConfig') whenever themeVM changes
     // themeUpdateSignal forces Index + all children to re-render via @State
     this.themeVM.setThemeChangeListener((config: ThemeConfig) => {

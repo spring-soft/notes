@@ -1,10 +1,7 @@
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { ThemeConfig, ThemePreset } from '../model/ThemeConfigModel';
 import { PomodoroConfig } from '../model/PomodoroSessionModel';
-import { PomodoroViewModel } from '../viewmodel/PomodoroViewModel';
 import { SettingsRepository } from '../repository/SettingsRepository';
-import { DatabaseHelper } from '../repository/DatabaseHelper';
-import { PomodoroRepository } from '../repository/PomodoroRepository';
 import { common } from '@kit.AbilityKit';
 import { ColorPickerComponent } from '../components/business/ColorPicker';
 import { ImagePickerButton } from '../components/business/ImagePickerButton';
@@ -29,7 +26,6 @@ enum SliderType {
 export struct SettingsPage {
   @Consume('themeConfig') themeConfig: ThemeConfig;
   @Consume('themeVM') themeVM: ThemeViewModel;
-  @State pomodoroVM: PomodoroViewModel = this.createPomodoroVM();
   @State selectedPreset: ThemePreset = ThemePreset.OCEAN_BLUE;
   @State workMinutes: number = 25;
   @State shortBreakMinutes: number = 5;
@@ -59,29 +55,29 @@ export struct SettingsPage {
         longBreakDuration: this.longBreakMinutes * 60,
         longBreakInterval: this.longBreakInterval,
       };
-      this.pomodoroVM.persistConfig(config);
+      this.savePomodoroConfigToPreferences(config);
       this.pomodoroSaveTimer = -1;
     }, 400);
   }
 
-  private async loadSavedPomodoroConfig(): Promise<void> {
+  private createSettingsRepo(): SettingsRepository {
     const context: common.Context = this.getUIContext().getHostContext() as common.Context;
     const appContext: common.Context = context.getApplicationContext();
-    const repo: SettingsRepository = new SettingsRepository(appContext);
+    return new SettingsRepository(appContext);
+  }
+
+  private async savePomodoroConfigToPreferences(config: PomodoroConfig): Promise<void> {
+    const repo: SettingsRepository = this.createSettingsRepo();
+    await repo.savePomodoroConfig(config);
+  }
+
+  private async loadSavedPomodoroConfig(): Promise<void> {
+    const repo: SettingsRepository = this.createSettingsRepo();
     const saved: PomodoroConfig = await repo.loadPomodoroConfig();
     this.workMinutes = Math.floor(saved.workDuration / 60);
     this.shortBreakMinutes = Math.floor(saved.shortBreakDuration / 60);
     this.longBreakMinutes = Math.floor(saved.longBreakDuration / 60);
     this.longBreakInterval = saved.longBreakInterval;
-  }
-
-  private createPomodoroVM(): PomodoroViewModel {
-    const context: common.Context = this.getUIContext().getHostContext() as common.Context;
-    const appContext: common.Context = context.getApplicationContext();
-    return new PomodoroViewModel(
-      new PomodoroRepository(DatabaseHelper.getInstance().getStore()),
-      new SettingsRepository(appContext)
-    );
   }
 
   build() {

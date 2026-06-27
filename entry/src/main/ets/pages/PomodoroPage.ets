@@ -1,43 +1,46 @@
-import { PomodoroViewModel } from '../viewmodel/PomodoroViewModel';
+import { PomodoroViewModel, getPomodoroViewModel } from '../viewmodel/PomodoroViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { PomodoroSessionType, PomodoroState, PomodoroConfig } from '../model/PomodoroSessionModel';
 import { ThemeConfig } from '../model/ThemeConfigModel';
-import { PomodoroRepository } from '../repository/PomodoroRepository';
-import { SettingsRepository } from '../repository/SettingsRepository';
-import { DatabaseHelper } from '../repository/DatabaseHelper';
-import { common } from '@kit.AbilityKit';
 import { PomodoroCircle } from '../components/business/PomodoroCircle';
 import { PomodoroControls } from '../components/business/PomodoroControls';
 import { PomodoroSessionStats } from '../components/business/PomodoroSessionStats';
 
 /**
  * Pomodoro timer page with circular progress, controls, and session stats.
- * Timer state (@State) is updated directly by the setInterval tick callback
- * to reliably trigger ArkUI re-renders.
+ *
+ * The PomodoroViewModel is a module-level singleton (initialised by Index)
+ * so the timer survives tab switches — Tabs destroys non-visible TabContent.
  */
 @Component
 export struct PomodoroPage {
   @Consume('themeConfig') themeConfig: ThemeConfig;
-  @State viewModel: PomodoroViewModel = this.createViewModel();
   @State displayRemaining: number = 0;
   @State displayProgress: number = 0;
   @State displayState: PomodoroState = PomodoroState.IDLE;
   @State stateUpdateSignal: number = 0;
 
+  private viewModel: PomodoroViewModel = getPomodoroViewModel();
+
   aboutToAppear(): void {
+    // Sync display state from the singleton (may already be running).
+    this.displayRemaining = this.viewModel.remainingSeconds;
+    this.displayProgress = this.viewModel.progress;
+    this.displayState = this.viewModel.currentState;
+
     this.viewModel.setTickHandler((remaining: number, progress: number, state: PomodoroState) => {
       this.displayRemaining = remaining;
       this.displayProgress = progress;
       this.displayState = state;
       this.stateUpdateSignal++;
     });
-    this.viewModel.initialize().then(() => {
-      this.stateUpdateSignal++;
-    });
+    this.stateUpdateSignal++;
   }
 
   aboutToDisappear(): void {
-    this.viewModel.destroy();
+    // Only unregister the tick callback — the singleton ViewModel and its
+    // timer must stay alive so the countdown continues across tab switches.
+    this.viewModel.setTickHandler(null);
   }
 
   /**
@@ -52,15 +55,6 @@ export struct PomodoroPage {
     this.displayProgress = this.viewModel.progress;
     this.displayState = this.viewModel.currentState;
     this.stateUpdateSignal++;
-  }
-
-  private createViewModel(): PomodoroViewModel {
-    const context: common.Context = this.getUIContext().getHostContext() as common.Context;
-    const appContext: common.Context = context.getApplicationContext();
-    return new PomodoroViewModel(
-      new PomodoroRepository(DatabaseHelper.getInstance().getStore()),
-      new SettingsRepository(appContext)
-    );
   }
 
   build() {
