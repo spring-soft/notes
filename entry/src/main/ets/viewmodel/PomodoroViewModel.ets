@@ -312,6 +312,34 @@ export class PomodoroViewModel {
   }
 
   /**
+   * Reloads config from persistent storage without altering timer state.
+   * Useful when returning from Settings page where durations may have changed.
+   */
+  async reloadConfig(): Promise<void> {
+    const saved: PomodoroConfig = await this.settingsRepository.loadPomodoroConfig();
+    this.config = saved;
+    // If timer is idle, resync duration for current session type
+    if (this.currentState === PomodoroState.IDLE) {
+      switch (this.currentType) {
+        case PomodoroSessionType.WORK:
+          this.totalSeconds = this.config.workDuration;
+          break;
+        case PomodoroSessionType.SHORT_BREAK:
+          this.totalSeconds = this.config.shortBreakDuration;
+          break;
+        case PomodoroSessionType.LONG_BREAK:
+          this.totalSeconds = this.config.longBreakDuration;
+          break;
+      }
+      this.remainingSeconds = this.totalSeconds;
+      this.progress = 0;
+      if (this.tickHandler !== null) {
+        this.tickHandler(this.remainingSeconds, this.progress, this.currentState);
+      }
+    }
+  }
+
+  /**
    * Saves current pomodoro config.
    */
   async saveConfig(config: PomodoroConfig): Promise<void> {

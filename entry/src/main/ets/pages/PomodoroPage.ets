@@ -24,18 +24,34 @@ export struct PomodoroPage {
   @State displayRemaining: number = 0;
   @State displayProgress: number = 0;
   @State displayState: PomodoroState = PomodoroState.IDLE;
+  @State stateUpdateSignal: number = 0;
 
   aboutToAppear(): void {
     this.viewModel.setTickHandler((remaining: number, progress: number, state: PomodoroState) => {
       this.displayRemaining = remaining;
       this.displayProgress = progress;
       this.displayState = state;
+      this.stateUpdateSignal++;
     });
     this.viewModel.initialize();
   }
 
   aboutToDisappear(): void {
     this.viewModel.destroy();
+  }
+
+  /**
+   * Reloads pomodoro config from persistent storage.
+   * Called when the page becomes visible again (e.g. after switching back
+   * from Settings tab where durations may have been changed).
+   */
+  private async refreshConfig(): Promise<void> {
+    await this.viewModel.reloadConfig();
+    // Sync @State with reloaded values so session-type chips re-render
+    this.displayRemaining = this.viewModel.remainingSeconds;
+    this.displayProgress = this.viewModel.progress;
+    this.displayState = this.viewModel.currentState;
+    this.stateUpdateSignal++;
   }
 
   private createViewModel(): PomodoroViewModel {
@@ -52,6 +68,7 @@ export struct PomodoroPage {
   build() {
     NavDestination() {
       Column() {
+
         // Header
         Row() {
           Text('专注')
@@ -116,6 +133,9 @@ export struct PomodoroPage {
       .width('100%')
       .height('100%');
     }
+    .onShown(() => {
+      this.refreshConfig();
+    })
     .hideTitleBar(true)
     .backgroundColor(this.themeConfig.backgroundColor)
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);

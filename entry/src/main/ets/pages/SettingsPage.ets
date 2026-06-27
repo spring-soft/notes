@@ -42,6 +42,18 @@ export struct SettingsPage {
   aboutToAppear(): void {
     this.selectedPreset = this.themeVM.currentPreset;
     this.borderRadiusValue = this.themeConfig.borderRadius;
+    this.loadSavedPomodoroConfig();
+  }
+
+  private async loadSavedPomodoroConfig(): Promise<void> {
+    const context: common.Context = this.getUIContext().getHostContext() as common.Context;
+    const appContext: common.Context = context.getApplicationContext();
+    const repo: SettingsRepository = new SettingsRepository(appContext);
+    const saved: PomodoroConfig = await repo.loadPomodoroConfig();
+    this.workMinutes = Math.floor(saved.workDuration / 60);
+    this.shortBreakMinutes = Math.floor(saved.shortBreakDuration / 60);
+    this.longBreakMinutes = Math.floor(saved.longBreakDuration / 60);
+    this.longBreakInterval = saved.longBreakInterval;
   }
 
   private createPomodoroVM(): PomodoroViewModel {
