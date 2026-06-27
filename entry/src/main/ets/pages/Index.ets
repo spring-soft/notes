@@ -42,6 +42,7 @@ struct Index {
     this.getAppContext()
   );
   @Provide('navStack') currentNavStack: NavPathStack = new NavPathStack();
+  @Provide('isTablet') isTablet: boolean = false;
 
   @State currentTabIndex: number = 0;
   @State windowSize: WindowSize = { width: 0, height: 0, breakpoint: BreakpointType.SM };
@@ -113,11 +114,13 @@ struct Index {
       .onAreaChange((_oldArea: Area, newArea: Area) => {
         const widthVp: number = newArea.width as number;
         if (widthVp > 0) {
+          const bp: BreakpointType = calculateBreakpoint(widthVp);
           this.windowSize = {
             width: widthVp,
             height: newArea.height as number,
-            breakpoint: calculateBreakpoint(widthVp),
+            breakpoint: bp,
           };
+          this.isTablet = isTablet(bp);
         }
       });
     }
@@ -241,6 +244,8 @@ struct Index {
       .mode(NavigationMode.Stack)
       .hideTitleBar(true)
       .hideToolBar(true)
+      .width('100%')
+      .height('100%')
       .navDestination(this.notesDetailBuilder);
     } else if (this.currentTabIndex === 1) {
       Navigation(this.tabNavStacks[1]) {
@@ -248,21 +253,27 @@ struct Index {
       }
       .mode(NavigationMode.Stack)
       .hideTitleBar(true)
-      .hideToolBar(true);
+      .hideToolBar(true)
+      .width('100%')
+      .height('100%');
     } else if (this.currentTabIndex === 2) {
       Navigation(this.tabNavStacks[2]) {
         PomodoroPage();
       }
       .mode(NavigationMode.Stack)
       .hideTitleBar(true)
-      .hideToolBar(true);
+      .hideToolBar(true)
+      .width('100%')
+      .height('100%');
     } else if (this.currentTabIndex === 3) {
       Navigation(this.tabNavStacks[3]) {
         SettingsPage();
       }
       .mode(NavigationMode.Stack)
       .hideTitleBar(true)
-      .hideToolBar(true);
+      .hideToolBar(true)
+      .width('100%')
+      .height('100%');
     }
   }
 

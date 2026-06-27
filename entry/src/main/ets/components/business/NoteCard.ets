@@ -21,6 +21,7 @@ export struct NoteCard {
     isPinned: false,
     categoryId: '未分类',
   };
+  @Prop gridMode: boolean = false;
   onCardClick: () => void = () => {
   };
 
@@ -30,7 +31,7 @@ export struct NoteCard {
       Column() {
         // Title
         Text(this.note.title !== '' ? this.note.title : '无标题')
-          .fontSize(17 * this.themeConfig.fontScale)
+          .fontSize((this.gridMode ? 14 : 17) * this.themeConfig.fontScale)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.themeConfig.textColor)
           .maxLines(1)
@@ -39,17 +40,17 @@ export struct NoteCard {
         // Content preview
         if (this.note.content !== '') {
           Text(this.note.content)
-            .fontSize(14 * this.themeConfig.fontScale)
+            .fontSize((this.gridMode ? 12 : 14) * this.themeConfig.fontScale)
             .fontColor(this.themeConfig.textSecondaryColor)
-            .maxLines(2)
+            .maxLines(this.gridMode ? 1 : 2)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .margin({ top: 6 });
+            .margin({ top: this.gridMode ? 4 : 6 });
         }
 
         // Footer
         Row() {
           Text(formatRelativeTime(this.note.updatedAt))
-            .fontSize(12 * this.themeConfig.fontScale)
+            .fontSize((this.gridMode ? 11 : 12) * this.themeConfig.fontScale)
             .fontColor(this.themeConfig.textSecondaryColor)
             .opacity(0.7);
 
@@ -60,10 +61,10 @@ export struct NoteCard {
               .margin({ left: 8 });
           }
         }
-        .margin({ top: 10 });
+        .margin({ top: this.gridMode ? 6 : 10 });
       }
       .width('100%')
-      .padding(16)
+      .padding(this.gridMode ? 12 : 16)
       .borderRadius(this.themeConfig.borderRadius)
       .backgroundColor(
         createGlassColor(
@@ -74,7 +75,7 @@ export struct NoteCard {
       )
       .backdropBlur(this.themeConfig.glassBlurRadius)
       .border({
-        width: { left: 4 },
+        width: { left: this.gridMode ? 3 : 4 },
         color: this.note.colorTag,
         style: BorderStyle.Solid,
       })
@@ -111,9 +112,10 @@ export struct NoteCard {
         })
         .hitTestBehavior(HitTestMode.None);
     }
+    .width('100%')
     .borderRadius(this.themeConfig.borderRadius)
     .shadow({
-      radius: 6,
+      radius: this.gridMode ? 4 : 6,
       color: this.themeConfig.isDarkMode
         ? 'rgba(0, 0, 0, 0.30)'
         : 'rgba(0, 0, 0, 0.04)',
