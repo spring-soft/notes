@@ -52,7 +52,7 @@ export class LiveViewService {
     labels: LiveViewLabels,
     remainingMs: number,
     primaryColor: string
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (this.isActive) {
       await this.stopLiveView();
     }
@@ -61,7 +61,7 @@ export class LiveViewService {
     const enabled: boolean = await this.isEnabled();
     if (!enabled) {
       hilog.warn(DOMAIN, TAG, 'Live View is disabled on this device — skipping');
-      return;
+      return false;
     }
 
     try {
@@ -98,9 +98,11 @@ export class LiveViewService {
       this.currentConfig = config;
       hilog.info(DOMAIN, TAG, 'Live View started: %{public}s, %{public}d ms',
         labels.title, remainingMs);
+      return true;
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, 'Failed to start Live View: %{public}s', e.message);
+      return false;
     }
   }
 
@@ -111,10 +113,9 @@ export class LiveViewService {
     labels: LiveViewLabels,
     remainingMs: number,
     primaryColor: string
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (!this.isActive) {
-      await this.startLiveView(labels, remainingMs, primaryColor);
-      return;
+      return await this.startLiveView(labels, remainingMs, primaryColor);
     }
 
     try {
@@ -150,9 +151,11 @@ export class LiveViewService {
       this.currentConfig = config;
       hilog.info(DOMAIN, TAG, 'Live View updated: %{public}s, %{public}d ms',
         labels.title, remainingMs);
+      return true;
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, 'Failed to update Live View: %{public}s', e.message);
+      return false;
     }
   }
 
@@ -163,9 +166,9 @@ export class LiveViewService {
     labels: LiveViewLabels,
     remainingMs: number,
     primaryColor: string
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (!this.isActive || this.currentConfig === null) {
-      return;
+      return false;
     }
 
     try {
@@ -196,9 +199,11 @@ export class LiveViewService {
       await liveViewManager.updateLiveView(config);
       this.currentConfig = config;
       hilog.info(DOMAIN, TAG, 'Live View paused: %{public}s', labels.title);
+      return true;
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, 'Failed to pause Live View: %{public}s', e.message);
+      return false;
     }
   }
 
