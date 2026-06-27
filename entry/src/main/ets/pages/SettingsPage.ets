@@ -41,6 +41,22 @@ export struct SettingsPage {
     this.loadSavedPomodoroConfig();
   }
 
+  aboutToDisappear(): void {
+    // Force-save immediately — the debounced setTimeout may never fire
+    // if Tabs destroys this component before the timer elapses.
+    if (this.pomodoroSaveTimer !== -1) {
+      clearTimeout(this.pomodoroSaveTimer);
+      this.pomodoroSaveTimer = -1;
+    }
+    const config: PomodoroConfig = {
+      workDuration: this.workMinutes * 60,
+      shortBreakDuration: this.shortBreakMinutes * 60,
+      longBreakDuration: this.longBreakMinutes * 60,
+      longBreakInterval: this.longBreakInterval,
+    };
+    this.savePomodoroConfigToPreferences(config);
+  }
+
   /**
    * Debounced save — fires 400 ms after the last slider change so
    * every drag gesture results in exactly one Preferences flush.
