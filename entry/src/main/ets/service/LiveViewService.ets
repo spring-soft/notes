@@ -32,6 +32,20 @@ export class LiveViewService {
   private currentConfig: liveViewManager.LiveView | null = null;
 
   /**
+   * Checks whether Live View is enabled on the device.
+   * Should be called before attempting to create a live view.
+   */
+  async isEnabled(): Promise<boolean> {
+    try {
+      return await liveViewManager.isLiveViewEnabled();
+    } catch (err) {
+      const e: BusinessError = err as BusinessError;
+      hilog.warn(DOMAIN, TAG, 'isLiveViewEnabled failed: %{public}s', e.message);
+      return false;
+    }
+  }
+
+  /**
    * Starts a countdown Live View for a work or break session.
    */
   async startLiveView(
@@ -41,6 +55,13 @@ export class LiveViewService {
   ): Promise<void> {
     if (this.isActive) {
       await this.stopLiveView();
+    }
+
+    // Check if Live View is enabled first
+    const enabled: boolean = await this.isEnabled();
+    if (!enabled) {
+      hilog.warn(DOMAIN, TAG, 'Live View is disabled on this device — skipping');
+      return;
     }
 
     try {

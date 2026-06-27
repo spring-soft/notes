@@ -4,7 +4,6 @@ import { PomodoroRepository } from '../repository/PomodoroRepository';
 import { SettingsRepository } from '../repository/SettingsRepository';
 import { PomodoroTimerService } from '../service/PomodoroTimerService';
 import { NotificationService } from '../service/NotificationService';
-import { BackgroundTaskService } from '../service/BackgroundTaskService';
 import { LiveViewService, LiveViewLabels } from '../service/LiveViewService';
 import { generateId } from '../utils/IdGenerator';
 import { now, startOfToday, endOfToday } from '../utils/DateUtils';
@@ -35,7 +34,6 @@ export class PomodoroViewModel {
   private repository: PomodoroRepository;
   private settingsRepository: SettingsRepository;
   private notificationService: NotificationService;
-  private backgroundTaskService: BackgroundTaskService;
   private liveViewService: LiveViewService;
   private primaryColor: string = '#4A90D9';
 
@@ -43,13 +41,11 @@ export class PomodoroViewModel {
     repository: PomodoroRepository,
     settingsRepository: SettingsRepository,
     notificationService: NotificationService,
-    backgroundTaskService: BackgroundTaskService,
     liveViewService: LiveViewService
   ) {
     this.repository = repository;
     this.settingsRepository = settingsRepository;
     this.notificationService = notificationService;
-    this.backgroundTaskService = backgroundTaskService;
     this.liveViewService = liveViewService;
     this.timerService = new PomodoroTimerService();
     this.config = getDefaultPomodoroConfig();
@@ -151,8 +147,7 @@ export class PomodoroViewModel {
       }
       this.timerService.start();
 
-      // Keep process alive + show灵动岛 Live View
-      this.backgroundTaskService.requestContinuousTask();
+      // Show灵动岛 Live View (system grants background time automatically)
       const labels: LiveViewLabels = this.getLiveViewLabels();
       this.liveViewService.startLiveView(
         labels,
@@ -162,7 +157,7 @@ export class PomodoroViewModel {
     } else if (this.currentState === PomodoroState.PAUSED) {
       // Resume from pause
       this.timerService.resume();
-      this.backgroundTaskService.requestContinuousTask();
+      // Live View auto-grants background time — no separate task needed;
       if (this.currentType === PomodoroSessionType.WORK) {
         this.currentState = PomodoroState.WORKING;
       } else if (this.currentType === PomodoroSessionType.SHORT_BREAK) {
@@ -190,7 +185,7 @@ export class PomodoroViewModel {
     this.timerService.pause();
     this.currentState = PomodoroState.PAUSED;
     // Release background wakelock while paused.
-    this.backgroundTaskService.stopContinuousTask();
+    // Live View stopped above — background time released automatically;
     // Pause the Live View so the灵动岛 reflects the stopped countdown.
     const labels: LiveViewLabels = this.getLiveViewLabels();
     this.liveViewService.pauseLiveView(
@@ -211,7 +206,7 @@ export class PomodoroViewModel {
     this.remainingSeconds = this.totalSeconds;
     this.progress = 0;
     this.currentState = PomodoroState.IDLE;
-    this.backgroundTaskService.stopContinuousTask();
+    // Live View stopped above — background time released automatically;
     this.liveViewService.stopLiveView();
 
     if (this.currentSessionId !== '') {
@@ -226,7 +221,7 @@ export class PomodoroViewModel {
    * Skips to the next session.
    */
   skipToNext(): void {
-    this.backgroundTaskService.stopContinuousTask();
+    // Live View stopped above — background time released automatically;
     this.liveViewService.stopLiveView();
     if (this.currentType === PomodoroSessionType.WORK) {
       this.completedWorkCount++;
@@ -244,7 +239,7 @@ export class PomodoroViewModel {
   }
 
   private async onSessionComplete(): Promise<void> {
-    this.backgroundTaskService.stopContinuousTask();
+    // Live View stopped above — background time released automatically;
     this.liveViewService.stopLiveView();
 
     if (this.currentType === PomodoroSessionType.WORK) {
@@ -335,16 +330,13 @@ export class PomodoroViewModel {
    * Called when app goes to background.
    */
   async onBackground(): Promise<void> {
-    if (this.timerService.active) {
-      await this.backgroundTaskService.requestContinuousTask();
-    }
+    // Live View auto-manages background execution.
   }
 
   /**
    * Called when app returns to foreground.
    */
   async onForeground(): Promise<void> {
-    await this.backgroundTaskService.stopContinuousTask();
     await this.loadTodaySessions();
   }
 
@@ -387,7 +379,7 @@ export class PomodoroViewModel {
    */
   destroy(): void {
     this.timerService.destroy();
-    this.backgroundTaskService.stopContinuousTask();
+    // Live View stopped above — background time released automatically;
     this.liveViewService.stopLiveView();
   }
 

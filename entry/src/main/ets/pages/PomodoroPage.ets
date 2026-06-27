@@ -6,7 +6,6 @@ import { PomodoroRepository } from '../repository/PomodoroRepository';
 import { SettingsRepository } from '../repository/SettingsRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
 import { NotificationService } from '../service/NotificationService';
-import { BackgroundTaskService } from '../service/BackgroundTaskService';
 import { LiveViewService } from '../service/LiveViewService';
 import { common } from '@kit.AbilityKit';
 import { PomodoroCircle } from '../components/business/PomodoroCircle';
@@ -65,7 +64,6 @@ export struct PomodoroPage {
       new PomodoroRepository(DatabaseHelper.getInstance().getStore()),
       new SettingsRepository(appContext),
       new NotificationService(context),
-      new BackgroundTaskService(context),
       new LiveViewService()
     );
   }
