@@ -26,7 +26,7 @@ export default class EntryAbility extends UIAbility {
 
     // Configure full-screen immersive display (no white borders)
     configureFullScreen(windowStage);
-3217
+
     // Pre-initialize database in background so first page load is fast
     DatabaseHelper.getInstance().initialize(this.context.getApplicationContext());
 

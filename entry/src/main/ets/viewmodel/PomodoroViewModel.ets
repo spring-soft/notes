@@ -55,6 +55,11 @@ export class PomodoroViewModel {
       if (this.tickHandler !== null) {
         this.tickHandler(remaining, this.progress, this.currentState);
       }
+      // Keep the notification bar countdown current on every tick.
+      // Only work sessions show an ongoing notification.
+      if (this.currentType === PomodoroSessionType.WORK) {
+        this.notificationService.updateTimerNotification(this.currentType, remaining);
+      }
     });
 
     this.timerService.onComplete(() => {
@@ -139,6 +144,9 @@ export class PomodoroViewModel {
       }
       this.timerService.start();
 
+      // Keep the process alive when the app goes to background.
+      this.backgroundTaskService.requestContinuousTask();
+
       // Show notification if work session
       if (this.currentType === PomodoroSessionType.WORK) {
         this.notificationService.showTimerNotification(this.currentType, this.remainingSeconds);
@@ -146,12 +154,17 @@ export class PomodoroViewModel {
     } else if (this.currentState === PomodoroState.PAUSED) {
       // Resume from pause
       this.timerService.resume();
+      this.backgroundTaskService.requestContinuousTask();
       if (this.currentType === PomodoroSessionType.WORK) {
         this.currentState = PomodoroState.WORKING;
       } else if (this.currentType === PomodoroSessionType.SHORT_BREAK) {
         this.currentState = PomodoroState.SHORT_BREAK_RUNNING;
       } else {
         this.currentState = PomodoroState.LONG_BREAK_RUNNING;
+      }
+      // Re-show notification after resume
+      if (this.currentType === PomodoroSessionType.WORK) {
+        this.notificationService.showTimerNotification(this.currentType, this.remainingSeconds);
       }
     }
     if (this.tickHandler !== null) {
@@ -165,6 +178,9 @@ export class PomodoroViewModel {
   pauseTimer(): void {
     this.timerService.pause();
     this.currentState = PomodoroState.PAUSED;
+    // Release the background wakelock — no need to keep the process
+    // alive while the timer is paused.
+    this.backgroundTaskService.stopContinuousTask();
     if (this.tickHandler !== null) {
       this.tickHandler(this.remainingSeconds, this.progress, this.currentState);
     }
@@ -178,6 +194,7 @@ export class PomodoroViewModel {
     this.remainingSeconds = this.totalSeconds;
     this.progress = 0;
     this.currentState = PomodoroState.IDLE;
+    this.backgroundTaskService.stopContinuousTask();
     this.notificationService.cancelTimerNotification();
 
     // Mark current session as abandoned if exists
@@ -193,6 +210,7 @@ export class PomodoroViewModel {
    * Skips to the next session.
    */
   skipToNext(): void {
+    this.backgroundTaskService.stopContinuousTask();
     this.notificationService.cancelTimerNotification();
     if (this.currentType === PomodoroSessionType.WORK) {
       this.completedWorkCount++;
@@ -209,6 +227,7 @@ export class PomodoroViewModel {
     }
   }
   private async onSessionComplete(): Promise<void> {
+    this.backgroundTaskService.stopContinuousTask();
     this.notificationService.cancelTimerNotification();
 
     if (this.currentType === PomodoroSessionType.WORK) {
@@ -369,5 +388,7 @@ export class PomodoroViewModel {
    */
   destroy(): void {
     this.timerService.destroy();
+    this.backgroundTaskService.stopContinuousTask();
+    this.notificationService.cancelTimerNotification();
   }
 }

@@ -1,57 +1,71 @@
-import { common } from '@kit.AbilityKit';
+import { common, wantAgent, WantAgent } from '@kit.AbilityKit';
+import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
+import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 
 const DOMAIN: number = 0x0002;
 const TAG: string = 'BackgroundTaskService';
 
 /**
- * Service for managing background continuous tasks.
- * Used to keep the pomodoro timer running when the app is in the background.
+ * Service for managing continuous background tasks so the pomodoro timer
+ * keeps ticking when the app is minimised or the screen is off.
  *
- * TODO: Implement proper background task management using the correct
- * HarmonyOS NEXT API. The current implementation is a stub.
- * Use:
- *   import { wantAgent } from '@kit.AbilityKit';
- *   import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
+ * Uses backgroundTaskManager.startBackgroundRunning with DATA_TRANSFER mode,
+ * the standard approach on HarmonyOS NEXT for long-running timer-type work.
  */
 export class BackgroundTaskService {
   private isTaskRunning: boolean = false;
   private context: common.Context;
+  private cachedWantAgent: WantAgent | null = null;
 
   constructor(context: common.Context) {
     this.context = context;
   }
 
   /**
-   * Requests a continuous background task to keep the timer alive.
-   * TODO: Implement with correct backgroundTaskManager API.
+   * Requests a continuous background task to keep the process alive.
+   * Does nothing if a task is already active.
    */
   async requestContinuousTask(): Promise<void> {
     if (this.isTaskRunning) {
       return;
     }
 
-    // TODO: Implement background task request
-    // The proper approach requires:
-    // 1. Creating a WantAgent with wantAgent.getWantAgent()
-    // 2. Calling backgroundTaskManager.startContinuousTask()
-    // For now, mark the task as running so the timer logic works.
-    this.isTaskRunning = true;
-    hilog.info(DOMAIN, TAG, 'Continuous background task stub: marked as running');
+    try {
+      if (this.cachedWantAgent === null) {
+        this.cachedWantAgent = await this.createWantAgent();
+      }
+
+      await backgroundTaskManager.startBackgroundRunning(
+        this.context,
+        backgroundTaskManager.BackgroundMode.DATA_TRANSFER,
+        this.cachedWantAgent
+      );
+      this.isTaskRunning = true;
+      hilog.info(DOMAIN, TAG, 'Background task started');
+    } catch (err) {
+      const e: BusinessError = err as BusinessError;
+      hilog.error(DOMAIN, TAG, 'Failed to start background task: %{public}s', e.message);
+    }
   }
 
   /**
    * Stops the continuous background task.
-   * TODO: Implement with correct backgroundTaskManager API.
+   * Does nothing if no task is active.
    */
   async stopContinuousTask(): Promise<void> {
     if (!this.isTaskRunning) {
       return;
     }
 
-    // TODO: Implement proper stop via backgroundTaskManager.stopContinuousTask()
-    this.isTaskRunning = false;
-    hilog.info(DOMAIN, TAG, 'Continuous background task stub: marked as stopped');
+    try {
+      await backgroundTaskManager.stopBackgroundRunning(this.context);
+      this.isTaskRunning = false;
+      hilog.info(DOMAIN, TAG, 'Background task stopped');
+    } catch (err) {
+      const e: BusinessError = err as BusinessError;
+      hilog.error(DOMAIN, TAG, 'Failed to stop background task: %{public}s', e.message);
+    }
   }
 
   /**
@@ -59,5 +73,25 @@ export class BackgroundTaskService {
    */
   get isActive(): boolean {
     return this.isTaskRunning;
+  }
+
+  /**
+   * Creates a WantAgent that brings the user back to the app when they tap
+   * the ongoing notification.
+   */
+  private async createWantAgent(): Promise<WantAgent> {
+    const wantAgentInfo: wantAgent.WantAgentInfo = {
+      wants: [
+        {
+          bundleName: 'com.example.notes',
+          abilityName: 'EntryAbility',
+        },
+      ],
+      actionType: wantAgent.OperationType.START_ABILITY,
+      requestCode: 0,
+      actionFlags: [wantAgent.WantAgentFlags.UPDATE_PRESENT_FLAG],
+    };
+
+    return await wantAgent.getWantAgent(wantAgentInfo);
   }
 }

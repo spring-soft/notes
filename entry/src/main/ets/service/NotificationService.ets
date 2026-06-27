@@ -1,5 +1,5 @@
 import { notificationManager } from '@kit.NotificationKit';
-import { common, WantAgent } from '@kit.AbilityKit';
+import { common, wantAgent, WantAgent } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { Seconds } from '../model/AppConstantsModel';
@@ -10,49 +10,51 @@ const DOMAIN: number = 0x0002;
 const TAG: string = 'NotificationService';
 
 /**
- * Notification types supported by the app.
- */
-enum NotificationType {
-  TIMER = 0,
-  SESSION_COMPLETE = 1,
-}
-
-/**
- * Service for managing pomodoro timer notifications and completion alerts.
+ * Service for managing pomodoro timer notifications.
+ *
+ * The ongoing timer notification is updated every tick so the user can see
+ * the countdown in the notification bar even when the app is in the background.
+ * Tapping the notification returns the user to the app via a WantAgent.
  */
 export class NotificationService {
   private context: common.Context;
   private timerNotificationActive: boolean = false;
+  private returnWantAgent: WantAgent | null = null;
 
   constructor(context: common.Context) {
     this.context = context;
   }
 
   /**
-   * Shows or updates the ongoing timer notification.
+   * Shows the ongoing timer notification with a WantAgent to return to the app.
    */
   async showTimerNotification(
     sessionType: PomodoroSessionType,
     remainingSeconds: Seconds
   ): Promise<void> {
-    const label: string = this.getSessionLabel(sessionType);
-    const timeStr: string = this.formatRemainingTime(remainingSeconds);
-
-    const request: notificationManager.NotificationRequest = {
-      id: AppConstants.NOTIFICATION_TIMER_ID,
-      notificationSlotType: notificationManager.SlotType.SOCIAL_COMMUNICATION,
-      content: {
-        notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
-        normal: {
-          title: `MemoFlow · ${label}`,
-          text: `剩余 ${timeStr}`,
-        },
-      },
-      isOngoing: true,
-      isUnremovable: false,
-    };
-
     try {
+      if (this.returnWantAgent === null) {
+        this.returnWantAgent = await this.createReturnWantAgent();
+      }
+
+      const label: string = this.getSessionLabel(sessionType);
+      const timeStr: string = this.formatRemainingTime(remainingSeconds);
+
+      const request: notificationManager.NotificationRequest = {
+        id: AppConstants.NOTIFICATION_TIMER_ID,
+        notificationSlotType: notificationManager.SlotType.SOCIAL_COMMUNICATION,
+        content: {
+          notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
+          normal: {
+            title: `MemoFlow · ${label}`,
+            text: `剩余 ${timeStr}`,
+          },
+        },
+        isOngoing: true,
+        isUnremovable: false,
+        wantAgent: this.returnWantAgent ?? undefined,
+      };
+
       await notificationManager.publish(request);
       this.timerNotificationActive = true;
     } catch (err) {
@@ -62,30 +64,36 @@ export class NotificationService {
   }
 
   /**
-   * Updates the existing timer notification with new remaining time.
+   * Updates the ongoing timer notification with the latest remaining time.
+   * Called on every timer tick to keep the notification bar countdown current.
    */
-  async updateTimerNotification(remainingSeconds: Seconds): Promise<void> {
+  async updateTimerNotification(
+    sessionType: PomodoroSessionType,
+    remainingSeconds: Seconds
+  ): Promise<void> {
     if (!this.timerNotificationActive) {
       return;
     }
 
-    const timeStr: string = this.formatRemainingTime(remainingSeconds);
-
-    const request: notificationManager.NotificationRequest = {
-      id: AppConstants.NOTIFICATION_TIMER_ID,
-      notificationSlotType: notificationManager.SlotType.SOCIAL_COMMUNICATION,
-      content: {
-        notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
-        normal: {
-          title: 'MemoFlow · 专注中',
-          text: `剩余 ${timeStr}`,
-        },
-      },
-      isOngoing: true,
-      isUnremovable: false,
-    };
-
     try {
+      const label: string = this.getSessionLabel(sessionType);
+      const timeStr: string = this.formatRemainingTime(remainingSeconds);
+
+      const request: notificationManager.NotificationRequest = {
+        id: AppConstants.NOTIFICATION_TIMER_ID,
+        notificationSlotType: notificationManager.SlotType.SOCIAL_COMMUNICATION,
+        content: {
+          notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
+          normal: {
+            title: `MemoFlow · ${label}`,
+            text: `剩余 ${timeStr}`,
+          },
+        },
+        isOngoing: true,
+        isUnremovable: false,
+        wantAgent: this.returnWantAgent ?? undefined,
+      };
+
       await notificationManager.publish(request);
     } catch (err) {
       const e: BusinessError = err as BusinessError;
@@ -131,6 +139,7 @@ export class NotificationService {
       },
       isOngoing: false,
       isUnremovable: false,
+      wantAgent: this.returnWantAgent ?? undefined,
     };
 
     try {
@@ -154,6 +163,25 @@ export class NotificationService {
     }
   }
 
+  /**
+   * Creates a WantAgent that opens the app when the notification is tapped.
+   */
+  private async createReturnWantAgent(): Promise<WantAgent> {
+    const wantAgentInfo: wantAgent.WantAgentInfo = {
+      wants: [
+        {
+          bundleName: 'com.example.notes',
+          abilityName: 'EntryAbility',
+        },
+      ],
+      actionType: wantAgent.OperationType.START_ABILITY,
+      requestCode: 0,
+      actionFlags: [wantAgent.WantAgentFlags.UPDATE_PRESENT_FLAG],
+    };
+
+    return await wantAgent.getWantAgent(wantAgentInfo);
+  }
+
   private getSessionLabel(sessionType: PomodoroSessionType): string {
     switch (sessionType) {
       case PomodoroSessionType.WORK:
@@ -170,6 +198,6 @@ export class NotificationService {
   private formatRemainingTime(seconds: Seconds): string {
     const mins: number = Math.floor(Math.max(0, seconds) / 60);
     const secs: number = Math.floor(Math.max(0, seconds) % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   }
 }

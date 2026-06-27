@@ -27,6 +27,14 @@
     {
       "name": "tab_settings",
       "value": "设置"
+    },
+    {
+      "name": "keep_background_running_reason",
+      "value": "用于在后台持续运行番茄钟计时"
+    },
+    {
+      "name": "app_name",
+      "value": "MemoFlow"
     }
   ]
 }

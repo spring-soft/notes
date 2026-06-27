@@ -83,8 +83,8 @@ export struct SettingsPage {
     return new PomodoroViewModel(
       new PomodoroRepository(DatabaseHelper.getInstance().getStore()),
       new SettingsRepository(appContext),
-      new NotificationService(appContext),
-      new BackgroundTaskService(appContext)
+      new NotificationService(context),
+      new BackgroundTaskService(context)
     );
   }
 
