@@ -19,8 +19,7 @@ Index.ets (@Entry, @ComponentV2, @Provider source)
 │   ├── TabContent[0] → Navigation(navStack[0]) → NotesPage
 │   ├── TabContent[1] → Navigation(navStack[1]) → TodosPage
 │   ├── TabContent[2] → Navigation(navStack[2]) → PomodoroPage
-│   ├── TabContent[3] → Navigation(navStack[3]) → VoiceMemoPage
-│   └── TabContent[4] → Navigation(navStack[4]) → SettingsPage
+│   └── TabContent[3] → Navigation(navStack[3]) → SettingsPage
 └── Tablet: Row(sideNav 240vp + content area with per-section Navigation)
 ```
 
