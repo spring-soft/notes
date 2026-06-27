@@ -3,7 +3,7 @@
 ## Project
 - **Name**: MemoFlow — HarmonyOS NEXT memo app with immersive depth UI
 - **Path**: `E:\program\notes`
-- **Version**: 2.0.0
+- **Version**: 2.1.0
 - **Platform**: HarmonyOS NEXT 6.1.1 (SDK API 24), Stage model
 - **Language**: ArkTS strict mode (no `any`/`unknown`, no spread `...`, no indexed access `obj['key']`)
 - **State Management**: V2 (全局迁移完成 — `@ComponentV2`, `@Local`, `@Param`, `@Event`, `@Provider`, `@Consumer`, `@ObservedV2`, `@Trace`, `@Monitor`)
@@ -227,8 +227,8 @@ TodoAddSheet save:
 
 ## Version
 - **Bundle name**: `com.lychee.memosflow`
-- `AppScope/app.json5`: versionCode=1001000, versionName="1.1.0"
-- `entry/oh-package.json5`: version="1.1.0"
-- `constants/AppConstants.ets`: APP_VERSION='2.0.0'
-- `pages/SettingsPage.ets`: displays "版本 2.0.0 · HarmonyOS NEXT"
+- `AppScope/app.json5`: versionCode=1001001, versionName="2.1.0"
+- `entry/oh-package.json5`: version="2.1.0"
+- `constants/AppConstants.ets`: APP_VERSION='2.1.0'
+- `pages/SettingsPage.ets`: displays "版本 2.1.0 · HarmonyOS NEXT"
 - App icon: `111.png` in `AppScope/resources/base/media/` and `entry/src/main/resources/base/media/`
