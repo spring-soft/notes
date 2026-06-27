@@ -47,9 +47,9 @@ export struct ImagePickerButton {
           .alignItems(HorizontalAlign.Center)
           .margin({ right: 16 });
 
-        Text(ICON.IMAGE)
+        SymbolGlyph(ICON.IMAGE)
           .fontSize(28)
-          .fontColor(this.themeConfig.textSecondaryColor)
+          .fontColor([this.themeConfig.textSecondaryColor])
           .position({ x: 16, y: 16 });
       }
 

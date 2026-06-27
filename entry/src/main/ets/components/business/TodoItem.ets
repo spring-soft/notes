@@ -72,9 +72,9 @@ export struct TodoItemView {
               .fontColor(this.themeConfig.textSecondaryColor);
 
             if (this.todo.reminderTime > 0) {
-              Text(ICON.ALARM)
+              SymbolGlyph(ICON.ALARM)
                 .fontSize(12)
-                .fontColor(this.themeConfig.primaryColor)
+                .fontColor([this.themeConfig.primaryColor])
                 .margin({ left: 6 });
             }
           }

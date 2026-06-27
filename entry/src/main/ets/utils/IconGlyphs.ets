@@ -1,53 +1,62 @@
 /**
- * Application icon glyphs — clean, consistent Unicode symbols.
+ * Application icon library — HarmonyOS NEXT SymbolGlyph resources.
+ *
+ * All icons are now native SymbolGlyph system symbols instead of Unicode
+ * text characters.  This gives crisp vector rendering, automatic dark-mode
+ * adaptation, and multi-color layering support.
  *
  * Usage: import { ICON } from '../utils/IconGlyphs';
- *         Text(ICON.PLUS) ...
+ *         SymbolGlyph(ICON.PLUS).fontSize(28).fontColor([Color.White])
+ *
+ * Key difference from the old Text() approach: fontColor takes an ARRAY
+ * of ResourceColor, e.g. `.fontColor([this.themeConfig.primaryColor])`.
+ *
+ * Full sys.symbol reference: https://developer.huawei.com/consumer/cn/design/harmonyos-symbol/
  */
 export class ICON {
-  // Navigation / Actions
-  static readonly BACK: string = '‹';
-  static readonly MENU: string = '☰';
-  static readonly PLUS: string = '+';
-  static readonly CLOSE: string = '✕';
-  static readonly CHECK: string = '✓';
-  static readonly MORE: string = '⋯';
-  static readonly DELETE: string = '✕';
+  // ── Navigation / Actions ──
+  static readonly BACK: Resource = $r('sys.symbol.chevron_backward');
+  static readonly MENU: Resource = $r('sys.symbol.text_alignleft');
+  static readonly PLUS: Resource = $r('sys.symbol.plus');
+  static readonly CLOSE: Resource = $r('sys.symbol.xmark');
+  static readonly CHECK: Resource = $r('sys.symbol.checkmark');
+  static readonly MORE: Resource = $r('sys.symbol.ellipsis_bubble');
+  static readonly DELETE: Resource = $r('sys.symbol.trash');
 
-  // Tab bar
-  static readonly NOTES: string = '☷';
-  static readonly TODOS: string = '☑';
-  static readonly POMODORO: string = '◷';
-  static readonly SETTINGS: string = '⚙';
+  // ── Tab bar ──
+  static readonly NOTES: Resource = $r('sys.symbol.doc_text');
+  static readonly TODOS: Resource = $r('sys.symbol.list_bullet');
+  static readonly POMODORO: Resource = $r('sys.symbol.timer');
+  static readonly SETTINGS: Resource = $r('sys.symbol.gearshape');
 
-  // Note actions
-  static readonly COLOR: string = '⬤';
-  static readonly SEARCH: string = '🔍';
-  static readonly SORT: string = '⇅';
-  static readonly PIN: string = '📌';
+  // ── Note actions ──
+  static readonly COLOR: Resource = $r('sys.symbol.circle_fill');
+  static readonly SEARCH: Resource = $r('sys.symbol.magnifyingglass');
+  static readonly SORT: Resource = $r('sys.symbol.arrow_counterclockwise');
+  static readonly PIN: Resource = $r('sys.symbol.pin');
 
-  // Status / Empty states
-  static readonly EMPTY_NOTES: string = '☷';
-  static readonly EMPTY_TODOS: string = '☐';
-  static readonly EMPTY_GENERAL: string = '○';
+  // ── Status / Empty states ──
+  static readonly EMPTY_NOTES: Resource = $r('sys.symbol.doc_text');
+  static readonly EMPTY_TODOS: Resource = $r('sys.symbol.list_bullet');
+  static readonly EMPTY_GENERAL: Resource = $r('sys.symbol.circle');
 
-  // Media
-  static readonly PLAY: string = '▶';
-  static readonly PAUSE: string = '⏸';
-  static readonly STOP: string = '⏹';
-  static readonly PAUSE_BARS: string = '❚❚';
+  // ── Media ──
+  static readonly PLAY: Resource = $r('sys.symbol.play_fill');
+  static readonly PAUSE: Resource = $r('sys.symbol.pause_fill');
+  static readonly STOP: Resource = $r('sys.symbol.stop_circle');
+  static readonly PAUSE_BARS: Resource = $r('sys.symbol.pause_fill');
 
-  // Timer
-  static readonly START: string = '▶';
-  static readonly RESET: string = '↺';
-  static readonly SKIP: string = '⏭';
+  // ── Timer ──
+  static readonly START: Resource = $r('sys.symbol.play_fill');
+  static readonly RESET: Resource = $r('sys.symbol.arrow_counterclockwise');
+  static readonly SKIP: Resource = $r('sys.symbol.forward_end_fill');
 
-  // Misc
-  static readonly TRASH: string = '🗑';
-  static readonly ALARM: string = '⏰';
-  static readonly IMAGE: string = '🖼';
-  static readonly RECORDING: string = '🎙';
-  static readonly EDIT: string = '✎';
-  static readonly VIEW_GRID: string = '▦';
-  static readonly VIEW_LIST: string = '☰';
+  // ── Misc ──
+  static readonly TRASH: Resource = $r('sys.symbol.trash');
+  static readonly ALARM: Resource = $r('sys.symbol.alarm');
+  static readonly IMAGE: Resource = $r('sys.symbol.ohos_photo');
+  static readonly RECORDING: Resource = $r('sys.symbol.mic');
+  static readonly EDIT: Resource = $r('sys.symbol.square_and_pencil');
+  static readonly VIEW_GRID: Resource = $r('sys.symbol.square_grid_2x2');
+  static readonly VIEW_LIST: Resource = $r('sys.symbol.list_bullet');
 }

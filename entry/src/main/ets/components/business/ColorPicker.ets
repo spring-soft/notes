@@ -24,9 +24,9 @@ export struct ColorPickerComponent {
               .fill(color);
 
             if (color === this.selectedColor) {
-              Text(ICON.CHECK)
+              SymbolGlyph(ICON.CHECK)
                 .fontSize(20)
-                .fontColor(this.isDarkColor(color) ? '#FFFFFF' : '#000000');
+                .fontColor([this.isDarkColor(color) ? '#FFFFFF' : '#000000']);
             }
           }
           .onClick(() => {

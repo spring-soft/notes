@@ -306,13 +306,13 @@ struct Index {
   @Builder
   tabBarBuilder(tab: TabItemConfig, index: number) {
     Column() {
-      Text(this.getTabIcon(tab.id))
+      SymbolGlyph(this.getTabIcon(tab.id))
         .fontSize(24)
-        .fontColor(
+        .fontColor([
           this.currentTabIndex === index
             ? this.themeConfig.primaryColor
             : this.themeConfig.textSecondaryColor
-        );
+        ]);
       Text(tab.title)
         .fontSize(11)
         .fontColor(
@@ -330,13 +330,13 @@ struct Index {
   @Builder
   sideNavItem(tab: TabItemConfig, index: number) {
     Row() {
-      Text(this.getTabIcon(tab.id))
+      SymbolGlyph(this.getTabIcon(tab.id))
         .fontSize(22)
-        .fontColor(
+        .fontColor([
           this.currentTabIndex === index
             ? this.themeConfig.primaryColor
             : this.themeConfig.textSecondaryColor
-        )
+        ])
         .margin({ right: 12 });
 
       Text(tab.title)
@@ -371,7 +371,7 @@ struct Index {
   // Helpers
   // ═══════════════════════════════════════════════════════════════════
 
-  private getTabIcon(tabId: string): string {
+  private getTabIcon(tabId: string): Resource {
     if (tabId === 'notes') {
       return ICON.NOTES;
     } else if (tabId === 'todos') {
@@ -381,6 +381,6 @@ struct Index {
     } else if (tabId === 'settings') {
       return ICON.SETTINGS;
     }
-    return '';
+    return ICON.EMPTY_GENERAL;
   }
 }

@@ -56,9 +56,9 @@ export struct TodosPage {
 
             // Category manager toggle
             Button() {
-              Text(this.showCategoryManager ? ICON.CLOSE : ICON.MENU)
+              SymbolGlyph(this.showCategoryManager ? ICON.CLOSE : ICON.MENU)
                 .fontSize(16)
-                .fontColor(this.themeConfig.textSecondaryColor);
+                .fontColor([this.themeConfig.textSecondaryColor]);
             }
             .width(32)
             .height(32)
@@ -102,9 +102,9 @@ export struct TodosPage {
                           .fontColor(this.themeConfig.textColor);
 
                         Button() {
-                          Text(ICON.CLOSE)
+                          SymbolGlyph(ICON.CLOSE)
                             .fontSize(10)
-                            .fontColor(this.themeConfig.textSecondaryColor);
+                            .fontColor([this.themeConfig.textSecondaryColor]);
                         }
                         .width(18)
                         .height(18)
@@ -221,9 +221,9 @@ export struct TodosPage {
         // FAB
         Stack() {
           Button() {
-            Text(ICON.PLUS)
+            SymbolGlyph(ICON.PLUS)
               .fontSize(28)
-              .fontColor('#FFFFFF');
+              .fontColor(['#FFFFFF']);
           }
           .width(60)
           .height(60)

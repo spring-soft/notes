@@ -21,9 +21,9 @@ export struct SearchBar {
 
   build() {
     Row() {
-      Text(ICON.SEARCH)
+      SymbolGlyph(ICON.SEARCH)
         .fontSize(18)
-        .fontColor(this.themeConfig.textSecondaryColor)
+        .fontColor([this.themeConfig.textSecondaryColor])
         .margin({ right: 8 });
 
       TextInput({ text: this.query, placeholder: this.placeholder })
@@ -39,9 +39,9 @@ export struct SearchBar {
         });
 
       if (this.query !== '') {
-        Text(ICON.CLOSE)
+        SymbolGlyph(ICON.CLOSE)
           .fontSize(18)
-          .fontColor(this.themeConfig.textSecondaryColor)
+          .fontColor([this.themeConfig.textSecondaryColor])
           .margin({ left: 8 })
           .onClick(() => {
             this.query = '';

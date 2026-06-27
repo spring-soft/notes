@@ -53,8 +53,8 @@ export struct NotesPage {
           Blank();
           if (this.isTablet) {
             Button() {
-              Text(this.viewMode === 0 ? ICON.VIEW_GRID : ICON.VIEW_LIST)
-                .fontSize(22).fontColor(this.themeConfig.textColor);
+              SymbolGlyph(this.viewMode === 0 ? ICON.VIEW_GRID : ICON.VIEW_LIST)
+                .fontSize(22).fontColor([this.themeConfig.textColor]);
             }
             .width(40).height(40).borderRadius(20)
             .backgroundColor(this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')
@@ -62,7 +62,7 @@ export struct NotesPage {
             .onClick(() => { this.viewMode = this.viewMode === 0 ? 1 : 0; });
           }
           Button() {
-            Text(ICON.MENU).fontSize(22).fontColor(this.themeConfig.textColor);
+            SymbolGlyph(ICON.MENU).fontSize(22).fontColor([this.themeConfig.textColor]);
           }
           .width(40).height(40).borderRadius(20)
           .backgroundColor(this.themeConfig.isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')
@@ -147,7 +147,7 @@ export struct NotesPage {
 
       // ── FAB ──
       Button() {
-        Text(ICON.PLUS).fontSize(28).fontColor('#FFFFFF');
+        SymbolGlyph(ICON.PLUS).fontSize(28).fontColor(['#FFFFFF']);
       }
       .width(60).height(60).borderRadius(30)
       .backgroundColor(this.themeConfig.primaryColor)

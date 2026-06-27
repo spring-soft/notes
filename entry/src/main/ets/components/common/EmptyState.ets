@@ -4,26 +4,24 @@ import { ThemeConfig } from '../../model/ThemeConfigModel';
  * Empty state placeholder with icon and message.
  * Displayed when a list has no items.
  *
- * @param icon - Unicode icon character (text-based)
+ * @param icon - SymbolGlyph Resource (use ICON.EMPTY_*)
  * @param title - Main empty message
  * @param subtitle - Subtitle hint
  */
 @Component
 export struct EmptyState {
   @Consume('themeConfig') themeConfig: ThemeConfig;
-  @Prop icon: string = '';
+  @Prop icon: Resource = $r('sys.symbol.circle');
   @Prop title: string = '暂无内容';
   @Prop subtitle: string = '';
 
   build() {
     Column() {
-      if (this.icon !== '') {
-        Text(this.icon)
-          .fontSize(72)
-          .fontColor(this.themeConfig.textSecondaryColor)
-          .opacity(0.4)
-          .margin({ bottom: 16 });
-      }
+      SymbolGlyph(this.icon)
+        .fontSize(72)
+        .fontColor([this.themeConfig.textSecondaryColor])
+        .opacity(0.4)
+        .margin({ bottom: 16 });
 
       Text(this.title)
         .fontSize(18 * this.themeConfig.fontScale)

@@ -24,9 +24,9 @@ export struct PomodoroControls {
     Row() {
       // Reset button
       Button() {
-        Text(ICON.RESET)
+        SymbolGlyph(ICON.RESET)
           .fontSize(22)
-          .fontColor(this.themeConfig.textColor);
+          .fontColor([this.themeConfig.textColor]);
       }
       .width(56)
       .height(56)
@@ -46,9 +46,9 @@ export struct PomodoroControls {
       // Using @Prop isRunning + @Prop stateSignal (both from parent @State)
       // ensures ArkUI always re-evaluates on every state tick.
       Button() {
-        Text(this.isRunning ? ICON.PAUSE_BARS : ICON.PLAY)
+        SymbolGlyph(this.isRunning ? ICON.PAUSE_BARS : ICON.PLAY)
           .fontSize(28)
-          .fontColor('#FFFFFF')
+          .fontColor(['#FFFFFF'])
           .scale({ x: this.animScale, y: this.animScale })
           .animation({ duration: 200, curve: Curve.EaseInOut });
       }
@@ -76,9 +76,9 @@ export struct PomodoroControls {
 
       // Skip button
       Button() {
-        Text(ICON.SKIP)
+        SymbolGlyph(ICON.SKIP)
           .fontSize(22)
-          .fontColor(this.themeConfig.textColor);
+          .fontColor([this.themeConfig.textColor]);
       }
       .width(56)
       .height(56)

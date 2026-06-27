@@ -168,9 +168,9 @@ export struct NoteDetailPage {
         // Top bar
         Row() {
           Button() {
-            Text(ICON.BACK)
+            SymbolGlyph(ICON.BACK)
               .fontSize(28)
-              .fontColor(this.themeConfig.textColor);
+              .fontColor([this.themeConfig.textColor]);
           }
           .width(40)
           .height(40)
@@ -223,9 +223,9 @@ export struct NoteDetailPage {
           if (!this.isNew) {
             // Delete button
             Button() {
-              Text(ICON.DELETE)
+              SymbolGlyph(ICON.DELETE)
                 .fontSize(20)
-                .fontColor('#F44336');
+                .fontColor(['#F44336']);
             }
             .width(40)
             .height(40)

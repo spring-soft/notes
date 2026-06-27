@@ -51,9 +51,9 @@ export struct NoteCard {
           .opacity(0.7);
 
         if (this.note.isPinned) {
-          Text(ICON.PIN)
+          SymbolGlyph(ICON.PIN)
             .fontSize(12)
-            .fontColor(this.themeConfig.primaryColor)
+            .fontColor([this.themeConfig.primaryColor])
             .margin({ left: 8 });
         }
       }
