@@ -72,7 +72,7 @@ export struct NotesPage {
           .hitTestBehavior(HitTestMode.Block)
           .onClick(() => { this.showFilterMenu = !this.showFilterMenu; });
         }
-        .width('100%').padding({ left: 20, right: 20, top: 44, bottom: 8 })
+        .width('100%').padding({ left: 20, right: 20, top: 44, bottom: 4 })
         .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
         .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
@@ -85,7 +85,7 @@ export struct NotesPage {
             onClear: () => { this.viewModel.setSearchQuery(''); this.refreshSignal++; },
           });
         }
-        .width('100%').padding({ left: 20, right: 20, top: 12, bottom: 8 });
+        .width('100%').padding({ left: 20, right: 20, top: 6, bottom: 4 });
 
         // ── Filter chips ──
         if (this.showFilterMenu) {
@@ -104,8 +104,8 @@ export struct NotesPage {
           EmptyState({
             icon: ICON.EMPTY_NOTES, title: '还没有笔记', subtitle: '点击右下角按钮创建第一条笔记',
           });
-        } else if (this.isTablet) {
-          // ═══ Tablet: always 2 columns — list=full cards, grid=compact cards ═══
+        } else if (this.isTablet && this.viewMode === 1) {
+          // ═══ Tablet Grid: 2-column compact cards ═══
           Scroll() {
             Column() {
               ForEach(this.getNotePairs(), (pair: Note[], _pi: number) => {
@@ -113,25 +113,25 @@ export struct NotesPage {
                   ForEach(pair, (note: Note, _ni: number) => {
                     NoteCard({
                       note: note,
-                      gridMode: this.viewMode === 1,
+                      gridMode: true,
                       onCardClick: () => { this.navigateToDetail(note.id); },
                     })
                     .layoutWeight(1)
                     .margin({ left: _ni === 0 ? 10 : 4, right: _ni === 0 ? 4 : 10 });
-                  }, (note: Note) => note.id + 'gc_' + String(note.updatedAt) + '_' + String(this.refreshSignal));
+                  }, (note: Note) => note.id + '_g2_' + String(note.updatedAt) + '_' + String(this.refreshSignal));
                   if (pair.length === 1) {
                     Column().layoutWeight(1).margin({ left: 4, right: 10 });
                   }
                 }
                 .width('100%').margin({ bottom: 6 });
-              }, (pair: Note[]) => 'pair_' + pair[0].id + '_' + String(pair.length) + '_' + String(this.refreshSignal));
+              }, (pair: Note[]) => 'p2_' + pair[0].id + '_' + String(this.refreshSignal));
             }
             .width('100%');
           }
           .scrollable(ScrollDirection.Vertical).scrollBar(BarState.Off)
           .edgeEffect(EdgeEffect.Spring).width('100%').layoutWeight(1).padding({ top: 4 });
         } else {
-          // ═══ Phone: single column list ═══
+          // ═══ Phone + Tablet List: single-column ═══
           Scroll() {
             Column() {
               ForEach(this.viewModel.filteredNotes, (note: Note, _idx: number) => {
@@ -141,7 +141,7 @@ export struct NotesPage {
                 })
                 .width('100%')
                 .margin({ left: 10, right: 10, bottom: 6 });
-              }, (note: Note) => note.id + '_' + String(note.updatedAt) + '_' + String(this.refreshSignal));
+              }, (note: Note) => note.id + '_s1_' + String(note.updatedAt) + '_' + String(this.refreshSignal));
             }
             .width('100%');
           }
