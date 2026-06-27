@@ -1,0 +1,32 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "MemoFlow - 现代化备忘录应用，支持笔记、待办和番茄钟"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "MemoFlow 主页面"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "MemoFlow"
+    },
+    {
+      "name": "tab_notes",
+      "value": "笔记"
+    },
+    {
+      "name": "tab_todos",
+      "value": "待办"
+    },
+    {
+      "name": "tab_focus",
+      "value": "专注"
+    },
+    {
+      "name": "tab_settings",
+      "value": "设置"
+    }
+  ]
+}
