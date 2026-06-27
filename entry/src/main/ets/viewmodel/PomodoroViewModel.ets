@@ -155,7 +155,13 @@ export class PomodoroViewModel {
       }
       this.timerService.start();
 
-      // Try Live View first (灵动岛), fall back to notification.
+      // ALWAYS keep process alive + show notification for work sessions.
+      this.backgroundTaskService.requestContinuousTask();
+      if (this.currentType === PomodoroSessionType.WORK) {
+        this.notificationService.showTimerNotification(this.currentType, this.remainingSeconds);
+      }
+      // Try Live View as a bonus (灵动岛).  If it succeeds we stop updating
+      // the notification on every tick; if it fails the notification stays.
       const labels: LiveViewLabels = this.getLiveViewLabels();
       this.liveViewService.startLiveView(
         labels,
@@ -163,13 +169,6 @@ export class PomodoroViewModel {
         this.primaryColor
       ).then((ok: boolean) => {
         this.useLiveView = ok;
-        if (!ok) {
-          // Fallback: background task + ongoing notification
-          this.backgroundTaskService.requestContinuousTask();
-          if (this.currentType === PomodoroSessionType.WORK) {
-            this.notificationService.showTimerNotification(this.currentType, this.remainingSeconds);
-          }
-        }
       });
     } else if (this.currentState === PomodoroState.PAUSED) {
       // Resume from pause
@@ -181,19 +180,19 @@ export class PomodoroViewModel {
       } else {
         this.currentState = PomodoroState.LONG_BREAK_RUNNING;
       }
-      // Resume Live View or notification fallback
-      const labels: LiveViewLabels = this.getLiveViewLabels();
+      // Always re-acquire background task + re-show notification.
+      this.backgroundTaskService.requestContinuousTask();
+      if (this.currentType === PomodoroSessionType.WORK) {
+        this.notificationService.showTimerNotification(this.currentType, this.remainingSeconds);
+      }
+      // Also resume Live View if it was active.
       if (this.useLiveView) {
+        const labels: LiveViewLabels = this.getLiveViewLabels();
         this.liveViewService.updateLiveView(
           labels,
           this.remainingSeconds * 1000,
           this.primaryColor
         );
-      } else {
-        this.backgroundTaskService.requestContinuousTask();
-        if (this.currentType === PomodoroSessionType.WORK) {
-          this.notificationService.showTimerNotification(this.currentType, this.remainingSeconds);
-        }
       }
     }
     if (this.tickHandler !== null) {
@@ -207,6 +206,10 @@ export class PomodoroViewModel {
   pauseTimer(): void {
     this.timerService.pause();
     this.currentState = PomodoroState.PAUSED;
+    // Always release background task + cancel notification on pause.
+    this.backgroundTaskService.stopContinuousTask();
+    this.notificationService.cancelTimerNotification();
+    // Pause Live View if active.
     if (this.useLiveView) {
       const labels: LiveViewLabels = this.getLiveViewLabels();
       this.liveViewService.pauseLiveView(
@@ -214,8 +217,6 @@ export class PomodoroViewModel {
         this.remainingSeconds * 1000,
         this.primaryColor
       );
-    } else {
-      this.backgroundTaskService.stopContinuousTask();
     }
     if (this.tickHandler !== null) {
       this.tickHandler(this.remainingSeconds, this.progress, this.currentState);
@@ -230,12 +231,11 @@ export class PomodoroViewModel {
     this.remainingSeconds = this.totalSeconds;
     this.progress = 0;
     this.currentState = PomodoroState.IDLE;
+    this.backgroundTaskService.stopContinuousTask();
+    this.notificationService.cancelTimerNotification();
     if (this.useLiveView) {
       this.liveViewService.stopLiveView();
       this.useLiveView = false;
-    } else {
-      this.backgroundTaskService.stopContinuousTask();
-      this.notificationService.cancelTimerNotification();
     }
 
     if (this.currentSessionId !== '') {
