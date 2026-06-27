@@ -5,7 +5,8 @@
 - **Path**: `E:\program\notes`
 - **Version**: 2.0.0
 - **Platform**: HarmonyOS NEXT 6.1.1 (SDK API 24), Stage model
-- **Language**: ArkTS strict mode (no `any`, no spread `...`, no indexed access `obj['key']`)
+- **Language**: ArkTS strict mode (no `any`/`unknown`, no spread `...`, no indexed access `obj['key']`)
+- **State Management**: V2 (全局迁移完成 — `@ComponentV2`, `@Local`, `@Param`, `@Event`, `@Provider`, `@Consumer`, `@ObservedV2`, `@Trace`, `@Monitor`)
 - **Target**: phone + tablet (responsive breakpoints at 600/840 vp)
 - **Build**: DevEco Studio → `hvigorw assembleHap`
 
@@ -13,8 +14,8 @@
 
 ### Navigation (per-tab Navigation pattern)
 ```
-Index.ets (@Entry, @Provide source)
-├── Tabs (5 tabs, barPosition: End)
+Index.ets (@Entry, @ComponentV2, @Provider source)
+├── HdsTabs (4 tabs, barPosition: End, barOverlap)
 │   ├── TabContent[0] → Navigation(navStack[0]) → NotesPage
 │   ├── TabContent[1] → Navigation(navStack[1]) → TodosPage
 │   ├── TabContent[2] → Navigation(navStack[2]) → PomodoroPage
@@ -25,25 +26,26 @@ Index.ets (@Entry, @Provide source)
 
 ### Page routing
 - Only `Index.ets` is `@Entry` (in main_pages.json)
-- All sub-pages are `@Component struct` wrapped in `NavDestination(){}`
+- All sub-pages are `@ComponentV2 struct` wrapped in `NavDestination(){}`
 - Navigation uses `navDestination(builder)` — builder checks `name` param
 - `NavParams` static class for parameter passing (no indexed access)
 - `navStack.pushPathByName('note_detail', {})` — requires 2 args
 - `navStack.pop()` to go back
 
-### State management (@Provide/@Consume)
+### State management (@Provider/@Consumer V2)
 ```
 Index provides:
-  @Provide('themeConfig') themeConfig: ThemeConfig
-  @Provide('themeVM') themeVM: ThemeViewModel
-  @Provide('navStack') currentNavStack: NavPathStack
-  @Provide('isTablet') isTablet: boolean
-  @State themeUpdateSignal: number  ← forces re-render when theme changes
+  @Provider('themeConfig') themeConfig: ThemeConfig
+  @Provider('themeVM') themeVM: ThemeViewModel
+  @Provider('navStack') currentNavStack: NavPathStack
+  @Provider('isTablet') isTablet: boolean
+  @Local themeUpdateSignal: number  ← forces re-render when theme changes
 ```
-- 29 components consume `@Consume('themeConfig')`
-- `@BuilderParam` does NOT pass `@Provide` down (renders in caller's context)
-- `@Provide` alone may not trigger re-render across Navigation boundaries → `themeUpdateSignal++` guarantees it
-- Theme change chain: slider → themeVM.update*() → saveTheme() → notifyThemeChange() → Index listener → @Provide update + themeUpdateSignal++
+- 29 components consume `@Consumer('themeConfig')` (with `DEFAULT_THEME_CONFIG` default)
+- `@BuilderParam` does NOT pass `@Provider` down (renders in caller's context)
+- Theme change chain: slider → themeVM.update*() → saveTheme() → notifyThemeChange() → Index listener → @Provider update + themeUpdateSignal++
+- `@Event` required on all callback properties set by parent components
+- `@CustomDialog` (GlassDialog) remains unchanged — not part of V1/V2 state management
 
 ### UI Style (v2.0.0 — immersive depth via backdropBlur, no systemMaterial yet)
 - All components use layered `backdropBlur()` + semi-transparent backgrounds for depth
@@ -188,15 +190,27 @@ TodoAddSheet save:
 39. **Phase 4: 平板侧边栏材质化** — HdsSideBar 构造器 API 在 SDK 24 中与文档预期不符（sideBarPanelBuilder/contentPanelBuilder 不存在于构造器类型，.sideBar() 链式方法不存在），采用降级方案：保留自定义 Row(240vp sidebar + content) 布局，sidebar Column 升级为 backdropBlur(THICK 24px) + 半透明覆盖 + 保留边框分隔线。Index.ets 新增 MaterialConstants import。
 40. **Phase 5: 设置页沉浸光感控件** — 新增「沉浸光感」设置区：启用/禁用 Toggle → themeVM.updateImmersiveEnabled()；材质质量四选一 Chip（自适应/精致/柔和/流畅）→ themeVM.updateMaterialLevel()。版本号显示同步为 2.0.0。
 41. **包名修改** — `com.example.notes` → `com.lychee.memosflow`（AppScope/app.json5 bundleName）。
+42. **全局状态管理 V1 → V2 迁移**（31 文件）— 按操作规范要求替换所有 V1 装饰器：`@ComponentV2`/`@Local`/`@Param`/`@Event`/`@Provider`/`@Consumer`/`@ObservedV2`/`@Trace`/`@Monitor`。`$` 双向绑定改为 `@Param`+`@Event` 回调。`DEFAULT_THEME_CONFIG` 供 `@Consumer` 编译占位。回调属性必须加 `@Event` 否则编译失败。`@CustomDialog` 保持不动。
 
 ## ArkTS Strict Rules
 - No spread operator `...` → explicit property copy when creating new ThemeConfig
 - No indexed access `obj['key']` → use static NavParams class
-- No `any`, no untyped object literals
-- `@Builder` params are value snapshots → use `@Component` + `@Link` for reactive bindings
-- @CustomDialog renders in overlay → pass themeConfig as param, not @Consume
-- Field initializers run before @Consume resolves → use `aboutToAppear()` for dependent init
+- No `any`, no `unknown`, no untyped object literals
+- `@Builder` params are value snapshots → use `@ComponentV2` + `@Param` for reactive bindings
+- @CustomDialog renders in overlay → pass themeConfig as param, not @Consumer
+- Field initializers run before @Consumer resolves → use `aboutToAppear()` for dependent init
 - GradientDirection only: Top, Bottom, Left, Right (no diagonals)
+
+## V2 State Management Rules (enforced by compiler)
+- All components use `@ComponentV2` (NOT `@Component`)
+- `@Local` replaces `@State`; `@Param` replaces `@Prop`
+- `@Link` is REMOVED → use `@Param` + `@Event` pattern (parent passes value + callback)
+- `@Provider`/`@Consumer` replace `@Provide`/`@Consume` (@Consumer needs default value)
+- `@ObservedV2` + `@Trace` replace `@Observed` (@Trace on tracked properties)
+- `@Monitor('propName')` replaces `@Watch('methodName')` (decorates method, not property)
+- **Callback properties set by parents MUST have `@Event`** or compiler rejects them
+- `@Entry` and `@CustomDialog` stay as-is (not V1 state management)
+- `@Builder` and `@BuilderParam` unchanged
 
 ## Icon System
 - `import { ICON } from '../utils/IconGlyphs'`
