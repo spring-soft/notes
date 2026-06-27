@@ -27,92 +27,83 @@ export struct GlassDialog {
   };
 
   build() {
-    Stack() {
-      // ── Main dialog surface ──
-      Column() {
-        if (this.title !== '') {
-          Text(this.title)
-            .fontSize(20 * this.themeConfig.fontScale)
-            .fontWeight(FontWeight.Bold)
+    Column() {
+      if (this.title !== '') {
+        Text(this.title)
+          .fontSize(20 * this.themeConfig.fontScale)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.themeConfig.textColor)
+          .margin({ bottom: 10 });
+      }
+
+      if (this.message !== '') {
+        Text(this.message)
+          .fontSize(15 * this.themeConfig.fontScale)
+          .fontColor(this.themeConfig.textSecondaryColor)
+          .margin({ bottom: 18 });
+      }
+
+      Row() {
+        if (this.showCancel) {
+          Button(this.cancelLabel)
+            .fontSize(15 * this.themeConfig.fontScale)
             .fontColor(this.themeConfig.textColor)
-            .margin({ bottom: 10 });
-        }
-
-        if (this.message !== '') {
-          Text(this.message)
-            .fontSize(15 * this.themeConfig.fontScale)
-            .fontColor(this.themeConfig.textSecondaryColor)
-            .margin({ bottom: 18 });
-        }
-
-        Row() {
-          if (this.showCancel) {
-            Button(this.cancelLabel)
-              .fontSize(15 * this.themeConfig.fontScale)
-              .fontColor(this.themeConfig.textColor)
-              .backgroundColor('rgba(128, 128, 128, 0.12)')
-              .borderRadius(this.themeConfig.borderRadius)
-              .padding({ left: 18, right: 18, top: 9, bottom: 9 })
-              .onClick(() => {
-                this.onCancel();
-                this.controller.close();
-              });
-          }
-
-          if (this.showCancel) {
-            Blank().width(16);
-          }
-
-          Button(this.confirmLabel)
-            .fontSize(15 * this.themeConfig.fontScale)
-            .fontColor('#FFFFFF')
-            .backgroundColor(this.themeConfig.primaryColor)
+            .backgroundColor('rgba(128, 128, 128, 0.12)')
             .borderRadius(this.themeConfig.borderRadius)
-            .padding({ left: 22, right: 22, top: 9, bottom: 9 })
+            .padding({ left: 18, right: 18, top: 9, bottom: 9 })
             .onClick(() => {
-              this.onConfirm();
+              this.onCancel();
               this.controller.close();
             });
         }
-        .justifyContent(FlexAlign.Center)
-        .width('100%');
+
+        if (this.showCancel) {
+          Blank().width(16);
+        }
+
+        Button(this.confirmLabel)
+          .fontSize(15 * this.themeConfig.fontScale)
+          .fontColor('#FFFFFF')
+          .backgroundColor(this.themeConfig.primaryColor)
+          .borderRadius(this.themeConfig.borderRadius)
+          .padding({ left: 22, right: 22, top: 9, bottom: 9 })
+          .onClick(() => {
+            this.onConfirm();
+            this.controller.close();
+          });
       }
-      .width('100%')
-      .padding(20)
-      .borderRadius(this.themeConfig.borderRadius + 4)
-      .backgroundColor(
-        createGlassColor(
+      .justifyContent(FlexAlign.Center)
+      .width('100%');
+    }
+    .width(340)
+    .padding(20)
+    .borderRadius(this.themeConfig.borderRadius + 4)
+    // Combined glass background + specular highlight in one gradient
+    .linearGradient({
+      direction: GradientDirection.Top,
+      colors: [
+        [this.themeConfig.isDarkMode
+          ? 'rgba(255, 255, 255, 0.06)'
+          : 'rgba(255, 255, 255, 0.22)', 0.0],
+        [createGlassColor(
           this.themeConfig.surfaceColor,
           this.themeConfig.glassOpacity * 1.5,
           this.themeConfig.isDarkMode
-        )
-      )
-      .backdropBlur(this.themeConfig.glassBlurRadius * 2)
-      .borderWidth(1)
-      .borderColor(
-        this.themeConfig.isDarkMode
-          ? 'rgba(255, 255, 255, 0.12)'
-          : 'rgba(255, 255, 255, 0.35)'
-      );
-
-      // ── Specular highlight ──
-      Column()
-        .width('100%')
-        .height('100%')
-        .borderRadius(this.themeConfig.borderRadius + 4)
-        .linearGradient({
-          direction: GradientDirection.Top,
-          colors: [
-            [this.themeConfig.isDarkMode
-              ? 'rgba(255, 255, 255, 0.05)'
-              : 'rgba(255, 255, 255, 0.20)', 0.0],
-            ['rgba(255, 255, 255, 0.0)', 0.5],
-          ],
-        })
-        .hitTestBehavior(HitTestMode.None);
-    }
-    .width(340)
-    .borderRadius(this.themeConfig.borderRadius + 8)
+        ), 0.18],
+        [createGlassColor(
+          this.themeConfig.surfaceColor,
+          this.themeConfig.glassOpacity * 1.5,
+          this.themeConfig.isDarkMode
+        ), 1.0],
+      ],
+    })
+    .backdropBlur(this.themeConfig.glassBlurRadius * 2)
+    .borderWidth(1)
+    .borderColor(
+      this.themeConfig.isDarkMode
+        ? 'rgba(255, 255, 255, 0.12)'
+        : 'rgba(255, 255, 255, 0.35)'
+    )
     .constraintSize({ maxWidth: 380, maxHeight: 300 })
     .shadow({
       radius: 30,
