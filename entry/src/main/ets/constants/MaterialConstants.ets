@@ -46,12 +46,22 @@ export class MaterialConstants {
   static opacityMultiplier: number = 1.0;
 
   /**
-   * Applies the user's glassBlurRadius / glassOpacity preferences as
-   * global multipliers so every component picks them up automatically.
+   * Applies the user's glassBlurRadius / glassOpacity / immersiveEnabled
+   * preferences as global multipliers so every component picks them up
+   * automatically.
+   *
+   * When immersiveEnabled is false: blur = 0 (no frost), opacity ≈ 3×
+   * (surfaces become solid — flat design fallback).
    */
-  static applyUserPreferences(glassBlurRadius: number, glassOpacity: number): void {
-    MaterialConstants.blurMultiplier = glassBlurRadius / 20.0;
-    MaterialConstants.opacityMultiplier = glassOpacity / 0.5;
+  static applyUserPreferences(glassBlurRadius: number, glassOpacity: number, immersiveEnabled: boolean): void {
+    if (immersiveEnabled) {
+      MaterialConstants.blurMultiplier = glassBlurRadius / 20.0;
+      MaterialConstants.opacityMultiplier = glassOpacity / 0.5;
+    } else {
+      // Flat mode: no blur, solid surfaces
+      MaterialConstants.blurMultiplier = 0.0;
+      MaterialConstants.opacityMultiplier = 3.0; // 16%→48%, 32%→96% etc.
+    }
   }
 
   /**

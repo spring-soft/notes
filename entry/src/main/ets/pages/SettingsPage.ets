@@ -20,6 +20,7 @@ enum SliderType {
   LONG_BREAK_INTERVAL = 6,
   BLUR_RADIUS = 7,
   GLASS_OPACITY = 8,
+  IMAGE_OPACITY = 9,
 }
 
 /**
@@ -37,12 +38,14 @@ export struct SettingsPage {
   @Local borderRadiusValue: number = 16;
   @Local blurRadiusValue: number = 20;
   @Local glassOpacityValue: number = 50; // percentage, 0–100
+  @Local imageOpacityValue: number = 100; // percentage, 0–100
 
   aboutToAppear(): void {
     this.selectedPreset = this.themeVM.currentPreset;
     this.borderRadiusValue = this.themeConfig.borderRadius;
     this.blurRadiusValue = this.themeConfig.glassBlurRadius;
     this.glassOpacityValue = Math.round(this.themeConfig.glassOpacity * 100);
+    this.imageOpacityValue = Math.round(this.themeConfig.backgroundImageOpacity * 100);
     this.loadSavedPomodoroConfig();
   }
 
@@ -264,6 +267,28 @@ export struct SettingsPage {
                 this.themeVM.removeBackgroundImage();
               },
             });
+
+            if (this.themeConfig.backgroundImageUri !== '') {
+              Column()
+                .width('100%')
+                .height(1)
+                .backgroundColor(
+                  this.themeConfig.isDarkMode
+                    ? 'rgba(255,255,255,0.08)'
+                    : 'rgba(0,0,0,0.06)'
+                )
+                .margin({ top: 12, bottom: 12 });
+
+              SettingSliderComponent({
+                label: '图片透明度',
+                value: this.imageOpacityValue,
+                onValueChange: (val: number) => { this.imageOpacityValue = val; },
+                min: 10,
+                max: 100,
+                step: 5,
+                sliderType: SliderType.IMAGE_OPACITY,
+              });
+            }
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
@@ -419,6 +444,7 @@ export struct SettingsPage {
       this.borderRadiusValue = this.themeConfig.borderRadius;
       this.blurRadiusValue = this.themeConfig.glassBlurRadius;
       this.glassOpacityValue = Math.round(this.themeConfig.glassOpacity * 100);
+      this.imageOpacityValue = Math.round(this.themeConfig.backgroundImageOpacity * 100);
     });
   }
 
@@ -483,7 +509,8 @@ struct SettingSliderComponent {
   }
 
   private formatDisplay(): string {
-    if (this.sliderType === SliderType.GLASS_OPACITY) {
+    if (this.sliderType === SliderType.GLASS_OPACITY ||
+      this.sliderType === SliderType.IMAGE_OPACITY) {
       return String(Math.floor(this.value)) + '%';
     }
     return String(Math.floor(this.value));
@@ -496,6 +523,8 @@ struct SettingSliderComponent {
       this.themeVM.updateBlurRadius(newValue);
     } else if (this.sliderType === SliderType.GLASS_OPACITY) {
       this.themeVM.updateGlassOpacity(newValue / 100);
+    } else if (this.sliderType === SliderType.IMAGE_OPACITY) {
+      this.themeVM.updateBackgroundImageOpacity(newValue / 100);
     } else {
       // Pomodoro slider types: trigger immediate debounced save via callback
       this.onSliderChanged();

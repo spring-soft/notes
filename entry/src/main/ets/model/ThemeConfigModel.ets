@@ -17,6 +17,8 @@ export interface ThemeConfig {
   materialLevel: number;
   /** Master toggle for all immersive light effects */
   immersiveEnabled: boolean;
+  /** Opacity of the user-uploaded background image (0.0–1.0) */
+  backgroundImageOpacity: number;
 }
 
 export const DEFAULT_THEME_CONFIG: ThemeConfig = {
@@ -34,6 +36,7 @@ export const DEFAULT_THEME_CONFIG: ThemeConfig = {
   borderRadius: 16,
   materialLevel: 0,
   immersiveEnabled: true,
+  backgroundImageOpacity: 1.0,
 };
 
 export enum ThemePreset {

@@ -22,6 +22,7 @@ class ThemePresetMap {
     borderRadius: 16,
     materialLevel: 0,
     immersiveEnabled: true,
+    backgroundImageOpacity: 1.0,
   };
   SUNSET_ORANGE: ThemeConfig = {
     primaryColor: '#E8774A',
@@ -38,6 +39,7 @@ class ThemePresetMap {
     borderRadius: 16,
     materialLevel: 0,
     immersiveEnabled: true,
+    backgroundImageOpacity: 1.0,
   };
   FOREST_GREEN: ThemeConfig = {
     primaryColor: '#4CAF50',
@@ -54,6 +56,7 @@ class ThemePresetMap {
     borderRadius: 16,
     materialLevel: 0,
     immersiveEnabled: true,
+    backgroundImageOpacity: 1.0,
   };
   LAVENDER_PURPLE: ThemeConfig = {
     primaryColor: '#7C5CBF',
@@ -70,6 +73,7 @@ class ThemePresetMap {
     borderRadius: 16,
     materialLevel: 0,
     immersiveEnabled: true,
+    backgroundImageOpacity: 1.0,
   };
   CHERRY_PINK: ThemeConfig = {
     primaryColor: '#E91E63',
@@ -86,6 +90,7 @@ class ThemePresetMap {
     borderRadius: 16,
     materialLevel: 0,
     immersiveEnabled: true,
+    backgroundImageOpacity: 1.0,
   };
   MIDNIGHT_TEAL: ThemeConfig = {
     primaryColor: '#00897B',
@@ -102,6 +107,7 @@ class ThemePresetMap {
     borderRadius: 16,
     materialLevel: 0,
     immersiveEnabled: true,
+    backgroundImageOpacity: 1.0,
   };
   WARM_AMBER: ThemeConfig = {
     primaryColor: '#FFA000',
@@ -118,6 +124,7 @@ class ThemePresetMap {
     borderRadius: 16,
     materialLevel: 0,
     immersiveEnabled: true,
+    backgroundImageOpacity: 1.0,
   };
   SLATE_GRAY: ThemeConfig = {
     primaryColor: '#607D8B',
@@ -134,6 +141,7 @@ class ThemePresetMap {
     borderRadius: 16,
     materialLevel: 0,
     immersiveEnabled: true,
+    backgroundImageOpacity: 1.0,
   };
   CUSTOM: ThemeConfig = {
     primaryColor: '#4A90D9',
@@ -150,6 +158,7 @@ class ThemePresetMap {
     borderRadius: 16,
     materialLevel: 0,
     immersiveEnabled: true,
+    backgroundImageOpacity: 1.0,
   };
 }
 
@@ -195,6 +204,7 @@ export function getDarkThemeConfig(lightConfig: ThemeConfig): ThemeConfig {
     borderRadius: lightConfig.borderRadius,
     materialLevel: lightConfig.materialLevel,
     immersiveEnabled: lightConfig.immersiveEnabled,
+    backgroundImageOpacity: lightConfig.backgroundImageOpacity,
   };
   return darkConfig;
 }

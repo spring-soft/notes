@@ -55,7 +55,7 @@ export class ThemeViewModel {
     const savedPreset: ThemePreset = await this.settingsRepository.loadThemePreset();
     this.currentPreset = savedPreset;
     this.themeConfig = savedConfig;
-    MaterialConstants.applyUserPreferences(savedConfig.glassBlurRadius, savedConfig.glassOpacity);
+    MaterialConstants.applyUserPreferences(savedConfig.glassBlurRadius, savedConfig.glassOpacity, savedConfig.immersiveEnabled);
     this.notifySystemBar();
   }
 
@@ -77,6 +77,7 @@ export class ThemeViewModel {
       glassOpacity: config.glassOpacity,
       glassBlurRadius: config.glassBlurRadius,
       backgroundImageUri: this.themeConfig.backgroundImageUri,
+      backgroundImageOpacity: this.themeConfig.backgroundImageOpacity,
       isDarkMode: config.isDarkMode,
       accentColor: config.accentColor,
       fontScale: config.fontScale,
@@ -86,7 +87,7 @@ export class ThemeViewModel {
     };
     this.themeConfig = newConfig;
     this.currentPreset = preset;
-    MaterialConstants.applyUserPreferences(config.glassBlurRadius, config.glassOpacity);
+    MaterialConstants.applyUserPreferences(config.glassBlurRadius, config.glassOpacity, config.immersiveEnabled);
     this.saveTheme();
   }
 
@@ -109,6 +110,7 @@ export class ThemeViewModel {
       borderRadius: this.themeConfig.borderRadius,
       materialLevel: this.themeConfig.materialLevel,
       immersiveEnabled: this.themeConfig.immersiveEnabled,
+      backgroundImageOpacity: this.themeConfig.backgroundImageOpacity,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -119,7 +121,7 @@ export class ThemeViewModel {
    * Updates the glass opacity.
    */
   updateGlassOpacity(opacity: number): void {
-    MaterialConstants.applyUserPreferences(this.themeConfig.glassBlurRadius, opacity);
+    MaterialConstants.applyUserPreferences(this.themeConfig.glassBlurRadius, opacity, this.themeConfig.immersiveEnabled);
     const newConfig: ThemeConfig = {
       primaryColor: this.themeConfig.primaryColor,
       backgroundColor: this.themeConfig.backgroundColor,
@@ -135,6 +137,7 @@ export class ThemeViewModel {
       borderRadius: this.themeConfig.borderRadius,
       materialLevel: this.themeConfig.materialLevel,
       immersiveEnabled: this.themeConfig.immersiveEnabled,
+      backgroundImageOpacity: this.themeConfig.backgroundImageOpacity,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -145,7 +148,7 @@ export class ThemeViewModel {
    * Updates the glass blur radius.
    */
   updateBlurRadius(radius: number): void {
-    MaterialConstants.applyUserPreferences(radius, this.themeConfig.glassOpacity);
+    MaterialConstants.applyUserPreferences(radius, this.themeConfig.glassOpacity, this.themeConfig.immersiveEnabled);
     const newConfig: ThemeConfig = {
       primaryColor: this.themeConfig.primaryColor,
       backgroundColor: this.themeConfig.backgroundColor,
@@ -161,6 +164,7 @@ export class ThemeViewModel {
       borderRadius: this.themeConfig.borderRadius,
       materialLevel: this.themeConfig.materialLevel,
       immersiveEnabled: this.themeConfig.immersiveEnabled,
+      backgroundImageOpacity: this.themeConfig.backgroundImageOpacity,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -186,6 +190,7 @@ export class ThemeViewModel {
       borderRadius: radius,
       materialLevel: this.themeConfig.materialLevel,
       immersiveEnabled: this.themeConfig.immersiveEnabled,
+      backgroundImageOpacity: this.themeConfig.backgroundImageOpacity,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -211,6 +216,7 @@ export class ThemeViewModel {
       borderRadius: this.themeConfig.borderRadius,
       materialLevel: this.themeConfig.materialLevel,
       immersiveEnabled: this.themeConfig.immersiveEnabled,
+      backgroundImageOpacity: this.themeConfig.backgroundImageOpacity,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -236,6 +242,7 @@ export class ThemeViewModel {
       borderRadius: this.themeConfig.borderRadius,
       materialLevel: this.themeConfig.materialLevel,
       immersiveEnabled: this.themeConfig.immersiveEnabled,
+      backgroundImageOpacity: this.themeConfig.backgroundImageOpacity,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -255,6 +262,33 @@ export class ThemeViewModel {
       glassOpacity: this.themeConfig.glassOpacity,
       glassBlurRadius: this.themeConfig.glassBlurRadius,
       backgroundImageUri: '',
+      isDarkMode: this.themeConfig.isDarkMode,
+      accentColor: this.themeConfig.accentColor,
+      fontScale: this.themeConfig.fontScale,
+      borderRadius: this.themeConfig.borderRadius,
+      materialLevel: this.themeConfig.materialLevel,
+      immersiveEnabled: this.themeConfig.immersiveEnabled,
+      backgroundImageOpacity: this.themeConfig.backgroundImageOpacity,
+    };
+    this.themeConfig = newConfig;
+    this.currentPreset = ThemePreset.CUSTOM;
+    this.saveTheme();
+  }
+
+  /**
+   * Updates the opacity of the user-uploaded background image.
+   */
+  updateBackgroundImageOpacity(opacity: number): void {
+    const newConfig: ThemeConfig = {
+      primaryColor: this.themeConfig.primaryColor,
+      backgroundColor: this.themeConfig.backgroundColor,
+      surfaceColor: this.themeConfig.surfaceColor,
+      textColor: this.themeConfig.textColor,
+      textSecondaryColor: this.themeConfig.textSecondaryColor,
+      glassOpacity: this.themeConfig.glassOpacity,
+      glassBlurRadius: this.themeConfig.glassBlurRadius,
+      backgroundImageUri: this.themeConfig.backgroundImageUri,
+      backgroundImageOpacity: opacity,
       isDarkMode: this.themeConfig.isDarkMode,
       accentColor: this.themeConfig.accentColor,
       fontScale: this.themeConfig.fontScale,
@@ -286,6 +320,7 @@ export class ThemeViewModel {
       borderRadius: this.themeConfig.borderRadius,
       materialLevel: level,
       immersiveEnabled: this.themeConfig.immersiveEnabled,
+      backgroundImageOpacity: this.themeConfig.backgroundImageOpacity,
     };
     this.themeConfig = newConfig;
     this.currentPreset = ThemePreset.CUSTOM;
@@ -296,6 +331,7 @@ export class ThemeViewModel {
    * Toggles immersive light effects on/off.
    */
   updateImmersiveEnabled(enabled: boolean): void {
+    MaterialConstants.applyUserPreferences(this.themeConfig.glassBlurRadius, this.themeConfig.glassOpacity, enabled);
     const newConfig: ThemeConfig = {
       primaryColor: this.themeConfig.primaryColor,
       backgroundColor: this.themeConfig.backgroundColor,
@@ -305,6 +341,7 @@ export class ThemeViewModel {
       glassOpacity: this.themeConfig.glassOpacity,
       glassBlurRadius: this.themeConfig.glassBlurRadius,
       backgroundImageUri: this.themeConfig.backgroundImageUri,
+      backgroundImageOpacity: this.themeConfig.backgroundImageOpacity,
       isDarkMode: this.themeConfig.isDarkMode,
       accentColor: this.themeConfig.accentColor,
       fontScale: this.themeConfig.fontScale,
@@ -341,6 +378,7 @@ export class ThemeViewModel {
         borderRadius: lightConfig.borderRadius,
         materialLevel: this.themeConfig.materialLevel,
         immersiveEnabled: this.themeConfig.immersiveEnabled,
+        backgroundImageOpacity: this.themeConfig.backgroundImageOpacity,
       };
       this.themeConfig = newConfig;
     }

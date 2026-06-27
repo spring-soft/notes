@@ -42,6 +42,9 @@ export class SettingsRepository {
       if (config.immersiveEnabled === undefined) {
         config.immersiveEnabled = true;
       }
+      if (config.backgroundImageOpacity === undefined) {
+        config.backgroundImageOpacity = 1.0;
+      }
       return config;
     }
     return getThemeConfigByPreset(ThemePreset.OCEAN_BLUE);
