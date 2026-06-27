@@ -10,8 +10,8 @@ const TAG: string = 'BackgroundTaskService';
  * Service for managing continuous background tasks so the pomodoro timer
  * keeps ticking when the app is minimised or the screen is off.
  *
- * Uses backgroundTaskManager.startBackgroundRunning with DATA_TRANSFER mode,
- * the standard approach on HarmonyOS NEXT for long-running timer-type work.
+ * Uses backgroundTaskManager.startBackgroundRunning with TASK_KEEPING mode,
+ * the standard approach for short-term computational tasks like a timer.
  */
 export class BackgroundTaskService {
   private isTaskRunning: boolean = false;
@@ -38,7 +38,7 @@ export class BackgroundTaskService {
 
       await backgroundTaskManager.startBackgroundRunning(
         this.context,
-        backgroundTaskManager.BackgroundMode.DATA_TRANSFER,
+        backgroundTaskManager.BackgroundMode.TASK_KEEPING,
         this.cachedWantAgent
       );
       this.isTaskRunning = true;

@@ -6,6 +6,7 @@ import { SettingsRepository } from '../repository/SettingsRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
 import { NotificationService } from '../service/NotificationService';
 import { BackgroundTaskService } from '../service/BackgroundTaskService';
+import { LiveViewService } from '../service/LiveViewService';
 import { PomodoroRepository } from '../repository/PomodoroRepository';
 import { common } from '@kit.AbilityKit';
 import { ColorPickerComponent } from '../components/business/ColorPicker';
@@ -84,7 +85,8 @@ export struct SettingsPage {
       new PomodoroRepository(DatabaseHelper.getInstance().getStore()),
       new SettingsRepository(appContext),
       new NotificationService(context),
-      new BackgroundTaskService(context)
+      new BackgroundTaskService(context),
+      new LiveViewService()
     );
   }
 
