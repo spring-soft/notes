@@ -53,6 +53,10 @@ Index provides:
 - Card accent stripes are now inner Column elements (NoteCard, GlassCard) — not border-based
 - No `backdropBlur` on ThemeBackground (it's the canvas) — only on foreground surfaces
 - Note: `systemMaterial` / `ImmersiveMaterial` API not available in SDK API 24; backdropBlur is the substitute
+- **HdsTabs** (@kit.UIDesignKit, API 23+): replaces Tabs with `barOverlap(true)` + `barBackgroundBlurStyle(Thick)` for floating immersive tab bar
+- **Page headers**: all 5 pages have backdropBlur(THIN) on header Row for immersive frosted effect
+- **Tablet sidebar**: backdropBlur(THICK) material surface with border separator
+- **Settings → 沉浸光感**: Toggle (immersiveEnabled) + material level chip picker (ADAPTIVE/EXQUISITE/GENTLE/SMOOTH) persisted via ThemeViewModel
 
 ### Notes data flow
 ```
@@ -180,6 +184,10 @@ TodoAddSheet save:
 35. **Tabs → HdsTabs 沉浸悬浮标签栏** — 操作规范文档确认 SDK API 24 支持 `@kit.UIDesignKit` (HdsTabs/HdsNavigation 从 API 23 起可用，`systemMaterial` 通用组件需 API 26)。`Tabs` → `HdsTabs` + `HdsTabsController`，添加 `barOverlap(true)` + `barBackgroundBlurStyle(Thick)` 实现底部标签栏沉浸模糊效果。保留 `tabBarBuilder` 自定义图标标签（`BottomTabBarStyle` 在 API 24 中不存在）。
 36. **番茄钟模式切换 Chip UI 不跟随** — `sessionTypeChip` 中使用 `this.viewModel.currentType` 判断选中态，但 `viewModel` 不是 `@State`，切模式后 ArkUI 不触发重渲染。添加 `@State currentType`，在 `onClick` 中同步 `this.currentType = type` 并更新 `displayRemaining`/`displayProgress`/`stateUpdateSignal`。
 37. **NoteCard 卡片过大** — 非网格模式内边距 16px 过于宽松，减至 14px（网格模式 10px），多卡片列表更紧凑。
+38. **Phase 3: 页面标题栏沉浸光感** — 5 个页面 (NotesPage/TodosPage/PomodoroPage/SettingsPage/NoteDetailPage) 的 Header Row 添加 `backdropBlur(THIN 8px)` + 半透明背景覆盖，实现弱毛玻璃标题栏效果。SettingsPage 补充缺失的 MaterialConstants import。
+39. **Phase 4: 平板侧边栏材质化** — HdsSideBar 构造器 API 在 SDK 24 中与文档预期不符（sideBarPanelBuilder/contentPanelBuilder 不存在于构造器类型，.sideBar() 链式方法不存在），采用降级方案：保留自定义 Row(240vp sidebar + content) 布局，sidebar Column 升级为 backdropBlur(THICK 24px) + 半透明覆盖 + 保留边框分隔线。Index.ets 新增 MaterialConstants import。
+40. **Phase 5: 设置页沉浸光感控件** — 新增「沉浸光感」设置区：启用/禁用 Toggle → themeVM.updateImmersiveEnabled()；材质质量四选一 Chip（自适应/精致/柔和/流畅）→ themeVM.updateMaterialLevel()。版本号显示同步为 2.0.0。
+41. **包名修改** — `com.example.notes` → `com.lychee.memosflow`（AppScope/app.json5 bundleName）。
 
 ## ArkTS Strict Rules
 - No spread operator `...` → explicit property copy when creating new ThemeConfig
@@ -195,6 +203,7 @@ TodoAddSheet save:
 - Key icons: BACK=‹, MENU=☰, PLUS=+, DELETE=✕, NOTES=☷, TODOS=☑, POMODORO=◷, VOICE=🎤, SETTINGS=⚙, PAUSE_BARS=❚❚, EMPTY_NOTES=☷, CLOSE=✕, PIN=📌, EDIT=✎, VIEW_GRID=▦, VIEW_LIST=☰
 
 ## Version
+- **Bundle name**: `com.lychee.memosflow`
 - `AppScope/app.json5`: versionCode=1001000, versionName="1.1.0"
 - `entry/oh-package.json5`: version="1.1.0"
 - `constants/AppConstants.ets`: APP_VERSION='2.0.0'
