@@ -155,11 +155,13 @@ export class PomodoroViewModel {
       }
       this.timerService.start();
 
-      // ALWAYS keep process alive + show notification for work sessions.
-      this.backgroundTaskService.requestContinuousTask();
+      // Publish custom countdown notification FIRST, then request background
+      // task.  On some devices the background-task system notification can
+      // suppress subsequent publishes from the same app.
       if (this.currentType === PomodoroSessionType.WORK) {
         this.notificationService.showTimerNotification(this.currentType, this.remainingSeconds);
       }
+      this.backgroundTaskService.requestContinuousTask();
       // Try Live View as a bonus (灵动岛).  If it succeeds we stop updating
       // the notification on every tick; if it fails the notification stays.
       const labels: LiveViewLabels = this.getLiveViewLabels();
