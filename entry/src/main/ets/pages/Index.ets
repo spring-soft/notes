@@ -5,6 +5,7 @@ import { SettingsRepository } from '../repository/SettingsRepository';
 import { DatabaseHelper } from '../repository/DatabaseHelper';
 import { TabItemConfig, getTabItems, NavDestinationNames } from '../constants/AppConstants';
 import { ThemeBackground } from '../components/common/ThemeBackground';
+import { MaterialConstants } from '../constants/MaterialConstants';
 import { ICON } from '../utils/IconGlyphs';
 import { common } from '@kit.AbilityKit';
 import { HdsTabs, HdsTabsController, hdsMaterial } from '@kit.UIDesignKit';
@@ -212,7 +213,7 @@ struct Index {
   @Builder
   tabletLayout() {
     Row() {
-      // Left side navigation panel
+      // Left side navigation panel — immersive material surface
       Column() {
         Text('MemoFlow')
           .fontSize(22)
@@ -226,11 +227,8 @@ struct Index {
       }
       .width(240)
       .height('100%')
-      .backgroundColor(
-        this.themeConfig.isDarkMode
-          ? 'rgba(20, 20, 20, 0.95)'
-          : 'rgba(255, 255, 255, 0.95)'
-      )
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THICK))
+      .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THICK, this.themeConfig.isDarkMode))
       .border({
         width: { right: 1 },
         color: this.themeConfig.isDarkMode
