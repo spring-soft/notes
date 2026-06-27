@@ -25,7 +25,7 @@ export const DEFAULT_THEME_CONFIG: ThemeConfig = {
   surfaceColor: '#FFFFFF',
   textColor: '#1A1A1A',
   textSecondaryColor: '#8E8E93',
-  glassOpacity: 0.8,
+  glassOpacity: 0.5,
   glassBlurRadius: 20,
   backgroundImageUri: '',
   isDarkMode: false,

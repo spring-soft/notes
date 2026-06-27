@@ -2,6 +2,7 @@ import { ThemeConfig, ThemePreset } from '../model/ThemeConfigModel';
 import { ColorHex } from '../model/AppConstantsModel';
 import { SettingsRepository } from '../repository/SettingsRepository';
 import { getDarkThemeConfig, getThemeConfigByPreset } from '../constants/ThemeConstants';
+import { MaterialConstants } from '../constants/MaterialConstants';
 import { updateSystemBarStyle } from '../service/WindowService';
 import { common } from '@kit.AbilityKit';
 
@@ -54,6 +55,7 @@ export class ThemeViewModel {
     const savedPreset: ThemePreset = await this.settingsRepository.loadThemePreset();
     this.currentPreset = savedPreset;
     this.themeConfig = savedConfig;
+    MaterialConstants.applyUserPreferences(savedConfig.glassBlurRadius, savedConfig.glassOpacity);
     this.notifySystemBar();
   }
 
@@ -84,6 +86,7 @@ export class ThemeViewModel {
     };
     this.themeConfig = newConfig;
     this.currentPreset = preset;
+    MaterialConstants.applyUserPreferences(config.glassBlurRadius, config.glassOpacity);
     this.saveTheme();
   }
 
@@ -116,6 +119,7 @@ export class ThemeViewModel {
    * Updates the glass opacity.
    */
   updateGlassOpacity(opacity: number): void {
+    MaterialConstants.applyUserPreferences(this.themeConfig.glassBlurRadius, opacity);
     const newConfig: ThemeConfig = {
       primaryColor: this.themeConfig.primaryColor,
       backgroundColor: this.themeConfig.backgroundColor,
@@ -141,6 +145,7 @@ export class ThemeViewModel {
    * Updates the glass blur radius.
    */
   updateBlurRadius(radius: number): void {
+    MaterialConstants.applyUserPreferences(radius, this.themeConfig.glassOpacity);
     const newConfig: ThemeConfig = {
       primaryColor: this.themeConfig.primaryColor,
       backgroundColor: this.themeConfig.backgroundColor,

@@ -5,6 +5,11 @@
  * frosted-material effect (the systemMaterial / ImmersiveMaterial API
  * is not available in SDK API 24, so we emulate it with existing APIs).
  *
+ * The static `blurMultiplier` and `opacityMultiplier` fields are set by
+ * ThemeViewModel whenever the user adjusts blur/opacity in Settings.
+ * All getBlur() / getOverlayColor() calls automatically reflect the
+ * current user preference without needing per-component changes.
+ *
  * Depth hierarchy:
  *   Layer 5 (top):    Dialog, BottomSheet   → ULTRA_THICK  (blur 30, high opacity)
  *   Layer 4:          FAB buttons            → THICK        (blur 24)
@@ -34,27 +39,44 @@ export class MaterialConstants {
   static readonly CHIP: number = MaterialConstants.THIN;
   static readonly PAGE_BG: number = MaterialConstants.ULTRA_THIN;
 
+  // ── User-adjustable multipliers (set by ThemeViewModel) ──
+  /** Multiplier for blur radius.  1.0 = neutral (glassBlurRadius = 20). */
+  static blurMultiplier: number = 1.0;
+  /** Multiplier for overlay alpha.  1.0 = neutral (glassOpacity = 0.5). */
+  static opacityMultiplier: number = 1.0;
+
   /**
-   * Returns the backdropBlur radius (vp) for a given material level.
+   * Applies the user's glassBlurRadius / glassOpacity preferences as
+   * global multipliers so every component picks them up automatically.
    */
-  static getBlur(level: number): number {
-    if (level >= 5) {
-      return 30;
-    }
-    if (level >= 4) {
-      return 24;
-    }
-    if (level >= 3) {
-      return 16;
-    }
-    if (level >= 2) {
-      return 8;
-    }
-    return 4;
+  static applyUserPreferences(glassBlurRadius: number, glassOpacity: number): void {
+    MaterialConstants.blurMultiplier = glassBlurRadius / 20.0;
+    MaterialConstants.opacityMultiplier = glassOpacity / 0.5;
   }
 
   /**
-   * Returns the overlay background color for a given material level and mode.
+   * Returns the backdropBlur radius (vp) for a given material level,
+   * scaled by the user's blur preference.
+   */
+  static getBlur(level: number): number {
+    let base: number;
+    if (level >= 5) {
+      base = 30;
+    } else if (level >= 4) {
+      base = 24;
+    } else if (level >= 3) {
+      base = 16;
+    } else if (level >= 2) {
+      base = 8;
+    } else {
+      base = 4;
+    }
+    return Math.max(0, Math.round(base * MaterialConstants.blurMultiplier));
+  }
+
+  /**
+   * Returns the overlay background color for a given material level and mode,
+   * with alpha scaled by the user's opacity preference.
    *
    * Opacity is intentionally low so ThemeBackground gradients + orbs show
    * through, giving backdropBlur real content to blur — this is what creates
@@ -63,23 +85,22 @@ export class MaterialConstants {
    * Higher levels = more opaque → stronger privacy / focus (dialog, sheet).
    */
   static getOverlayColor(level: number, isDark: boolean): string {
+    let baseAlpha: number;
     if (level >= 5) {
-      // Dialog / Sheet — needs readability, still shows depth
-      return isDark ? 'rgba(20,20,20,0.72)' : 'rgba(255,255,255,0.65)';
+      baseAlpha = isDark ? 0.72 : 0.65;
+    } else if (level >= 4) {
+      baseAlpha = isDark ? 0.55 : 0.48;
+    } else if (level >= 3) {
+      baseAlpha = isDark ? 0.40 : 0.32;
+    } else if (level >= 2) {
+      baseAlpha = isDark ? 0.22 : 0.16;
+    } else {
+      baseAlpha = isDark ? 0.10 : 0.07;
     }
-    if (level >= 4) {
-      // FAB — prominent but translucent
-      return isDark ? 'rgba(20,20,20,0.55)' : 'rgba(255,255,255,0.48)';
-    }
-    if (level >= 3) {
-      // Cards — clearly see-through, moderate frost
-      return isDark ? 'rgba(20,20,20,0.40)' : 'rgba(255,255,255,0.32)';
-    }
-    if (level >= 2) {
-      // Headers / Search / Chips — light frost
-      return isDark ? 'rgba(20,20,20,0.22)' : 'rgba(255,255,255,0.16)';
-    }
-    // Page background — barely-there tint, mostly transparent
-    return isDark ? 'rgba(20,20,20,0.10)' : 'rgba(255,255,255,0.07)';
+    const alpha: number = Math.min(1.0, Math.max(0.0,
+      baseAlpha * MaterialConstants.opacityMultiplier));
+    const a: string = alpha.toFixed(2);
+    const rgb: string = isDark ? '20,20,20,' : '255,255,255,';
+    return 'rgba(' + rgb + a + ')';
   }
 }
