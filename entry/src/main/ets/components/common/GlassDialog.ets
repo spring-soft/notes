@@ -35,46 +35,50 @@ export struct GlassDialog {
             .fontSize(20 * this.themeConfig.fontScale)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.themeConfig.textColor)
-            .margin({ bottom: 12 });
+            .margin({ bottom: 10 });
         }
 
         if (this.message !== '') {
           Text(this.message)
-            .fontSize(16 * this.themeConfig.fontScale)
+            .fontSize(15 * this.themeConfig.fontScale)
             .fontColor(this.themeConfig.textSecondaryColor)
-            .margin({ bottom: 24 });
+            .margin({ bottom: 18 });
         }
 
         Row() {
           if (this.showCancel) {
             Button(this.cancelLabel)
-              .fontSize(16 * this.themeConfig.fontScale)
+              .fontSize(15 * this.themeConfig.fontScale)
               .fontColor(this.themeConfig.textColor)
               .backgroundColor('rgba(128, 128, 128, 0.12)')
               .borderRadius(this.themeConfig.borderRadius)
-              .padding({ left: 20, right: 20, top: 10, bottom: 10 })
+              .padding({ left: 18, right: 18, top: 9, bottom: 9 })
               .onClick(() => {
                 this.onCancel();
                 this.controller.close();
-              })
-              .margin({ right: 12 });
+              });
+          }
+
+          if (this.showCancel) {
+            Blank().width(16);
           }
 
           Button(this.confirmLabel)
-            .fontSize(16 * this.themeConfig.fontScale)
+            .fontSize(15 * this.themeConfig.fontScale)
             .fontColor('#FFFFFF')
             .backgroundColor(this.themeConfig.primaryColor)
             .borderRadius(this.themeConfig.borderRadius)
-            .padding({ left: 24, right: 24, top: 10, bottom: 10 })
+            .padding({ left: 22, right: 22, top: 9, bottom: 9 })
             .onClick(() => {
               this.onConfirm();
               this.controller.close();
             });
         }
-        .justifyContent(FlexAlign.End)
+        .justifyContent(FlexAlign.Center)
         .width('100%');
       }
-      .padding(24)
+      .width('100%')
+      .padding(20)
       .borderRadius(this.themeConfig.borderRadius + 4)
       .backgroundColor(
         createGlassColor(
@@ -107,7 +111,8 @@ export struct GlassDialog {
         })
         .hitTestBehavior(HitTestMode.None);
     }
-    .constraintSize({ maxWidth: 380, maxHeight: 420 })
+    .width(340)
+    .constraintSize({ maxWidth: 380, maxHeight: 300 })
     .shadow({
       radius: 30,
       color: 'rgba(0, 0, 0, 0.35)',
