@@ -179,7 +179,7 @@ export struct NotesPage {
     }
     .hideTitleBar(true)
     .onShown(() => { this.refreshNotes(); })
-    .backgroundColor(this.themeConfig.backgroundColor)
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
   }
 

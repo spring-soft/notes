@@ -350,7 +350,7 @@ export struct NoteDetailPage {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor(this.themeConfig.backgroundColor)
+      .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
       .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
 
         // Deleting overlay — shown while the delete DB operation completes

@@ -134,7 +134,7 @@ export struct PomodoroPage {
       this.reloadAndSync();
     })
     .hideTitleBar(true)
-    .backgroundColor(this.themeConfig.backgroundColor)
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
   }
 

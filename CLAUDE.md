@@ -192,6 +192,7 @@ TodoAddSheet save:
 41. **包名修改** — `com.example.notes` → `com.lychee.memosflow`（AppScope/app.json5 bundleName）。
 42. **全局状态管理 V1 → V2 迁移**（31 文件）— 按操作规范要求替换所有 V1 装饰器：`@ComponentV2`/`@Local`/`@Param`/`@Event`/`@Provider`/`@Consumer`/`@ObservedV2`/`@Trace`/`@Monitor`。`$` 双向绑定改为 `@Param`+`@Event` 回调。`DEFAULT_THEME_CONFIG` 供 `@Consumer` 编译占位。回调属性必须加 `@Event` 否则编译失败。`@CustomDialog` 保持不动。
 43. **HdsTabs 真正沉浸光感材质** — `barBackgroundBlurStyle(Thick)`（CSS 高斯模糊）→ `barFloatingStyle({ systemMaterialEffect })`（GPU 物理光感材质）。`hdsMaterial.MaterialType.ADAPTIVE` + `hdsMaterial.MaterialLevel.ADAPTIVE` 让系统自动平衡效果与性能。`MaterialCapability.ets` 改用真实 `hdsMaterial.getSystemMaterialTypes()` API 检测设备能力（不再硬编码 `true`）。注：`BottomTabBarStyle` 在 SDK 24 仍不存在，保留自定义 `tabBarBuilder`；`systemMaterial` 通用组件属性需 API 26，非 HDS 组件继续使用 `backdropBlur` 降级。
+44. **修复毛玻璃不透明问题** — 根因：页面 NavDestination 和卡片使用纯色 `backgroundColor`（`#F5F7FA`/`#FFFFFF`），完全遮挡 ThemeBackground 渐变光球，导致 backdropBlur 无内容可模糊（模糊纯白 = 纯白）。修复：① `MaterialConstants.getOverlayColor` 不透明度全面降低（THICK: 88→48%, REGULAR: 62→32%, THIN: 40→16%, ULTRA_THIN: 18→7%）；② 所有页面 NavDestination → `getOverlayColor(ULTRA_THIN)`；③ SettingsPage 6 个卡片 → `getOverlayColor(THIN)`；④ GlassTextField → `getOverlayColor(SURFACE)`。现在 ThemeBackground 渐变光球可穿透半透明层，backdropBlur 有真实色彩可模糊。
 
 ## ArkTS Strict Rules
 - No spread operator `...` → explicit property copy when creating new ThemeConfig

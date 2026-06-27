@@ -55,21 +55,31 @@ export class MaterialConstants {
 
   /**
    * Returns the overlay background color for a given material level and mode.
-   * Higher levels = more opaque → stronger "material" depth effect.
+   *
+   * Opacity is intentionally low so ThemeBackground gradients + orbs show
+   * through, giving backdropBlur real content to blur — this is what creates
+   * the "frosted glass" depth effect rather than a flat solid surface.
+   *
+   * Higher levels = more opaque → stronger privacy / focus (dialog, sheet).
    */
   static getOverlayColor(level: number, isDark: boolean): string {
     if (level >= 5) {
-      return isDark ? 'rgba(30,30,30,0.88)' : 'rgba(255,255,255,0.88)';
+      // Dialog / Sheet — needs readability, still shows depth
+      return isDark ? 'rgba(20,20,20,0.72)' : 'rgba(255,255,255,0.65)';
     }
     if (level >= 4) {
-      return isDark ? 'rgba(30,30,30,0.78)' : 'rgba(255,255,255,0.78)';
+      // FAB — prominent but translucent
+      return isDark ? 'rgba(20,20,20,0.55)' : 'rgba(255,255,255,0.48)';
     }
     if (level >= 3) {
-      return isDark ? 'rgba(30,30,30,0.62)' : 'rgba(255,255,255,0.62)';
+      // Cards — clearly see-through, moderate frost
+      return isDark ? 'rgba(20,20,20,0.40)' : 'rgba(255,255,255,0.32)';
     }
     if (level >= 2) {
-      return isDark ? 'rgba(30,30,30,0.40)' : 'rgba(255,255,255,0.40)';
+      // Headers / Search / Chips — light frost
+      return isDark ? 'rgba(20,20,20,0.22)' : 'rgba(255,255,255,0.16)';
     }
-    return isDark ? 'rgba(30,30,30,0.18)' : 'rgba(255,255,255,0.18)';
+    // Page background — barely-there tint, mostly transparent
+    return isDark ? 'rgba(20,20,20,0.10)' : 'rgba(255,255,255,0.07)';
   }
 }

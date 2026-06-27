@@ -1,7 +1,8 @@
 import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
+import { MaterialConstants } from '../../constants/MaterialConstants';
 
 /**
- * Solid-surface text input field.
+ * Immersive text input field with translucent background.
  *
  * @param placeholder - Placeholder text
  * @param text - Text value from parent
@@ -31,7 +32,7 @@ export struct GlassTextField {
         .fontSize(16 * this.themeConfig.fontScale)
         .fontColor(this.themeConfig.textColor)
         .placeholderColor(this.themeConfig.textSecondaryColor)
-        .backgroundColor(this.themeConfig.surfaceColor)
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
         .borderRadius(this.themeConfig.borderRadius)
         .padding(16)
         .borderWidth(1)
@@ -51,7 +52,7 @@ export struct GlassTextField {
         .fontSize(16 * this.themeConfig.fontScale)
         .fontColor(this.themeConfig.textColor)
         .placeholderColor(this.themeConfig.textSecondaryColor)
-        .backgroundColor(this.themeConfig.surfaceColor)
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
         .borderRadius(this.themeConfig.borderRadius)
         .padding({ left: 16, right: 16, top: 12, bottom: 12 })
         .borderWidth(1)

@@ -134,7 +134,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
-          .backgroundColor(this.themeConfig.surfaceColor)
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 16 });
 
           // ── Appearance Settings ──
@@ -173,7 +173,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
-          .backgroundColor(this.themeConfig.surfaceColor)
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 16 });
 
           // ── Immersive Material Section ──
@@ -214,7 +214,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
-          .backgroundColor(this.themeConfig.surfaceColor)
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 16 });
 
           // ── Background Section ──
@@ -233,7 +233,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
-          .backgroundColor(this.themeConfig.surfaceColor)
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 16 });
 
           // ── Pomodoro Section ──
@@ -291,7 +291,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
-          .backgroundColor(this.themeConfig.surfaceColor)
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 16 });
 
           // ── About Section ──
@@ -310,7 +310,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
-          .backgroundColor(this.themeConfig.surfaceColor)
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 40 });
 
           // Bottom spacer
@@ -324,7 +324,7 @@ export struct SettingsPage {
       .edgeEffect(EdgeEffect.Spring);
     }
     .hideTitleBar(true)
-    .backgroundColor(this.themeConfig.backgroundColor)
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
   }
 
