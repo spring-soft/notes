@@ -26,7 +26,7 @@ export struct NoteCard {
 
   build() {
     Row() {
-      // Accent color stripe (inner element — systemMaterial handles the background)
+      // Accent color stripe
       Column()
         .width(this.gridMode ? 3 : 4)
         .height('100%')
@@ -73,7 +73,7 @@ export struct NoteCard {
       .layoutWeight(1);
     }
     .width('100%')
-    .padding(this.gridMode ? 12 : 16)
+    .padding(this.gridMode ? 10 : 14)
     .borderRadius(this.themeConfig.borderRadius)
     .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CARD))
     .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CARD, this.themeConfig.isDarkMode))

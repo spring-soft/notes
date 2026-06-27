@@ -20,6 +20,7 @@ export struct PomodoroPage {
   @State displayProgress: number = 0;
   @State displayState: PomodoroState = PomodoroState.IDLE;
   @State stateUpdateSignal: number = 0;
+  @State currentType: PomodoroSessionType = PomodoroSessionType.WORK;
 
   private viewModel: PomodoroViewModel = getPomodoroViewModel();
 
@@ -28,6 +29,7 @@ export struct PomodoroPage {
     this.displayRemaining = this.viewModel.remainingSeconds;
     this.displayProgress = this.viewModel.progress;
     this.displayState = this.viewModel.currentState;
+    this.currentType = this.viewModel.currentType;
 
     this.viewModel.setTickHandler((remaining: number, progress: number, state: PomodoroState) => {
       this.displayRemaining = remaining;
@@ -55,6 +57,7 @@ export struct PomodoroPage {
     this.displayRemaining = this.viewModel.remainingSeconds;
     this.displayProgress = this.viewModel.progress;
     this.displayState = this.viewModel.currentState;
+    this.currentType = this.viewModel.currentType;
     this.stateUpdateSignal++;
   }
 
@@ -141,9 +144,9 @@ export struct PomodoroPage {
     Column() {
       Text(label)
         .fontSize(14 * this.themeConfig.fontScale)
-        .fontWeight(this.viewModel.currentType === type ? FontWeight.Medium : FontWeight.Normal)
+        .fontWeight(this.currentType === type ? FontWeight.Medium : FontWeight.Normal)
         .fontColor(
-          this.viewModel.currentType === type
+          this.currentType === type
             ? this.themeConfig.primaryColor
             : this.themeConfig.textSecondaryColor
         );
@@ -151,20 +154,20 @@ export struct PomodoroPage {
     .padding({ left: 16, right: 16, top: 10, bottom: 10 })
     .borderRadius(this.themeConfig.borderRadius)
     .backgroundColor(
-      this.viewModel.currentType === type
+      this.currentType === type
         ? (this.themeConfig.isDarkMode
           ? this.themeConfig.primaryColor + '25'
           : this.themeConfig.primaryColor + '15')
         : Color.Transparent
     )
     .backdropBlur(
-          this.viewModel.currentType === type
-            ? 0
-            : MaterialConstants.getBlur(MaterialConstants.CHIP)
-        )
-    .borderWidth(this.viewModel.currentType === type ? 1.5 : 0)
+      this.currentType === type
+        ? 0
+        : MaterialConstants.getBlur(MaterialConstants.CHIP)
+    )
+    .borderWidth(this.currentType === type ? 1.5 : 0)
     .borderColor(
-      this.viewModel.currentType === type
+      this.currentType === type
         ? this.themeConfig.primaryColor
         : Color.Transparent
     )
@@ -173,6 +176,11 @@ export struct PomodoroPage {
       // Running or paused sessions must be stopped/reset first.
       if (this.displayState === PomodoroState.IDLE) {
         this.viewModel.setSessionType(type);
+        // Sync @State so chips re-render immediately
+        this.currentType = type;
+        this.displayRemaining = this.viewModel.remainingSeconds;
+        this.displayProgress = this.viewModel.progress;
+        this.stateUpdateSignal++;
       }
     });
   }
