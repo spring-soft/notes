@@ -111,11 +111,15 @@ export struct NotesPage {
               ForEach(this.getNoteTriplets(), (triplet: Note[], _ti: number) => {
                 Row() {
                   ForEach(triplet, (note: Note, _ni: number) => {
-                    NoteCard({
-                      note: note,
-                      gridMode: true,
-                      onCardClick: () => { this.navigateToDetail(note.id); },
-                    })
+                    Column() {
+                      NoteCard({
+                        note: note,
+                        gridMode: true,
+                        onCardClick: () => { this.navigateToDetail(note.id); },
+                      })
+                      .width('100%')
+                      .height('100%');
+                    }
                     .layoutWeight(1)
                     .aspectRatio(1)
                     .margin({

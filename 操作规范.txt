@@ -1446,3 +1446,178 @@ result:
 
 
 
+
+
+
+tool: builtin_web_rag
+result: 
+
+沉浸光感（Immersive Light）是 HarmonyOS ArkUI 提供的一套**高品质视觉与动效体系**，它通过**沉浸式系统材质（ImmersiveMaterial）** 与**空间动效**的结合，为应用组件带来通透、精致的视觉表现。它**不是一个可以直接拖拽使用的独立 UI 组件**，而是一套需要通过配置和 API 调用来启用的**系统级材质效果**。<rsup>1</rsup><rsup>2</rsup>
+
+## 🎨 沉浸光感的核心构成
+
+| 能力 | 说明 |
+| :--- | :--- |
+| **沉浸式系统材质** | 影响组件的背景色、边框、阴影和材质滤镜，呈现层次感和通透感。 |
+| **空间动效** | 为组件的弹出过程增添形变、流光等动态表现，使动画更加灵动。 |
+| **自适应** | 根据设备算力档位和用户在系统设置中配置的沉浸光感强弱，自动调整表现程度。 |
+
+## 🚀 如何使用沉浸光感？
+
+使用沉浸光感需要完成以下两个步骤：
+
+### 1. 应用级开启（必须）
+在项目的 `module.json5`（entry 类型 module）中配置 metadata，全局控制沉浸式系统材质的开启状态。
+
+```json5
+// module.json5
+{
+  "module": {
+    "name": "entry",
+    "type": "entry",
+    // ...
+    "metadata": [{
+      "name": "ohos.arkui.UIMaterial.state",
+      "value": "enable" // 可选值：default、enable、disable
+    }],
+    // ...
+  }
+}
+```
+
+- **enable**：强制开启沉浸式系统材质。
+- **disable**：全局禁用。
+- **default**：部分组件（如 Dialog、Toast）在未设置背景色等属性时默认开启。
+
+> **注意**：此配置仅在 `entry` 类型的 module 中生效，且要求 `targetAPIVersion` ≥ 26.0.0。
+
+### 2. 组件级使用
+开启应用级开关后，即可在具体的组件上应用沉浸光感效果。根据组件类型，设置方式分为两种：
+
+#### 方式一：通过通用属性 `systemMaterial`（适用于大多数 ArkUI 组件）
+```typescript
+import { uiMaterial } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct ImmersiveDemo {
+  build() {
+    Column() {
+      // 对 Column 组件应用超薄材质样式
+      Column() {
+        Text('沉浸光感示例')
+      }
+      .width(200)
+      .height(80)
+      .borderRadius(20)
+      .justifyContent(FlexAlign.Center)
+      .systemMaterial(new uiMaterial.ImmersiveMaterial({
+        style: uiMaterial.ImmersiveStyle.ULTRA_THIN, // 材质样式
+        interactive: true,      // 启用按压弹性形变
+        lightEffect: { color: undefined } // 启用光感交互反馈（自动颜色）
+      }))
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+  }
+}
+```
+
+**材质样式（ImmersiveStyle）** 从薄到厚共有五档：
+- `ULTRA_THIN`：超薄，高度透明（适合浮动工具栏）
+- `THIN`：薄，较强透明（适合搜索框、Toast）
+- `REGULAR`：常规厚度（通用场景）
+- `THICK`：厚，模糊效果强（适合菜单）
+- `ULTRA_THICK`：超厚，完全模糊（适合弹窗、半模态页面）
+
+#### 方式二：通过组件独有接口（适用于弹窗类组件）
+```typescript
+// Toast 示例
+import { PromptAction, uiMaterial } from '@kit.ArkUI';
+
+PromptAction.showToast({
+  message: '操作成功',
+  duration: 2000,
+  systemMaterial: new uiMaterial.ImmersiveMaterial({
+    style: uiMaterial.ImmersiveStyle.THIN
+  })
+});
+
+// Popup 示例
+import { uiMaterial } from '@kit.ArkUI';
+
+@Entry
+@Component
+struct PopupDemo {
+  @State isShow: boolean = false;
+
+  build() {
+    Button('弹出')
+      .onClick(() => { this.isShow = !this.isShow; })
+      .bindPopup(this.isShow, {
+        message: '这是一个带材质的弹窗',
+        systemMaterial: new uiMaterial.ImmersiveMaterial({
+          style: uiMaterial.ImmersiveStyle.THICK
+        })
+      })
+  }
+}
+```
+
+#### 方式三：HDS 组件的 `systemMaterialEffect`（适用于 HdsTabs、HdsNavigation）
+```typescript
+import { hdsMaterial, HdsTabs, HdsTabsController } from '@kit.UIDesignKit';
+
+@Entry
+@Component
+struct HdsDemo {
+  private controller: HdsTabsController = new HdsTabsController();
+
+  build() {
+    HdsTabs({ controller: this.controller }) {
+      // TabContent...
+    }
+    .barOverlap(true)
+    .barPosition(BarPosition.End)
+    .barFloatingStyle({
+      barBottomMargin: 28,
+      // 关键配置：开启沉浸光感
+      systemMaterialEffect: {
+        materialType: hdsMaterial.MaterialType.ADAPTIVE,   // 材质类型
+        materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE // 材质等级（系统自适应）
+      }
+    })
+  }
+}
+```
+
+## ⚠️ 注意事项与常见问题
+
+1.  **背景色冲突**：设置 `systemMaterial` 后，建议将组件的 `backgroundColor` 设为 `Color.Transparent` 或移除背景色设置，否则会覆盖材质效果。
+2.  **materialColor 透明度**：若使用 `materialColor` 为材质赋色，**必须使用带透明度的颜色**（如 `'#80FFFFFF'`），纯不透明色会完全遮挡材质滤镜效果。<rsup>2</rsup><rsup>1</rsup>
+3.  **自动反色（colorInvert）**：仅当材质足够薄（`THIN` 或 `ULTRA_THIN`）且系统沉浸光感配置较强时，组件内的文字颜色会自动适配背景反色，确保可读性。
+4.  **设备自适应**：效果会根据设备算力（高/中/低档）自动分级渲染，开发者无需手动适配不同性能设备。
+5.  **关闭单个组件的材质**：在 `ENABLE` 模式下，若想单独关闭某个默认开启材质的组件（如 Select），可设置 `systemMaterial(uiMaterial.Material.empty)`。
+
+## 📝 快速上手清单
+
+1.  **检查版本**：确保 `build-profile.json5` 中 `targetAPIVersion` ≥ 26.0.0。
+2.  **修改配置**：在 `module.json5` 中添加 `metadata`，将 `ohos.arkui.UIMaterial.state` 设为 `"enable"`。
+3.  **导入模块**：在代码中导入 `@kit.ArkUI` 中的 `uiMaterial` 或 `@kit.UIDesignKit` 中的 `hdsMaterial`。<rsup>2</rsup>
+4.  **应用材质**：对目标组件调用 `.systemMaterial()` 或设置 `systemMaterialEffect`。
+5.  **运行预览**：在支持 API 26+ 的设备或模拟器上运行查看效果。
+
+## 💎 总结
+
+沉浸光感**不能直接使用**，需要：
+- **配置开启**：在 `module.json5` 中设置应用级开关。
+- **代码调用**：通过 `systemMaterial` 通用属性或组件特定接口（如 `systemMaterialEffect`）为具体组件应用材质效果。
+
+这套体系能显著提升应用的视觉质感和交互反馈，且具备良好的设备自适应能力，是打造高端 HarmonyOS 应用体验的重要特性。<rsup>3</rsup>
+
+
+
+
+
+
