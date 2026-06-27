@@ -1,9 +1,9 @@
 # MemoFlow Project Context
 
 ## Project
-- **Name**: MemoFlow — HarmonyOS NEXT memo app with solid surface UI
+- **Name**: MemoFlow — HarmonyOS NEXT memo app with immersive depth UI
 - **Path**: `E:\program\notes`
-- **Version**: 1.1.0
+- **Version**: 2.0.0
 - **Platform**: HarmonyOS NEXT 6.1.1 (SDK API 24), Stage model
 - **Language**: ArkTS strict mode (no `any`, no spread `...`, no indexed access `obj['key']`)
 - **Target**: phone + tablet (responsive breakpoints at 600/840 vp)
@@ -45,13 +45,14 @@ Index provides:
 - `@Provide` alone may not trigger re-render across Navigation boundaries → `themeUpdateSignal++` guarantees it
 - Theme change chain: slider → themeVM.update*() → saveTheme() → notifyThemeChange() → Index listener → @Provide update + themeUpdateSignal++
 
-### UI Style (v1.1.0 — solid surface, no glass effects)
-- All components use solid `surfaceColor` background (no semi-transparency)
-- No `backdropBlur()` anywhere — removed across entire app
-- No specular highlight Stack overlays — all flattened to single-layer components
-- `createGlassColor()` utility removed from ColorUtils
-- Glass effect sliders (opacity/blur) removed from SettingsPage
-- Glass components renamed but class names kept for compatibility
+### UI Style (v2.0.0 — immersive depth via backdropBlur, no systemMaterial yet)
+- All components use layered `backdropBlur()` + semi-transparent backgrounds for depth
+- 5-tier depth hierarchy: ULTRA_THIN(4px) → THIN(8px) → REGULAR(16px) → THICK(24px) → ULTRA_THICK(30px)
+- `MaterialConstants.ets` provides `getBlur(level)` and `getOverlayColor(level, isDark)` helpers
+- Manual press animations replaced by backdropBlur-based interactive feedback (GlassButton simplified)
+- Card accent stripes are now inner Column elements (NoteCard, GlassCard) — not border-based
+- No `backdropBlur` on ThemeBackground (it's the canvas) — only on foreground surfaces
+- Note: `systemMaterial` / `ImmersiveMaterial` API not available in SDK API 24; backdropBlur is the substitute
 
 ### Notes data flow
 ```
@@ -123,16 +124,18 @@ TodoAddSheet save:
 | `utils/IconGlyphs.ets` | ICON static class — 28+ Unicode icon chars (added EDIT, VIEW_GRID, VIEW_LIST) |
 | `utils/NavParams.ets` | Static noteId + needsNotesRefresh + triggerNotesRefresh callback |
 | `utils/ColorUtils.ets` | hexToRgba, lightenColor, darkenColor, isDarkColor (createGlassColor removed) |
-| `components/business/NoteCard.ets` | Solid card with color tag left border + shadow, gridMode compact variant |
+| `components/business/NoteCard.ets` | Immersive card with inner accent stripe + backdropBlur depth |
 | `components/business/NoteEditor.ets` | TextArea with @Watch sync, borderRadius(0), isUserEditing guard |
 | `components/business/TodoAddSheet.ets` | Bottom sheet: custom category TextInput + preset chips + filtered user chips |
-| `components/business/TodoItem.ets` | Todo list item with description display |
-| `components/common/GlassDialog.ets` | CustomDialog — solid surface, customStyle:true, themeConfig via param |
-| `components/common/GlassContainer.ets` | Solid surface container (was liquid glass, now flat) |
-| `components/common/GlassCard.ets` | Solid card with accent stripe (was liquid glass, now flat) |
-| `components/common/GlassButton.ets` | Solid button with press animation (was glass, now flat) |
-| `components/common/SearchBar.ets` | Search input with solid surface background |
-| `constants/AppConstants.ets` | Version 1.1.0, route names, limits |
+| `components/business/TodoItem.ets` | Todo list item with backdropBlur card depth |
+| `components/common/GlassDialog.ets` | CustomDialog — ULTRA_THICK backdropBlur depth, customStyle:true, themeConfig via param |
+| `components/common/GlassContainer.ets` | Immersive container with elevation-mapped backdropBlur depth |
+| `components/common/GlassCard.ets` | Immersive card with inner accent stripe + backdropBlur depth |
+| `components/common/GlassButton.ets` | Immersive button with backdropBlur (no manual press animation) |
+| `components/common/SearchBar.ets` | Search input with THIN backdropBlur surface |
+| `constants/AppConstants.ets` | Version 2.0.0, route names, limits |
+| `constants/MaterialConstants.ets` | 5-tier depth hierarchy constants + getBlur()/getOverlayColor() helpers |
+| `utils/MaterialCapability.ets` | Device material capability detection |
 
 ## Fixed Bugs (all verified with BUILD SUCCESSFUL)
 
@@ -173,6 +176,7 @@ TodoAddSheet save:
 31. **通知栏和实况窗做不好，全删了** — Removed all notification, Live View, and background task code because they didn't work reliably: deleted `NotificationService.ets`, `LiveViewService.ets`, `BackgroundTaskService.ets`; stripped all notification/LiveView/background-task logic from `PomodoroViewModel`; simplified `PomodoroPage.createViewModel()` and `SettingsPage.createPomodoroVM()` to only pass Repository + SettingsRepository; removed `NOTIFICATION_TIMER_ID`, `NOTIFICATION_SESSION_COMPLETE_ID` from `AppConstants`; removed `NOTIFICATION_UPDATE_INTERVAL_MS` from `PomodoroConstants`. Pomodoro timer now runs purely in-app with no system notifications or background keep-alive.
 32. **Pomodoro 计时器改为挂钟时间戳驱动** — 原来用 `setInterval` + `remainingSeconds--` 递减，后台节流导致计时漂移。改为记录 `startTimestamp` + `pausedElapsed`，每次 tick 用 `Date.now()` 计算剩余时间。暂停时累加已过秒数到 `pausedElapsed`，恢复时重置 `startTimestamp`。计时精度不再依赖 setInterval 回调频率，切 tab 和退后台都不影响。
 33. **计时器切 tab 重置修复** — HarmonyOS Tabs 会销毁非可见 TabContent，导致 PomodoroPage 的 aboutToDisappear → destroy() 销毁计时器，切回时 createViewModel() 重建全新 ViewModel → 计时重置。改为模块级单例：`initPomodoroViewModel()`/`getPomodoroViewModel()` 在 Index.initializeApp() 中创建一次，切 tab 时 PomodoroPage 只注销 tickHandler 不销毁 VM。SettingsPage 改为直接用 SettingsRepository 保存配置，不再创建多余的 PomodoroViewModel。
+34. **v2.0 UI 升级：全项目应用沉浸深度材质** — 操作规范文档指引使用 HDS 沉浸光感组件，但 SDK API 24 不支持 `systemMaterial`/`ImmersiveMaterial` API。降级方案：用 `backdropBlur()` + 半透明背景模拟 5 级深度层级（ULTRA_THIN 4px → ULTRA_THICK 30px）。新建 `MaterialConstants.ets` 提供 `getBlur(level)` 和 `getOverlayColor(level, isDark)` 统一管理深度效果。20 个组件文件升级为 backdropBlur 模式：GlassCard(REGULAR)、GlassContainer(elevation映射)、GlassButton(THICK/THIN, 移除手动press动画)、GlassDialog(ULTRA_THICK)、SearchBar(THIN)、NoteCard(REGULAR+色条重构为内嵌Column)、TodoItem(REGULAR)、PomodoroSessionStats(REGULAR)、PomodoroControls(THICK/THIN)、ImagePickerButton(THIN)、ReminderPicker(THIN)、NotesPage(FAB+Chip)、TodosPage(FAB+Sheet+筛选)、PomodoroPage(类型Chip)、NoteDetailPage(顶栏+分类Chip)。ThemeConfig 新增 `materialLevel` 和 `immersiveEnabled` 字段。
 
 ## ArkTS Strict Rules
 - No spread operator `...` → explicit property copy when creating new ThemeConfig
@@ -190,6 +194,6 @@ TodoAddSheet save:
 ## Version
 - `AppScope/app.json5`: versionCode=1001000, versionName="1.1.0"
 - `entry/oh-package.json5`: version="1.1.0"
-- `constants/AppConstants.ets`: APP_VERSION='1.1.0'
-- `pages/SettingsPage.ets`: displays "版本 1.1.0 · HarmonyOS NEXT"
+- `constants/AppConstants.ets`: APP_VERSION='2.0.0'
+- `pages/SettingsPage.ets`: displays "版本 2.0.0 · HarmonyOS NEXT"
 - App icon: `111.png` in `AppScope/resources/base/media/` and `entry/src/main/resources/base/media/`

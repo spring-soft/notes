@@ -4,7 +4,7 @@
 
 export class AppConstants {
   static readonly APP_NAME: string = 'MemoFlow';
-  static readonly APP_VERSION: string = '1.1.0';
+  static readonly APP_VERSION: string = '2.0.0';
 
   static readonly MAX_NOTE_TITLE_LENGTH: number = 200;
   static readonly MAX_NOTE_CONTENT_LENGTH: number = 50000;
