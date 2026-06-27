@@ -122,7 +122,7 @@ TodoAddSheet save:
 | `pages/SettingsPage.ets` | Theme presets (8 colors), dark mode toggle, pomodoro config, background image |
 | `pages/TodosPage.ets` | Todos grouped list with filter tabs, add sheet, category manager |
 | `pages/PomodoroPage.ets` | Pomodoro timer with start/pause/reset, session stats |
-| `viewmodel/ThemeViewModel.ets` | @Observed, listener pattern, all update methods create new ThemeConfig |
+| `viewmodel/ThemeViewModel.ets` | @ObservedV2, Listener pattern, cloneConfig/commitConfig helpers, applyUserPreferences centralized in saveTheme() |
 | `viewmodel/NotesViewModel.ets` | @Observed, CRUD, search, sort, filter |
 | `repository/DatabaseHelper.ets` | RDB singleton, getStore() throws if not initialized |
 | `repository/NoteRepository.ets` | Notes SQL CRUD |
@@ -196,6 +196,10 @@ TodoAddSheet save:
 45. **模糊度/透明度自定义滑块** — `MaterialConstants` 新增 `blurMultiplier` 和 `opacityMultiplier` 全局倍率，`getBlur()`/`getOverlayColor()` 自动读取。`ThemeViewModel` 在 `updateGlassOpacity`/`updateBlurRadius`/`applyPreset`/`loadTheme` 中调用 `MaterialConstants.applyUserPreferences()` 同步倍率。SettingsPage 新增「毛玻璃效果」区域：模糊强度滑块（0-60, 默认 20）→ `updateBlurRadius()`；材质透明度滑块（5-100%, 默认 50%）→ `updateGlassOpacity()`。切换预设主题时自动同步滑块。所有 25+ 个 backdropBlur 调用点无需修改即可自动反映用户偏好。
 46. **笔记页置顶布局** — 重构 NotesPage：移除固定 header+search+filter+scroll 层叠布局，改为 Scroll（全屏，从顶部开始）+ 浮动 translucent header overlay。标题栏和搜索栏缩小（fontSize 28→24, 按钮 40→36, 内边距缩减），浮动在 Scroll 上方，滚动时笔记穿透半透明 header。笔记列表从距顶部 ~120vp 缩减至 ~72vp。底部新增 80vp spacer 防止最后一条笔记被 FAB 遮挡。
 47. **沉浸光感开关生效 + 背景图片修复** — ① `immersiveEnabled` 接入 `MaterialConstants.applyUserPreferences()`：关闭时 blur=0、opacity×3（表面变回纯平设计），开启时恢复用户模糊/透明度设置；② `ThemeBackground` 重写：自定义图片模式下隐藏渐变和光球（之前它们遮挡了用户图片），仅保留微弱 scrim 保证文字可读，`objectFit(Cover)` 兼容平板分屏宽高比变化，光球在平板模式稍大；③ 新增 `backgroundImageOpacity` 字段 + 设置页滑块（10%-100%），控制自定义背景图不透明度；④ `ThemeConfig` 新增 `backgroundImageOpacity` 字段，全链路贯通（model/presets/dark-theme/viewmodel/repository）。
+48. **ThemeViewModel 大量 copy-paste 去重** — 11 个 mutation 方法各自枚举全部 15 个 ThemeConfig 字段（~260 行样板代码），添加新字段需同时修改 11 个方法。重构：提取 `cloneConfig()`（集中管理字段列表）+ `commitConfig(cfg)`（统一赋值+标记CUSTOM+持久化），每个 mutation 方法从 ~20 行缩减为 3-4 行。`MaterialConstants.applyUserPreferences()` 移动至 `saveTheme()`，所有 mutation 路径现在一致调用，消除 ad-hoc 散布。
+49. **IconGlyphs PAUSE_BARS 与 PAUSE 重复** — 两者都是 `$r('sys.symbol.pause_fill')`，移除 PAUSE_BARS，PomodoroControls 改用 ICON.PAUSE。
+50. **ThemeBackground private lighten() 与 ColorUtils.lightenColor 重复** — 移除私有方法，改用已有的 `lightenColor` 工具函数。
+51. **SettingsPage schedulePomodoroSave 命名误导** — 方法立即保存无任何调度/防抖，重命名为 `persistPomodoroConfig`。
 
 ## ArkTS Strict Rules
 - No spread operator `...` → explicit property copy when creating new ThemeConfig
@@ -219,7 +223,7 @@ TodoAddSheet save:
 
 ## Icon System
 - `import { ICON } from '../utils/IconGlyphs'`
-- Key icons: BACK=‹, MENU=☰, PLUS=+, DELETE=✕, NOTES=☷, TODOS=☑, POMODORO=◷, VOICE=🎤, SETTINGS=⚙, PAUSE_BARS=❚❚, EMPTY_NOTES=☷, CLOSE=✕, PIN=📌, EDIT=✎, VIEW_GRID=▦, VIEW_LIST=☰
+- Key icons: BACK=‹, MENU=☰, PLUS=+, DELETE=✕, NOTES=☷, TODOS=☑, POMODORO=◷, VOICE=🎤, SETTINGS=⚙, EMPTY_NOTES=☷, CLOSE=✕, PIN=📌, EDIT=✎, VIEW_GRID=▦, VIEW_LIST=☰
 
 ## Version
 - **Bundle name**: `com.lychee.memosflow`
