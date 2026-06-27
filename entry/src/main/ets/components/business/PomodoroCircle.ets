@@ -64,6 +64,8 @@ export struct PomodoroCircle {
 
       // ══════ Layer 2: Progress arc (Path, single Round cap at end) ══════
       Path()
+        .width('100%')
+        .height('100%')
         .commands(this.arcCommands())
         .fill(Color.Transparent)
         .stroke(this.themeConfig.primaryColor)
