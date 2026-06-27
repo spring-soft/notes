@@ -112,11 +112,13 @@ export struct GlassDialog {
         .hitTestBehavior(HitTestMode.None);
     }
     .width(340)
+    .borderRadius(this.themeConfig.borderRadius + 8)
     .constraintSize({ maxWidth: 380, maxHeight: 300 })
     .shadow({
       radius: 30,
       color: 'rgba(0, 0, 0, 0.35)',
       offsetY: 8,
-    });
+    })
+    .clip(true);
   }
 }
