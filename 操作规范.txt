@@ -1931,3 +1931,971 @@ result:
 
 
 
+tool: builtin_web_rag
+result: 
+
+鸿蒙（HarmonyOS）应用性能优化是一个系统工程，涉及UI渲染、内存管理、启动速度、网络请求、包体积等多个维度。以下是基于官方最佳实践和开发经验的全面优化指南。<rsup>1</rsup><rsup>2</rsup>
+
+## 一、UI渲染优化
+
+### 1. **布局扁平化**
+- **问题**：过深的嵌套层级会增加布局计算时间。
+- **优化**：使用扁平化布局，减少不必要的容器嵌套。
+
+```typescript
+// ❌ 冗余嵌套（性能差）
+Column() {
+  Row() {
+    Column() {
+      Text('Hello')
+    }
+  }
+}
+
+// ✅ 扁平化（性能优）
+Text('Hello')
+```
+
+- 优先使用 `Column`、`Row`、`Grid`、`RelativeContainer` 等高效布局组件
+- 布局层级建议控制在 **5-8层以内**
+
+### 2. **列表性能优化**
+- **必须使用 `LazyForEach`** 替代 `ForEach` 处理长列表
+- 设置合理的 `cachedCount` 预缓存项数
+
+```typescript
+List() {
+  LazyForEach(this.dataSource, (item: ItemData) => {
+    ListItem() {
+      ItemComponent({ item: item })
+    }
+  }, (item: ItemData) => item.id.toString())
+}
+.cachedCount(5) // 预缓存屏幕外5个项
+```
+
+### 3. **组件复用与优化**
+- 使用 `@Reusable` 装饰器实现组件复用
+- 使用 `@Builder` 替代轻量级自定义组件
+
+```typescript
+@Reusable
+@Component
+struct ReusableItem {
+  @Reusable reuseId: string = "item_template"
+  
+  build() {
+    // 组件内容
+  }
+}
+```
+
+### 4. **状态管理精细化**
+- 精准控制状态更新范围，避免不必要的重渲染
+- 合理选择状态装饰器：
+  - 组件内部：`@State`
+  - 父子组件：`@Prop`/`@Link`
+  - 跨层级：`@Provide`/`@Consume`
+
+```typescript
+// 使用 @Watch 监听特定变化
+@State @Watch('onDataChange') data: DataType[] = []
+
+onDataChange() {
+  // 仅当数据变化时才执行特定逻辑
+  this.updateRelatedComponents()
+}
+```
+
+## 二、内存管理优化
+
+### 1. **及时释放资源**
+```typescript
+aboutToDisappear() {
+  // 清理定时器
+  if (this.timer) {
+    clearInterval(this.timer)
+    this.timer = undefined
+  }
+  
+  // 取消事件监听
+  this.eventEmitter.off('customEvent', this.handler)
+  
+  // 关闭文件/网络连接
+  this.fileHandle.close()
+}
+```
+
+### 2. **避免内存泄漏**
+- 使用 `WeakRef` 管理回调引用
+- 及时清理全局事件监听
+
+```typescript
+private callbackRef = new WeakRef(() => {
+  console.log('Callback executed')
+})
+
+onClick() {
+  this.callbackRef.deref()?.()
+}
+```
+
+### 3. **图片资源优化**
+- 使用 WebP 格式替代 PNG/JPEG（体积减少 25%-35%）
+- 按屏幕密度加载适配图片
+- 实现图片懒加载
+
+```typescript
+Image($r('app.media.image'))
+  .loadMode(ImageLoadMode.LAZY) // 懒加载模式
+  .interpolation(ImageInterpolation.HIGH) // 高质量缩放
+```
+
+### 4. **内存监控与响应**
+```typescript
+// 监听内存级别变化
+onMemoryLevel(level: AbilityConstant.MemoryLevel) {
+  switch (level) {
+    case AbilityConstant.MemoryLevel.MEMORY_LEVEL_MODERATE:
+      // 释放非核心缓存
+      this.cacheManager.releaseLevelOneCache()
+      break
+    case AbilityConstant.MemoryLevel.MEMORY_LEVEL_LOW:
+      // 释放大部分缓存，暂停后台任务
+      this.cacheManager.clearMostCaches()
+      break
+    case AbilityConstant.MemoryLevel.MEMORY_LEVEL_CRITICAL:
+      // 释放所有非必要资源，保存关键状态
+      this.saveCriticalState()
+      break
+  }
+}
+```
+
+## 三、启动性能优化
+
+### 1. **精简初始化任务**
+```typescript
+aboutToAppear() {
+  // 关键初始化（<100ms）
+  this.initCoreServices()
+  
+  // 非关键任务延迟执行
+  setTimeout(() => {
+    this.initNonCriticalServices()
+  }, 1000)
+}
+```
+
+### 2. **资源预加载**
+```typescript
+// 预加载关键资源
+async preloadCriticalResources() {
+  await Promise.all([
+    this.preloadImages(['icon_home', 'icon_profile']),
+    this.preloadData('user_profile'),
+    this.preloadWebProcess() // 预启动Web渲染进程
+  ])
+}
+```
+
+### 3. **模块懒加载**
+```typescript
+// 动态导入非关键模块
+async loadFeatureModule() {
+  const module = await import('./features/HeavyFeature')
+  module.initialize()
+}
+```
+
+### 4. **启用AOT编译**
+在 `build-profile.json5` 中配置：
+```json
+{
+  "buildOption": {
+    "arkOptions": {
+      "compileMode": "aot",  // 启用AOT编译
+      "obfuscation": {
+        "ruleOptions": {
+          "enable": true,    // 开启代码混淆
+          "files": ["obfuscation-rules.txt"]
+        }
+      }
+    }
+  }
+}
+```
+
+## 四、网络与数据优化
+
+### 1. **请求合并与缓存**
+```typescript
+// 使用缓存策略
+const CACHE_TTL = 5 * 60 * 1000 // 5分钟
+
+async fetchWithCache(url: string): Promise<any> {
+  const cacheKey = `cache_${url}`
+  const cached = AppStorage.Get(cacheKey)
+  
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data
+  }
+  
+  const data = await this.fetchFromNetwork(url)
+  AppStorage.SetOrCreate(cacheKey, {
+    data: data,
+    timestamp: Date.now()
+  })
+  
+  return data
+}
+```
+
+### 2. **数据库优化**
+```typescript
+// 使用事务批量操作
+async bulkInsertUsers(users: User[]) {
+  const rdbStore = await this.getRdbStore()
+  
+  try {
+    rdbStore.beginTransaction()
+    
+    for (const user of users) {
+      const valueBucket: ValuesBucket = {
+        'name': user.name,
+        'age': user.age,
+        'email': user.email
+      }
+      await rdbStore.insert('users', valueBucket)
+    }
+    
+    rdbStore.markAsCommit()
+  } catch (error) {
+    rdbStore.rollback()
+    throw error
+  } finally {
+    rdbStore.endTransaction()
+  }
+}
+
+// 创建索引提升查询性能
+await rdbStore.executeSql('CREATE INDEX idx_user_name ON users(name)')
+```
+
+### 3. **Web组件优化**
+```typescript
+// 预启动Web渲染进程
+let preloadWebView: webview.WebviewController | null = null
+
+function preLaunchWebProcess() {
+  preloadWebView = webview.createWebview()
+  preloadWebView.loadUrl('about:blank')
+}
+
+// 资源预加载与拦截
+webViewController.onInterceptRequest((request) => {
+  const url = request.requestUrl
+  if (this.cache.has(url)) {
+    return {
+      data: this.cache.get(url),
+      mimeType: this.getMimeType(url),
+      statusCode: 200
+    }
+  }
+  return null
+})
+```
+
+## 五、包体积优化
+
+### 1. **资源压缩策略**
+- 图片转 WebP 格式
+- 移除未使用的资源文件
+- 按密度分级提供资源
+
+### 2. **代码混淆与裁剪**
+```json
+{
+  "buildOption": {
+    "arkOptions": {
+      "obfuscation": {
+        "ruleOptions": {
+          "enable": true,
+          "files": ["obfuscation-rules.txt"]
+        }
+      },
+      "runtimeOnly": {
+        "packages": ["@ohos/dynamic-module"]
+      }
+    },
+    "compressNativeLibs": true
+  }
+}
+```
+
+### 3. **模块化与分包**
+- 使用 HAR（Harmony Archive）共享公共代码
+- 对于多模块应用，考虑使用 HSP（Harmony Shared Package）
+- 动态加载非核心功能模块
+
+## 六、并发与多线程优化
+
+### 1. **合理使用 TaskPool**
+```typescript
+import taskpool from '@ohos.taskpool'
+
+@Concurrent
+function processLargeData(data: number[]): number[] {
+  // CPU密集型计算
+  return data.map(x => x * x).filter(x => x > 1000)
+}
+
+async function handleData() {
+  const data = this.getLargeData()
+  const task = new taskpool.Task(processLargeData, data)
+  const result = await taskpool.execute(task)
+  this.updateUI(result)
+}
+```
+
+### 2. **Worker线程处理IO操作**
+```typescript
+// 创建Worker处理文件操作
+const worker = new worker.ThreadWorker('scripts/fileWorker.js')
+
+worker.onmessage = (message) => {
+  console.log('Worker result:', message.data)
+  worker.terminate()
+}
+
+worker.postMessage({ type: 'processFile', path: 'largefile.txt' })
+```
+
+### 3. **Sendable对象优化跨线程传递**
+```typescript
+// 实现Sendable接口减少序列化开销
+class ProcessData implements Sendable {
+  id: number = 0
+  values: number[] = []
+  
+  constructor(id: number, values: number[]) {
+    this.id = id
+    this.values = values
+  }
+}
+
+// 跨线程传递时效率更高
+const data = new ProcessData(1, [1, 2, 3, 4, 5])
+taskpool.execute(processFunction, [data])
+```
+
+## 七、工具与调试
+
+### 1. **性能分析工具**
+- **DevEco Profiler**：分析CPU、内存、帧率
+- **ArkUI Inspector**：检查布局层级
+- **HiDumper**：命令行查看内存详情
+- **SmartPerf**：整体性能评估
+
+```bash
+# 查看应用内存占用
+hdc shell "hidumper --mem <PID>"
+
+# 性能追踪
+hdc shell hitrace --trace_begin app
+# 执行操作...
+hdc shell hitrace --trace_dump
+```
+
+### 2. **代码检查工具**
+- **CodeLinter**：静态代码分析，检测性能隐患
+- **AppAnalyzer**：应用体检，发现性能瓶颈
+
+### 3. **性能监控代码**
+```typescript
+// 关键路径打点
+import { hiTraceMeter } from '@kit.PerformanceAnalysisKit'
+
+hiTraceMeter.startTrace('load_data')
+try {
+  await this.loadData()
+} finally {
+  hiTraceMeter.finishTrace()
+}
+
+// 函数耗时测量
+console.time('expensiveCalculation')
+this.performExpensiveCalculation()
+console.timeEnd('expensiveCalculation')
+```
+
+## 八、最佳实践总结
+
+### 1. **性能优化四板斧**
+- **第一板斧**：并行化、预加载与缓存<rsup>3</rsup>
+  - 使用 `TaskPool` 处理计算密集型任务
+  - 关键资源预加载，列表设置 `cachedCount`
+  - 合理使用内存缓存和持久化缓存
+
+- **第二板斧**：布局扁平化
+  - 嵌套层级 ≤ 8层
+  - 使用 `Grid`、`RelativeContainer` 替代复杂嵌套
+  - 移除无背景/无约束的冗余容器
+
+- **第三板斧**：状态变量精细管理
+  - 单个状态变量关联组件 ≤ 20个
+  - 大对象拆分为原子状态
+  - 循环内缓存状态到局部变量
+
+- **第四板斧**：系统接口高效使用
+  - 高频回调中禁用 `console.log`
+  - Release版本删除所有Trace
+  - 避免注册空回调监听
+
+### 2. **关键性能指标**
+- **冷启动时间**：≤ 800ms（理想值）
+- **帧率稳定性**：≥ 55fps
+- **内存峰值**：根据设备内存合理控制
+- **包体积**：尽可能压缩，首屏资源 ≤ 300KB
+
+### 3. **持续优化流程**
+```
+测量 → 定位 → 优化 → 验证
+    ↓
+建立性能基线
+    ↓
+CI/CD集成检查
+    ↓
+版本对比监控
+```
+
+### 4. **常见优化检查清单**
+- [ ] 是否使用 `LazyForEach` 处理长列表？
+- [ ] 布局嵌套是否超过8层？
+- [ ] 图片资源是否使用WebP格式？
+- [ ] 是否开启代码混淆和资源压缩？
+- [ ] 耗时操作是否移出主线程？
+- [ ] 内存泄漏是否定期检查？
+- [ ] 网络请求是否有缓存策略？
+- [ ] 数据库查询是否使用索引？
+- [ ] 是否实现 `onMemoryLevel` 响应？
+- [ ] 包体积是否在合理范围内？
+
+## 九、实战案例参考
+
+### 案例1：长列表优化（万级数据）
+```typescript
+@Entry
+@Component
+struct OptimizedList {
+  @State private data: Item[] = []
+  private dataSource: MyDataSource = new MyDataSource(this.data)
+  
+  build() {
+    List({ space: 10 }) {
+      LazyForEach(this.dataSource, (item: Item) => {
+        ListItem() {
+          OptimizedListItem({ item: item })
+        }
+      }, (item: Item) => item.id.toString())
+    }
+    .cachedCount(8) // 缓存8个屏幕外项
+    .onScrollIndex((start: number, end: number) => {
+      // 动态预加载
+      this.prefetchItems(start, end)
+    })
+  }
+}
+
+@Reusable
+@Component
+struct OptimizedListItem {
+  @Prop item: Item
+  
+  build() {
+    Row({ space: 8 }) {
+      Image(this.item.thumbnail)
+        .width(60)
+        .height(60)
+        .loadMode(ImageLoadMode.LAZY)
+      
+      Column({ space: 4 }) {
+        Text(this.item.title)
+          .fontSize(16)
+          .fontColor(Color.Black)
+        Text(this.item.description)
+          .fontSize(12)
+          .fontColor(Color.Gray)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }
+      .layoutWeight(1)
+    }
+    .padding(12)
+    .backgroundColor(Color.White)
+    .borderRadius(8)
+  }
+}
+```
+
+### 案例2：内存敏感型应用
+```typescript
+@Component
+struct MemorySensitiveApp {
+  @State private cache: LRUCache<string, any> = new LRUCache(50) // 最大50个条目
+  private weakRefs: Map<string, WeakRef<any>> = new Map()
+  
+  aboutToDisappear() {
+    // 清理资源
+    this.cache.clear()
+    this.weakRefs.clear()
+    this.releaseNativeResources()
+  }
+  
+  onMemoryLevel(level: AbilityConstant.MemoryLevel) {
+    switch (level) {
+      case AbilityConstant.MemoryLevel.MEMORY_LEVEL_MODERATE:
+        this.cache.shrinkTo(25) // 缩减缓存
+        break
+      case AbilityConstant.MemoryLevel.MEMORY_LEVEL_LOW:
+        this.cache.clear() // 清空缓存
+        this.releaseTemporaryResources()
+        break
+      case AbilityConstant.MemoryLevel.MEMORY_LEVEL_CRITICAL:
+        this.saveCriticalState() // 保存关键状态
+        this.releaseAllNonEssentialResources()
+        break
+    }
+  }
+  
+  // 使用对象池复用
+  private objectPool: Item[] = []
+  
+  private getItemFromPool(): Item {
+    return this.objectPool.pop() || new Item()
+  }
+  
+  private returnItemToPool(item: Item) {
+    item.reset() // 重置状态
+    this.objectPool.push(item)
+  }
+}
+```
+
+通过实施上述优化策略，可以显著提升鸿蒙应用的性能表现。建议在开发过程中持续使用性能分析工具监控应用状态，建立性能基线，并在每个版本发布前进行性能回归测试。<rsup>1</rsup><rsup>4</rsup>
+
+**记住优化黄金法则**：先测量后优化、优先解决瓶颈点、保持代码简洁、持续监控改进。
+
+
+
+
+
+鸿蒙 ArkUI：V1 与 V2 装饰器全面对比与迁移指南
+浏览22发布于2026-06-15 14:58北京
+鸿蒙 ArkUI：V1 与 V2 装饰器全面对比与迁移指南
+前言
+在鸿蒙 ArkTS 开发中，官方在 API 11 / HarmonyOS NEXT 阶段推出了全新的 V2 状态管理体系，对原有 V1 体系进行了系统性重构。两套体系在装饰器命名、响应式粒度、数据流方向等核心设计上均有显著变化。
+
+本文从实际项目出发，系统梳理 V1 和 V2 的差异、各装饰器的使用方法，以及迁移时的注意事项。
+
+一、为什么要有 V2？
+V1 体系存在以下痛点：
+
+响应式粒度粗：@State 标记整个对象，对象内任意属性变化都会触发整个组件重渲染，性能差
+数据流不透明：@Link 双向绑定容易形成"数据迷宫"，难以追踪变更来源
+嵌套对象不响应：@Observed + @ObjectLink 才能处理嵌套对象，使用繁琐
+跨组件通信受限：@Provide/@Consume 与 @StorageLink 的能力边界模糊
+V2 的目标是：精准响应、单向数据流、更清晰的组件契约。
+
+二、组件声明：@Component vs @ComponentV2
+V1 写法
+@Component
+struct MyCard {
+  @State count: number = 0
+
+  build() {
+    Text(`${this.count}`)
+      .onClick(() => this.count++)
+  }
+}
+V2 写法
+@ComponentV2
+struct MyCard {
+  @Local count: number = 0
+
+  build() {
+    Text(`${this.count}`)
+      .onClick(() => this.count++)
+  }
+}
+关键区别：
+
+@ComponentV2 是 V2 的入口，只能使用 V2 装饰器（@Local、@Param 等）
+@Component 只能使用 V1 装饰器（@State、@Prop 等）
+两套体系不可混用，同一个 struct 内不能混合 V1/V2 装饰器
+三、组件内部状态：@State vs @Local
+V1 — @State
+@Component
+struct Counter {
+  @State count: number = 0  // 整个变量被监听
+
+  build() {
+    Button(`count: ${this.count}`)
+      .onClick(() => this.count++)
+  }
+}
+V2 — @Local
+@ComponentV2
+struct Counter {
+  @Local count: number = 0  // 组件内部私有状态
+
+  build() {
+    Button(`count: ${this.count}`)
+      .onClick(() => this.count++)
+  }
+}
+差异对比：
+
+特性	@State（V1）	@Local（V2）
+是否可从外部传入	✅ 可以（但不推荐）	❌ 严格私有，不接受外部传入
+响应粒度	对象整体	对象整体（配合 @Trace 实现字段级）
+语义	组件状态	组件内部私有状态（更明确）
+四、父子传参：@Prop / @Link vs @Param / @Event
+这是 V1 到 V2 变化最大的地方。
+
+V1 — @Prop（单向）和 @Link（双向）
+// 父组件
+@Component
+struct Parent {
+  @State value: string = 'hello'
+
+  build() {
+    Column() {
+      // @Prop 单向传入，子组件修改不影响父
+      ChildA({ value: this.value })
+      // @Link 双向绑定，子组件修改同步到父
+      ChildB({ value: $this.value })
+    }
+  }
+}
+
+@Component
+struct ChildA {
+  @Prop value: string = ''  // 拷贝，修改不影响父
+  build() { Text(this.value) }
+}
+
+@Component
+struct ChildB {
+  @Link value: string  // 引用，修改直接影响父
+  build() {
+    Text(this.value)
+      .onClick(() => this.value = 'world')
+  }
+}
+V2 — @Param（只读传入）和 @Event（事件回调）
+V2 彻底移除了 @Link，统一为单向数据流 + 事件回调：
+
+// 父组件
+@ComponentV2
+struct Parent {
+  @Local value: string = 'hello'
+
+  build() {
+    Child({
+      value: this.value,
+      onValueChange: (newVal: string) => {
+        this.value = newVal  // 父组件自己决定是否更新
+      }
+    })
+  }
+}
+
+// 子组件
+@ComponentV2
+struct Child {
+  @Param value: string = ''          // 只读，不可直接修改
+  @Event onValueChange: (v: string) => void = () => {}  // 事件回调
+
+  build() {
+    Text(this.value)
+      .onClick(() => this.onValueChange('world'))  // 通过事件通知父组件
+  }
+}
+差异对比：
+
+特性	V1	V2
+父→子传值	@Prop（拷贝）	@Param（引用，只读）
+子→父通信	@Link（双向绑定）	@Event（单向事件）
+数据流方向	双向（@Link）	强制单向
+子组件能否直接修改父状态	✅ 能（@Link）	❌ 不能，必须通过 @Event
+@Param 使用要点：
+
+标注了 @Require 则调用方必须传入，否则编译报错
+子组件不得直接对 @Param 赋值，只能读取
+如需在子组件内修改，拷贝到 @Local 变量再操作
+五、可观察对象：@Observed vs @ObservedV2 + @Trace
+这是 V2 响应式最核心的改进：字段级精准响应。
+
+V1 — @Observed（对象级）
+@Observed
+class UserInfo {
+  name: string = ''
+  age: number = 0
+  // name 或 age 任一变化，引用此对象的组件全部重渲染
+}
+
+@Component
+struct UserCard {
+  @ObjectLink user: UserInfo
+
+  build() {
+    Column() {
+      Text(this.user.name)
+      Text(`${this.user.age}`)
+    }
+  }
+}
+V1 的问题：修改 user.age 会导致显示 name 的 Text 也重渲染，即使 name 没变。
+
+V2 — @ObservedV2 + @Trace（字段级）
+@ObservedV2
+class UserInfo {
+  @Trace name: string = ''   // 只有这个字段变化才触发相关组件更新
+  @Trace age: number = 0     // 独立追踪，互不影响
+  role: string = 'user'      // 未标 @Trace，变化不触发更新
+}
+
+@ComponentV2
+struct UserCard {
+  @Param user: UserInfo = new UserInfo()
+
+  build() {
+    Column() {
+      Text(this.user.name)      // 只在 name 变化时更新
+      Text(`${this.user.age}`)  // 只在 age 变化时更新
+    }
+  }
+}
+差异对比：
+
+特性	@Observed（V1）	@ObservedV2 + @Trace（V2）
+响应粒度	整个对象	单个字段（只有 @Trace 字段被追踪）
+使用复杂度	需配合 @ObjectLink	直接 @Param 传入即可
+嵌套对象	需每层都加 @Observed	嵌套类也加 @ObservedV2 + @Trace
+性能	粗粒度，容易过度渲染	细粒度，精准更新
+六、跨组件状态：@Provide/@Consume vs @Provider/@Consumer
+V1 — @Provide / @Consume
+@Component
+struct GrandParent {
+  @Provide('theme') theme: string = 'light'
+
+  build() { Parent() }
+}
+
+@Component
+struct Child {
+  @Consume('theme') theme: string  // 跨层级直接消费，可直接修改
+
+  build() {
+    Text(this.theme)
+      .onClick(() => this.theme = 'dark')  // 双向，影响所有使用者
+  }
+}
+V2 — @Provider / @Consumer
+@ComponentV2
+struct GrandParent {
+  @Provider() selectedIndex: number = 0  // 默认用变量名作 key
+
+  build() { Parent() }
+}
+
+@ComponentV2
+struct Child {
+  @Consumer() selectedIndex: number = 0  // 读写，变化同步到 Provider
+
+  build() {
+    Text(`${this.selectedIndex}`)
+      .onClick(() => this.selectedIndex = 1)
+  }
+}
+差异对比：
+
+特性	@Provide/@Consume（V1）	@Provider/@Consumer（V2）
+命名方式	字符串 key	默认变量名（可指定别名）
+修改方向	双向（Consume 可直接改）	双向（Consumer 可直接改）
+初始值	Consume 不设初始值	Consumer 必须设默认值（Provider 未找到时使用）
+七、监听变化：@Watch vs @Monitor
+V1 — @Watch
+@Component
+struct Page {
+  @State @Watch('onCountChange') count: number = 0
+
+  onCountChange() {
+    console.log('count 变了:', this.count)
+  }
+
+  build() { /* ... */ }
+}
+V2 — @Monitor
+@ComponentV2
+struct Page {
+  @Local count: number = 0
+  @Local name: string = ''
+
+  // 监听单个字段
+  @Monitor('count')
+  onCountChange(monitor: IMonitor) {
+    const prev = monitor.value()?.before  // 变化前的值
+    const curr = monitor.value()?.now     // 变化后的值
+    console.log(`count: ${prev} → ${curr}`)
+  }
+
+  // 同时监听多个字段
+  @Monitor('count', 'name')
+  onAnyChange(monitor: IMonitor) {
+    console.log('count 或 name 变化了')
+  }
+
+  build() { /* ... */ }
+}
+差异对比：
+
+特性	@Watch（V1）	@Monitor（V2）
+绑定方式	标注在被监听字段上	独立方法，参数指定监听目标
+获取变化前后值	❌ 不支持	✅ 通过 IMonitor 获取 before/now
+监听多个字段	需要多个 @Watch	一个 @Monitor 可指定多个字段名
+监听嵌套字段	❌ 不支持	✅ 支持路径（如 'user.name'）
+八、计算属性：getter vs @Computed
+V1 — 普通 getter
+@Component
+struct Page {
+  @State firstName: string = '张'
+  @State lastName: string = '三'
+
+  // 普通 getter，每次访问都重新计算
+  get fullName(): string {
+    return this.firstName + this.lastName
+  }
+
+  build() {
+    Text(this.fullName)
+  }
+}
+V2 — @Computed
+@ComponentV2
+struct Page {
+  @Local firstName: string = '张'
+  @Local lastName: string = '三'
+
+  // 自动缓存：只有依赖的字段变化时才重新计算
+  @Computed
+  get fullName(): string {
+    return this.firstName + this.lastName
+  }
+
+  build() {
+    Text(this.fullName)
+  }
+}
+@Computed 的优势： 结果被缓存，依赖未变化时直接返回缓存值，避免重复计算。这在渲染列表或复杂 UI 时性能收益明显。
+
+九、全局存储：AppStorage vs AppStorageV2
+V1 — AppStorage
+// 存入
+AppStorage.setOrCreate('userInfo', new UserInfo())
+
+// 组件中读取（双向绑定）
+@Component
+struct Page {
+  @StorageLink('userInfo') userInfo: UserInfo = new UserInfo()
+}
+V2 — AppStorageV2
+// 存入/获取（connect 模式，不存在则用工厂函数创建）
+const userInfo = AppStorageV2.connect(UserInfo, () => new UserInfo())!
+
+// 组件中读取
+@ComponentV2
+struct Page {
+  userInfo: UserInfo = AppStorageV2.connect(UserInfo, () => new UserInfo())!
+
+  build() {
+    // userInfo 是 @ObservedV2 类，@Trace 字段自动响应
+    Text(this.userInfo.nickname)
+  }
+}
+差异对比：
+
+特性	AppStorage（V1）	AppStorageV2（V2）
+Key 方式	字符串	类型本身（类名作 key）或自定义字符串
+响应式	@StorageLink 双向绑定	依赖 @ObservedV2 + @Trace 响应
+类型安全	弱类型（any）	强类型（泛型）
+十、完整对照表
+功能	V1 装饰器	V2 装饰器	说明
+声明组件	@Component	@ComponentV2	两套不可混用
+内部状态	@State	@Local	V2 严格私有
+父→子传值	@Prop	@Param	V2 为只读引用
+必传参数	—	@Require @Param	V2 可标注必传
+子→父通信	@Link	@Event	V2 强制单向
+双向绑定语法	$变量名	—	V2 不支持
+可观察类	@Observed	@ObservedV2	—
+字段追踪	@Track（可选）	@Trace（显式标注）	V2 只追踪 @Trace 字段
+嵌套引用	@ObjectLink	@Param	V2 更简洁
+跨层共享	@Provide/@Consume	@Provider/@Consumer	—
+监听变化	@Watch	@Monitor	V2 支持获取变化前后值
+计算属性	普通 getter	@Computed	V2 有缓存
+全局存储	AppStorage + @StorageLink	AppStorageV2.connect()	V2 类型更安全
+十一、迁移建议
+1. 新项目直接用 V2
+V2 是官方推荐的现代写法，新项目无需考虑 V1。
+
+2. 老项目渐进迁移
+V1 和 V2 组件可以在同一应用中共存（但不能在同一个 struct 内混用），可以按模块逐步替换。
+
+3. 迁移检查清单
+□ @Component        →  @ComponentV2
+□ @State            →  @Local（内部状态）
+□ @Prop             →  @Param（父传子，只读）
+□ @Link             →  删除，改为 @Param + @Event 组合
+□ @Observed         →  @ObservedV2
+□ @Track / 无标注   →  @Trace（显式标注需要追踪的字段）
+□ @ObjectLink       →  @Param（直接传 @ObservedV2 对象）
+□ @Provide/@Consume →  @Provider/@Consumer
+□ @Watch            →  @Monitor
+□ 普通 getter       →  @Computed
+□ AppStorage        →  AppStorageV2
+4. 常见踩坑
+踩坑一：@Param 不可赋值
+
+// ❌ 错误：直接修改 @Param
+@Param value: string = ''
+this.value = 'new'  // 运行时报错
+
+// ✅ 正确：通过 @Event 通知父组件修改
+@Event onChange: (v: string) => void = () => {}
+this.onChange('new')
+踩坑二：@ObservedV2 类中忘记加 @Trace
+
+@ObservedV2
+class Config {
+  theme: string = 'light'       // ❌ 没有 @Trace，修改不触发 UI 更新
+  @Trace language: string = 'zh'  // ✅ 有 @Trace，修改触发更新
+}
+踩坑三：V1/V2 组件混用
+
+@ComponentV2
+struct MyComp {
+  @State count: number = 0  // ❌ V2 组件内不能用 @State
+  @Local count: number = 0  // ✅ 正确
+}
+十二、总结
+V2 体系的核心设计理念是：明确的数据流方向 + 精准的响应粒度 + 清晰的组件契约。
+
+单向数据流：通过删除 @Link、强制使用 @Event，让数据流向一目了然
+精准响应：@ObservedV2 + @Trace 实现字段级响应，大幅减少不必要的重渲染
+类型安全：AppStorageV2、@Require @Param 等让组件接口更加明确
+如果你正在开发新的鸿蒙应用，建议直接采用 V2 体系；如果是维护老项目，也可以按模块逐步迁移，两套体系可以在应用层面共存。
+
+
+
+

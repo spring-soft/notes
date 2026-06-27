@@ -1,46 +1,67 @@
+import { hdsMaterial } from '@kit.UIDesignKit';
+
 /**
  * Device material-capability detection.
  *
- * Queries the system for supported material types at launch so the app
- * can degrade gracefully on devices that don't support immersive rendering.
+ * Uses the real hdsMaterial.getSystemMaterialTypes() API (available from
+ * API 23 / HarmonyOS 6.1.0) to query whether the device supports immersive
+ * material rendering, and returns the recommended quality level.
  *
- * NOTE: Import hdsMaterial from @kit.UIDesignKit only when the package
- * is available.  If the import fails, the fallback assumes SMOOTH only.
+ * The systemMaterial (ArkUI universal attribute) requires API 26, but
+ * HDS component systemMaterialEffect is available from API 23 onward.
  */
 
-/**
- * Recommended material level for the current device.
- * 0 = ADAPTIVE (auto-balance), 3 = SMOOTH (lowest cost, safest fallback)
- */
-let cachedRecommendedLevel: number | null = null;
+/** Cached device-supported material types. */
+let cachedMaterialTypes: Array<hdsMaterial.MaterialType> | null = null;
 
 /**
- * Returns the recommended material level for this device.
- * Call once at app startup; result is cached.
+ * Queries the system for supported material types.
+ * Result is cached after the first call.
  */
-export function getRecommendedMaterialLevel(): number {
-  if (cachedRecommendedLevel !== null) {
-    return cachedRecommendedLevel;
+function getSystemMaterialTypes(): Array<hdsMaterial.MaterialType> {
+  if (cachedMaterialTypes === null) {
+    try {
+      cachedMaterialTypes = hdsMaterial.getSystemMaterialTypes();
+    } catch (_e) {
+      // Fall back to empty array on older devices where the API might throw
+      cachedMaterialTypes = [];
+    }
   }
-  // Default to ADAPTIVE (0) for devices that support immersive.
-  // If the HDS kit is unavailable, fall back to SMOOTH (3) in supportsImmersive().
-  cachedRecommendedLevel = 0;
-  return cachedRecommendedLevel;
+  return cachedMaterialTypes;
 }
 
 /**
  * Returns true if the device supports immersive light effects.
- * Always returns true on API 23+ devices; the real check requires
- * hdsMaterial.getSystemMaterialTypes() from @kit.UIDesignKit.
- *
- * When that kit is not available, we conservatively assume immersive IS
- * supported (the systemMaterial API itself is part of @kit.ArkUI and
- * available from API 23 onward).  The HDS kit only adds the capability
- * *query* — the actual rendering works without it.
+ * Requires the IMMERSIVE material type in the system capability set.
  */
 export function supportsImmersive(): boolean {
-  // systemMaterial (uiMaterial.ImmersiveMaterial) is available from
-  // HarmonyOS 6.1.0 (API 23) as part of @kit.ArkUI.  Our min SDK is
-  // API 24, so immersive is always supported at the API level.
-  return true;
+  const types: Array<hdsMaterial.MaterialType> = getSystemMaterialTypes();
+  return types.includes(hdsMaterial.MaterialType.IMMERSIVE);
+}
+
+/** Cached recommended material level. */
+let cachedRecommendedLevel: hdsMaterial.MaterialLevel | null = null;
+
+/**
+ * Returns the recommended material level for this device.
+ * - EXQUISITE: full material fidelity (high-end devices)
+ * - ADAPTIVE: system auto-balance (recommended for most devices)
+ * - SMOOTH: minimal cost (low-end devices or IMMERSIVE unsupported)
+ *
+ * Result is cached after the first call.
+ */
+export function getRecommendedMaterialLevel(): hdsMaterial.MaterialLevel {
+  if (cachedRecommendedLevel !== null) {
+    return cachedRecommendedLevel;
+  }
+
+  const types: Array<hdsMaterial.MaterialType> = getSystemMaterialTypes();
+  if (types.includes(hdsMaterial.MaterialType.IMMERSIVE)) {
+    // Device supports immersive — prefer adaptive (system auto-balance)
+    cachedRecommendedLevel = hdsMaterial.MaterialLevel.ADAPTIVE;
+  } else {
+    // No immersive support — fall back to smooth (lowest cost, safest)
+    cachedRecommendedLevel = hdsMaterial.MaterialLevel.SMOOTH;
+  }
+  return cachedRecommendedLevel;
 }

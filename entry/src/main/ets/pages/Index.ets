@@ -182,7 +182,13 @@ struct Index {
     .barOverlap(true)
     .barPosition(BarPosition.End)
     .barHeight(64)
-    .barBackgroundBlurStyle(BlurStyle.Thick)
+    .barFloatingStyle({
+      barBottomMargin: 28,
+      systemMaterialEffect: {
+        materialType: hdsMaterial.MaterialType.ADAPTIVE,
+        materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
+      }
+    })
     .scrollable(false)
     .onChange((index: number) => {
       this.tabNavStacks[this.currentTabIndex].clear();

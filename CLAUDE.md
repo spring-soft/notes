@@ -47,15 +47,15 @@ Index provides:
 - `@Event` required on all callback properties set by parent components
 - `@CustomDialog` (GlassDialog) remains unchanged — not part of V1/V2 state management
 
-### UI Style (v2.0.0 — immersive depth via backdropBlur, no systemMaterial yet)
-- All components use layered `backdropBlur()` + semi-transparent backgrounds for depth
+### UI Style (v2.0.0 — HDS real material + backdropBlur fallback)
+- **HdsTabs** (@kit.UIDesignKit, API 23+): `barFloatingStyle({ systemMaterialEffect })` — real GPU-level immersive material (NOT CSS blur). Uses `hdsMaterial.MaterialType.ADAPTIVE` + `hdsMaterial.MaterialLevel.ADAPTIVE` for system auto-balance.
+- **Non-HDS components**: Use layered `backdropBlur()` + semi-transparent backgrounds as fallback (real `systemMaterial` on ArkUI components requires API 26, project targets API 24)
 - 5-tier depth hierarchy: ULTRA_THIN(4px) → THIN(8px) → REGULAR(16px) → THICK(24px) → ULTRA_THICK(30px)
 - `MaterialConstants.ets` provides `getBlur(level)` and `getOverlayColor(level, isDark)` helpers
+- `MaterialCapability.ets` uses real `hdsMaterial.getSystemMaterialTypes()` for device capability detection
 - Manual press animations replaced by backdropBlur-based interactive feedback (GlassButton simplified)
 - Card accent stripes are now inner Column elements (NoteCard, GlassCard) — not border-based
 - No `backdropBlur` on ThemeBackground (it's the canvas) — only on foreground surfaces
-- Note: `systemMaterial` / `ImmersiveMaterial` API not available in SDK API 24; backdropBlur is the substitute
-- **HdsTabs** (@kit.UIDesignKit, API 23+): replaces Tabs with `barOverlap(true)` + `barBackgroundBlurStyle(Thick)` for floating immersive tab bar
 - **Page headers**: all 5 pages have backdropBlur(THIN) on header Row for immersive frosted effect
 - **Tablet sidebar**: backdropBlur(THICK) material surface with border separator
 - **Settings → 沉浸光感**: Toggle (immersiveEnabled) + material level chip picker (ADAPTIVE/EXQUISITE/GENTLE/SMOOTH) persisted via ThemeViewModel
@@ -141,7 +141,7 @@ TodoAddSheet save:
 | `components/common/SearchBar.ets` | Search input with THIN backdropBlur surface |
 | `constants/AppConstants.ets` | Version 2.0.0, route names, limits |
 | `constants/MaterialConstants.ets` | 5-tier depth hierarchy constants + getBlur()/getOverlayColor() helpers |
-| `utils/MaterialCapability.ets` | Device material capability detection |
+| `utils/MaterialCapability.ets` | Device material detection via real `hdsMaterial.getSystemMaterialTypes()` |
 
 ## Fixed Bugs (all verified with BUILD SUCCESSFUL)
 
@@ -183,7 +183,7 @@ TodoAddSheet save:
 32. **Pomodoro 计时器改为挂钟时间戳驱动** — 原来用 `setInterval` + `remainingSeconds--` 递减，后台节流导致计时漂移。改为记录 `startTimestamp` + `pausedElapsed`，每次 tick 用 `Date.now()` 计算剩余时间。暂停时累加已过秒数到 `pausedElapsed`，恢复时重置 `startTimestamp`。计时精度不再依赖 setInterval 回调频率，切 tab 和退后台都不影响。
 33. **计时器切 tab 重置修复** — HarmonyOS Tabs 会销毁非可见 TabContent，导致 PomodoroPage 的 aboutToDisappear → destroy() 销毁计时器，切回时 createViewModel() 重建全新 ViewModel → 计时重置。改为模块级单例：`initPomodoroViewModel()`/`getPomodoroViewModel()` 在 Index.initializeApp() 中创建一次，切 tab 时 PomodoroPage 只注销 tickHandler 不销毁 VM。SettingsPage 改为直接用 SettingsRepository 保存配置，不再创建多余的 PomodoroViewModel。
 34. **v2.0 UI 升级：全项目应用沉浸深度材质** — 操作规范文档指引使用 HDS 沉浸光感组件，但 SDK API 24 不支持 `systemMaterial`/`ImmersiveMaterial` API。降级方案：用 `backdropBlur()` + 半透明背景模拟 5 级深度层级（ULTRA_THIN 4px → ULTRA_THICK 30px）。新建 `MaterialConstants.ets` 提供 `getBlur(level)` 和 `getOverlayColor(level, isDark)` 统一管理深度效果。20 个组件文件升级为 backdropBlur 模式：GlassCard(REGULAR)、GlassContainer(elevation映射)、GlassButton(THICK/THIN, 移除手动press动画)、GlassDialog(ULTRA_THICK)、SearchBar(THIN)、NoteCard(REGULAR+色条重构为内嵌Column)、TodoItem(REGULAR)、PomodoroSessionStats(REGULAR)、PomodoroControls(THICK/THIN)、ImagePickerButton(THIN)、ReminderPicker(THIN)、NotesPage(FAB+Chip)、TodosPage(FAB+Sheet+筛选)、PomodoroPage(类型Chip)、NoteDetailPage(顶栏+分类Chip)。ThemeConfig 新增 `materialLevel` 和 `immersiveEnabled` 字段。
-35. **Tabs → HdsTabs 沉浸悬浮标签栏** — 操作规范文档确认 SDK API 24 支持 `@kit.UIDesignKit` (HdsTabs/HdsNavigation 从 API 23 起可用，`systemMaterial` 通用组件需 API 26)。`Tabs` → `HdsTabs` + `HdsTabsController`，添加 `barOverlap(true)` + `barBackgroundBlurStyle(Thick)` 实现底部标签栏沉浸模糊效果。保留 `tabBarBuilder` 自定义图标标签（`BottomTabBarStyle` 在 API 24 中不存在）。
+35. **Tabs → HdsTabs 沉浸悬浮标签栏** — 操作规范文档确认 SDK API 24 支持 `@kit.UIDesignKit` (HdsTabs/HdsNavigation 从 API 23 起可用，`systemMaterial` 通用组件需 API 26)。`Tabs` → `HdsTabs` + `HdsTabsController`，添加 `barOverlap(true)` + `barBackgroundBlurStyle(Thick)` 实现底部标签栏沉浸模糊效果。保留 `tabBarBuilder` 自定义图标标签（`BottomTabBarStyle` 在 API 24 中不存在）。**升级**: `barBackgroundBlurStyle(Thick)` → `barFloatingStyle({ systemMaterialEffect })` 使用真正的 GPU 物理光感材质替代 CSS 模糊。
 36. **番茄钟模式切换 Chip UI 不跟随** — `sessionTypeChip` 中使用 `this.viewModel.currentType` 判断选中态，但 `viewModel` 不是 `@State`，切模式后 ArkUI 不触发重渲染。添加 `@State currentType`，在 `onClick` 中同步 `this.currentType = type` 并更新 `displayRemaining`/`displayProgress`/`stateUpdateSignal`。
 37. **NoteCard 卡片过大** — 非网格模式内边距 16px 过于宽松，减至 14px（网格模式 10px），多卡片列表更紧凑。
 38. **Phase 3: 页面标题栏沉浸光感** — 5 个页面 (NotesPage/TodosPage/PomodoroPage/SettingsPage/NoteDetailPage) 的 Header Row 添加 `backdropBlur(THIN 8px)` + 半透明背景覆盖，实现弱毛玻璃标题栏效果。SettingsPage 补充缺失的 MaterialConstants import。
@@ -191,6 +191,7 @@ TodoAddSheet save:
 40. **Phase 5: 设置页沉浸光感控件** — 新增「沉浸光感」设置区：启用/禁用 Toggle → themeVM.updateImmersiveEnabled()；材质质量四选一 Chip（自适应/精致/柔和/流畅）→ themeVM.updateMaterialLevel()。版本号显示同步为 2.0.0。
 41. **包名修改** — `com.example.notes` → `com.lychee.memosflow`（AppScope/app.json5 bundleName）。
 42. **全局状态管理 V1 → V2 迁移**（31 文件）— 按操作规范要求替换所有 V1 装饰器：`@ComponentV2`/`@Local`/`@Param`/`@Event`/`@Provider`/`@Consumer`/`@ObservedV2`/`@Trace`/`@Monitor`。`$` 双向绑定改为 `@Param`+`@Event` 回调。`DEFAULT_THEME_CONFIG` 供 `@Consumer` 编译占位。回调属性必须加 `@Event` 否则编译失败。`@CustomDialog` 保持不动。
+43. **HdsTabs 真正沉浸光感材质** — `barBackgroundBlurStyle(Thick)`（CSS 高斯模糊）→ `barFloatingStyle({ systemMaterialEffect })`（GPU 物理光感材质）。`hdsMaterial.MaterialType.ADAPTIVE` + `hdsMaterial.MaterialLevel.ADAPTIVE` 让系统自动平衡效果与性能。`MaterialCapability.ets` 改用真实 `hdsMaterial.getSystemMaterialTypes()` API 检测设备能力（不再硬编码 `true`）。注：`BottomTabBarStyle` 在 SDK 24 仍不存在，保留自定义 `tabBarBuilder`；`systemMaterial` 通用组件属性需 API 26，非 HDS 组件继续使用 `backdropBlur` 降级。
 
 ## ArkTS Strict Rules
 - No spread operator `...` → explicit property copy when creating new ThemeConfig
