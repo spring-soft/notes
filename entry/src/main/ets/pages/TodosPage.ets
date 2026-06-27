@@ -37,7 +37,7 @@ export struct TodosPage {
     NavDestination() {
       Stack() {
         Column() {
-          // Header
+          // Header — immersive blur surface
           Row() {
             Text('待办')
               .fontSize(28 * this.themeConfig.fontScale)
@@ -45,7 +45,9 @@ export struct TodosPage {
               .fontColor(this.themeConfig.textColor);
           }
           .width('100%')
-          .padding({ left: 20, right: 20, top: 44, bottom: 12 });
+          .padding({ left: 20, right: 20, top: 44, bottom: 12 })
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
           // Filter tabs
           Row() {

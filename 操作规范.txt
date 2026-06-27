@@ -892,3 +892,317 @@ struct MyPage {
 
 
 
+
+
+
+
+
+
+tool: builtin_web_rag
+result: 
+
+要将华为官网中提到的系统能力特征（SystemCapability，简称SysCap）调用到你的HarmonyOS项目中，你需要了解SysCap机制并正确使用相关API。SysCap是HarmonyOS中用于管理设备能力差异的重要特性，它代表了操作系统中的每一个相对独立的特性，如蓝牙、WiFi、NFC、摄像头等。
+
+## 一、SysCap 核心概念
+
+SysCap机制允许开发者：
+- 查询设备是否支持特定能力
+- 根据设备能力差异提供不同的功能实现
+- 实现“一次开发，多端部署”
+
+## 二、在代码中调用系统能力
+
+### 1. 使用 `canIUse` API 判断能力支持
+
+```typescript
+import { abilityAccessCtrl, common } from '@kit.AbilityKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
+// 判断设备是否支持特定系统能力
+const isSupported = canIUse('SystemCapability.Communication.Bluetooth.Core');
+if (isSupported) {
+    // 设备支持蓝牙核心能力，可以调用相关API
+    hilog.info(0x0000, 'MyApp', '设备支持蓝牙功能');
+} else {
+    // 设备不支持，提供降级方案
+    hilog.warn(0x0000, 'MyApp', '设备不支持蓝牙功能');
+}
+```
+
+### 2. 根据API版本进行兼容性判断
+
+```typescript
+import { deviceInfo } from '@kit.DeviceCapabilityKit';
+
+// 判断HarmonyOS设备独有特性接口
+if (deviceInfo.distributionOSApiVersion >= 60000) {
+    // 支持API 6.0.0(20)及以上的新特性
+    // 调用新API
+}
+
+// 判断OpenHarmony底座接口
+if (deviceInfo.sdkApiVersion >= 20) {
+    // 支持API 20及以上的接口
+    // 调用新API
+}
+```
+
+## 三、实际应用示例
+
+### 示例1：相机功能的条件调用
+
+```typescript
+import { camera } from '@kit.CameraKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+
+@Component
+struct CameraComponent {
+  @State hasCameraCapability: boolean = false;
+  
+  aboutToAppear() {
+    // 检查设备是否支持相机能力
+    this.hasCameraCapability = canIUse('SystemCapability.Multimedia.Camera.Core');
+  }
+  
+  build() {
+    Column() {
+      if (this.hasCameraCapability) {
+        // 显示相机相关UI组件
+        Button('打开相机')
+          .onClick(() => {
+            this.openCamera();
+          })
+      } else {
+        Text('当前设备不支持相机功能')
+          .fontColor(Color.Red)
+      }
+    }
+  }
+  
+  async openCamera() {
+    try {
+      const cameraManager = camera.getCameraManager();
+      // 调用相机API...
+    } catch (error) {
+      const err = error as BusinessError;
+      hilog.error(0x0000, 'CameraComponent', `打开相机失败: ${err.message}`);
+    }
+  }
+}
+```
+
+### 示例2：地理位置服务
+
+```typescript
+import { geoLocationManager } from '@kit.LocationKit';
+
+async function getLocation() {
+  // 检查是否支持地理位置服务
+  if (!canIUse('SystemCapability.Location.Location.Core')) {
+    hilog.warn(0x0000, 'MyApp', '设备不支持地理位置服务');
+    return;
+  }
+  
+  try {
+    const requestInfo: geoLocationManager.LocationRequest = {
+      priority: geoLocationManager.LocationRequestPriority.FIRST_FIX,
+      scenario: geoLocationManager.LocationRequestScenario.UNSET,
+      timeInterval: 1,
+      distanceInterval: 0,
+      maxAccuracy: 0
+    };
+    
+    const location = await geoLocationManager.getCurrentLocation(requestInfo);
+    hilog.info(0x0000, 'MyApp', `当前位置: ${location.latitude}, ${location.longitude}`);
+  } catch (error) {
+    const err = error as BusinessError;
+    hilog.error(0x0000, 'MyApp', `获取位置失败: ${err.message}`);
+  }
+}
+```
+
+## 四、项目配置
+
+### 1. 在 `build-profile.json5` 中配置SDK版本
+
+```json5
+{
+  "app": {
+    "signingConfigs": [],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.5(17)",  // 最低兼容版本
+        "targetSdkVersion": "6.0.0(20)",       // 目标版本
+        "compileSdkVersion": "6.0.0(20)"       // 编译版本
+      }
+    ]
+  }
+}
+```
+
+**版本关系**：`compatibleSdkVersion ≤ targetSdkVersion ≤ compileSdkVersion`
+
+### 2. 模块配置文件中的设备能力声明
+
+在 `module.json5` 中声明需要的设备能力：
+
+```json5
+{
+  "module": {
+    "name": "entry",
+    "type": "entry",
+    "deviceTypes": [
+      "phone",
+      "tablet",
+      "car",
+      "wearable"
+    ],
+    "reqCapabilities": [
+      "location",
+      "camera",
+      "bluetooth"
+    ]
+  }
+}
+```
+
+## 五、最佳实践建议
+
+### 1. **渐进增强策略**
+```typescript
+function useFeature() {
+  // 优先检查高级特性
+  if (canIUse('SystemCapability.AI.HiAI.Foundation')) {
+    // 使用AI高级能力
+    return useAdvancedAIFeature();
+  } else if (canIUse('SystemCapability.AI.Basic')) {
+    // 使用基础AI能力
+    return useBasicAIFeature();
+  } else {
+    // 降级到非AI方案
+    return useFallbackSolution();
+  }
+}
+```
+
+### 2. **统一的能力管理工具**
+```typescript
+// capabilities.ts - 系统能力管理工具类
+export class CapabilityManager {
+  private static capabilities = new Map<string, boolean>();
+  
+  // 预检查常用能力
+  static async initialize() {
+    const commonCapabilities = [
+      'SystemCapability.Communication.Bluetooth.Core',
+      'SystemCapability.Multimedia.Camera.Core',
+      'SystemCapability.Location.Location.Core',
+      'SystemCapability.Notification.Notification',
+      'SystemCapability.FileManagement.File.FileIO'
+    ];
+    
+    for (const cap of commonCapabilities) {
+      this.capabilities.set(cap, canIUse(cap));
+    }
+  }
+  
+  static isSupported(capability: string): boolean {
+    return this.capabilities.get(capability) || false;
+  }
+  
+  static require(capability: string, featureName: string): void {
+    if (!this.isSupported(capability)) {
+      throw new Error(`设备不支持${featureName}功能，需要系统能力: ${capability}`);
+    }
+  }
+}
+
+// 使用示例
+CapabilityManager.require(
+  'SystemCapability.Multimedia.Camera.Core',
+  '相机拍摄'
+);
+```
+
+### 3. **条件编译与代码分割**
+```typescript
+// 使用条件编译标记
+// #if API_VERSION >= 60000
+import { newFeature } from '@kit.NewFeatureKit';
+// #endif
+
+@Component
+struct MyComponent {
+  build() {
+    Column() {
+      // 条件渲染
+      if (deviceInfo.distributionOSApiVersion >= 60000) {
+        // 新版本特性
+        NewFeatureComponent()
+      } else {
+        // 兼容旧版本
+        LegacyComponent()
+      }
+    }
+  }
+}
+```
+
+## 六、调试与测试
+
+### 1. 在开发者选项中启用调试功能
+- **USB调试**：通过计算机侧命令对移动设备进行调测
+- **无线调试**：通过Wi-Fi进行设备连接调试
+- **显示布局边界**：查看控件布局、空白空隙及控件重叠等问题
+- **过度绘制检测**：可视化应用可能进行的不必要渲染
+
+### 2. 使用 `hilog` 进行能力检测日志
+```typescript
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
+function checkAllCapabilities() {
+  const capabilities = [
+    { name: '蓝牙', key: 'SystemCapability.Communication.Bluetooth.Core' },
+    { name: 'NFC', key: 'SystemCapability.Communication.NFC.Core' },
+    { name: 'WiFi', key: 'SystemCapability.Communication.Wifi' },
+    { name: '相机', key: 'SystemCapability.Multimedia.Camera.Core' },
+    { name: '位置服务', key: 'SystemCapability.Location.Location.Core' }
+  ];
+  
+  capabilities.forEach(cap => {
+    const supported = canIUse(cap.key);
+    hilog.info(0x0000, 'CapabilityCheck', 
+      `${cap.name}: ${supported ? '✓ 支持' : '✗ 不支持'}`);
+  });
+}
+```
+
+## 七、常见系统能力列表
+
+| 能力分类 | 系统能力名称 | 描述 |
+|---------|-------------|------|
+| **通信** | `SystemCapability.Communication.Bluetooth.Core` | 蓝牙核心功能 |
+| | `SystemCapability.Communication.NFC.Core` | NFC功能 |
+| | `SystemCapability.Communication.Wifi` | WiFi功能 |
+| **多媒体** | `SystemCapability.Multimedia.Camera.Core` | 相机功能 |
+| | `SystemCapability.Multimedia.Audio.Core` | 音频功能 |
+| | `SystemCapability.Multimedia.Image.Core` | 图片处理 |
+| **位置** | `SystemCapability.Location.Location.Core` | 地理位置服务 |
+| **传感器** | `SystemCapability.Sensors.Sensor` | 传感器服务 |
+| **AI** | `SystemCapability.AI.HiAI.Foundation` | AI基础能力 |
+| **安全** | `SystemCapability.Security.CryptoFramework` | 加解密框架 |
+
+## 八、注意事项
+
+1. **运行时检查**：始终在调用特定API前使用 `canIUse()` 进行检查
+2. **优雅降级**：为不支持的能力提供替代方案或友好提示
+3. **版本兼容**：使用 `deviceInfo.distributionOSApiVersion` 或 `deviceInfo.sdkApiVersion` 进行版本判断
+4. **权限申请**：某些系统能力需要相应的权限，确保在 `module.json5` 中声明
+5. **真机测试**：SysCap检测在模拟器上可能不准确，建议在真机上测试
+
+通过以上方法，你可以将HarmonyOS的系统能力特征有效地集成到你的项目中，实现跨设备的兼容性和最佳用户体验。
+
+
+

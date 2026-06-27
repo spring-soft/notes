@@ -166,7 +166,7 @@ export struct NoteDetailPage {
     NavDestination() {
       Stack() {
         Column() {
-        // Top bar
+        // Top bar — immersive blur surface
         Row() {
           Button() {
             SymbolGlyph(ICON.BACK)
@@ -236,7 +236,9 @@ export struct NoteDetailPage {
           }
         }
         .width('100%')
-        .padding({ left: 16, right: 16, top: 44, bottom: 8 });
+        .padding({ left: 16, right: 16, top: 44, bottom: 8 })
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
         // Color picker dropdown
         if (this.showColorPicker) {

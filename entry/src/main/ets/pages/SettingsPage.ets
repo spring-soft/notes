@@ -1,6 +1,7 @@
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { ThemeConfig, ThemePreset } from '../model/ThemeConfigModel';
 import { PomodoroConfig } from '../model/PomodoroSessionModel';
+import { MaterialConstants } from '../constants/MaterialConstants';
 import { SettingsRepository } from '../repository/SettingsRepository';
 import { common } from '@kit.AbilityKit';
 import { ColorPickerComponent } from '../components/business/ColorPicker';
@@ -84,7 +85,7 @@ export struct SettingsPage {
     NavDestination() {
       Scroll() {
         Column() {
-          // Header
+          // Header — immersive blur surface
           Row() {
             Text('设置')
               .fontSize(28 * this.themeConfig.fontScale)
@@ -92,7 +93,9 @@ export struct SettingsPage {
               .fontColor(this.themeConfig.textColor);
           }
           .width('100%')
-          .padding({ left: 20, right: 20, top: 44, bottom: 16 });
+          .padding({ left: 20, right: 20, top: 44, bottom: 16 })
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
           // ── Appearance Section ──
           this.sectionHeader('主题配色');

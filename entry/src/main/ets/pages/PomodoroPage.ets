@@ -65,7 +65,7 @@ export struct PomodoroPage {
     NavDestination() {
       Column() {
 
-        // Header
+        // Header — immersive blur surface
         Row() {
           Text('专注')
             .fontSize(28 * this.themeConfig.fontScale)
@@ -73,7 +73,9 @@ export struct PomodoroPage {
             .fontColor(this.themeConfig.textColor);
         }
         .width('100%')
-        .padding({ left: 20, right: 20, top: 44, bottom: 12 });
+        .padding({ left: 20, right: 20, top: 44, bottom: 12 })
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
         // Session type selector
         Row() {

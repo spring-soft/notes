@@ -45,7 +45,7 @@ export struct NotesPage {
           if (this.refreshSignal >= 0) {
           }
 
-        // ── Header ──
+        // ── Header (immersive blur surface) ──
         Row() {
           Text('笔记')
             .fontSize(28 * this.themeConfig.fontScale)
@@ -72,7 +72,9 @@ export struct NotesPage {
           .hitTestBehavior(HitTestMode.Block)
           .onClick(() => { this.showFilterMenu = !this.showFilterMenu; });
         }
-        .width('100%').padding({ left: 20, right: 20, top: 44, bottom: 0 });
+        .width('100%').padding({ left: 20, right: 20, top: 44, bottom: 8 })
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
         // ── Search ──
         Row() {
