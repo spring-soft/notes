@@ -403,7 +403,7 @@ struct SettingSliderComponent {
   @Param max: number = 100;
   @Param step: number = 1;
   @Param sliderType: SliderType = SliderType.BORDER_RADIUS;
-  onSliderChanged: () => void = () => {
+  @Event onSliderChanged: () => void = () => {
   };
 
   build() {

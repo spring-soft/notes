@@ -18,9 +18,9 @@ const TAG: string = 'ImagePickerButton';
 export struct ImagePickerButton {
   @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
   @Param currentImageUri: string = '';
-  onImagePicked: (uri: string) => void = (_uri: string) => {
+  @Event onImagePicked: (uri: string) => void = (_uri: string) => {
   };
-  onImageRemoved: () => void = () => {
+  @Event onImageRemoved: () => void = () => {
   };
 
   build() {

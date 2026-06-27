@@ -13,11 +13,11 @@ export struct PomodoroControls {
   @Param currentState: PomodoroState = PomodoroState.IDLE;
   @Param isRunning: boolean = false;
   @Param stateSignal: number = 0;
-  onStartPause: () => void = () => {
+  @Event onStartPause: () => void = () => {
   };
-  onReset: () => void = () => {
+  @Event onReset: () => void = () => {
   };
-  onSkip: () => void = () => {
+  @Event onSkip: () => void = () => {
   };
 
   build() {

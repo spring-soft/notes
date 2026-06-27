@@ -27,7 +27,7 @@ export struct NoteCard {
     categoryId: '未分类',
   };
   @Param gridMode: boolean = false;
-  onCardClick: () => void = () => {
+  @Event onCardClick: () => void = () => {
   };
 
   build() {

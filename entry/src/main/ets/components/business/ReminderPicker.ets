@@ -12,11 +12,11 @@ export struct ReminderPicker {
   @Param reminderTime: Timestamp = 0;
   @Param repeatType: RepeatType = RepeatType.NONE;
   @Param enabled: boolean = false;
-  onTimeChange: (timestamp: Timestamp) => void = (_t: Timestamp) => {
+  @Event onTimeChange: (timestamp: Timestamp) => void = (_t: Timestamp) => {
   };
-  onRepeatChange: (repeat: RepeatType) => void = (_r: RepeatType) => {
+  @Event onRepeatChange: (repeat: RepeatType) => void = (_r: RepeatType) => {
   };
-  onToggle: (enabled: boolean) => void = (_e: boolean) => {
+  @Event onToggle: (enabled: boolean) => void = (_e: boolean) => {
   };
 
   @Local selectedDate: Date = new Date();

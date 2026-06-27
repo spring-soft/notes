@@ -14,7 +14,7 @@ export struct NoteEditor {
   @Param placeholder: string = '开始记录...';
   @Local localContent: string = '';
   private isUserEditing: boolean = false;
-  onContentChange: (value: string) => void = (_v: string) => {};
+  @Event onContentChange: (value: string) => void = (_v: string) => {};
 
   aboutToAppear(): void {
     this.localContent = this.initialContent;

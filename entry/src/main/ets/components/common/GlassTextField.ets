@@ -21,7 +21,7 @@ export struct GlassTextField {
   @Param maxLength: number = 500;
   @Param type: InputType = InputType.Normal;
   @Param multiline: boolean = false;
-  onChange: (value: string) => void = (_v: string) => {
+  @Event onChange: (value: string) => void = (_v: string) => {
   };
 
   build() {

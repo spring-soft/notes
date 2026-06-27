@@ -23,9 +23,9 @@ export struct TodoItemView {
     dueDate: 0,
     completedAt: 0,
   };
-  onToggle: () => void = () => {
+  @Event onToggle: () => void = () => {
   };
-  onItemClick: () => void = () => {
+  @Event onItemClick: () => void = () => {
   };
 
   build() {

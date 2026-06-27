@@ -10,7 +10,7 @@ import { ICON } from '../../utils/IconGlyphs';
 export struct ColorPickerComponent {
   @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
   @Param selectedColor: ColorHex = '#4A90D9';
-  onColorSelect: (color: ColorHex) => void = (_c: ColorHex) => {
+  @Event onColorSelect: (color: ColorHex) => void = (_c: ColorHex) => {
   };
 
   build() {

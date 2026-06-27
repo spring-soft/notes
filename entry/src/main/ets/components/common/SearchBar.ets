@@ -18,9 +18,9 @@ export struct SearchBar {
   @Param query: string = '';
   @Event onQueryChange: (value: string) => void = (_v: string) => {
   };
-  onSearch: (value: string) => void = (_v: string) => {
+  @Event onSearch: (value: string) => void = (_v: string) => {
   };
-  onClear: () => void = () => {
+  @Event onClear: () => void = () => {
   };
 
   build() {

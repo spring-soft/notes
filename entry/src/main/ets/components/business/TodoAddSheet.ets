@@ -18,10 +18,10 @@ export struct TodoAddSheet {
   @Local customCategoryName: string = '';
   @Local selectedCategoryColor: string = '#4A90D9';
 
-  onSave: (title: string, description: string, priority: TodoPriority, categoryId: ID, customCategoryName: string) => void =
+  @Event onSave: (title: string, description: string, priority: TodoPriority, categoryId: ID, customCategoryName: string) => void =
     (_t: string, _d: string, _p: TodoPriority, _c: ID, _cn: string) => {
     };
-  onCancel: () => void = () => {
+  @Event onCancel: () => void = () => {
   };
 
   build() {

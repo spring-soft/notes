@@ -17,7 +17,7 @@ export struct GlassButton {
   @Param icon: ResourceStr = '';
   @Param type: string = 'primary';
   @Param disabled: boolean = false;
-  onButtonClick: () => void = () => {
+  @Event onButtonClick: () => void = () => {
   };
 
   build() {

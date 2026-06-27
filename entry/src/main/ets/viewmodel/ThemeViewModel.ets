@@ -18,7 +18,7 @@ export class ThemeViewModel {
   private themeChangeListener: ((config: ThemeConfig) => void) | null = null;
 
   /** Compile-time placeholder — @Provider always overrides before any @Consumer reads it. */
-  static readonly placeholder: ThemeViewModel = new ThemeViewModel(null as unknown as SettingsRepository);
+  static readonly placeholder: ThemeViewModel = new ThemeViewModel(null! as SettingsRepository);
 
   constructor(settingsRepository: SettingsRepository, context?: common.Context) {
     this.settingsRepository = settingsRepository;
