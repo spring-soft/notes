@@ -6,10 +6,12 @@ import { ICON } from '../../utils/IconGlyphs';
 
 /**
  * Immersive note card with color-tag stripe and system material depth.
+ * On tablet the material is lighter (THIN) to avoid overwhelming the wider layout.
  */
 @Component
 export struct NoteCard {
   @Consume('themeConfig') themeConfig: ThemeConfig;
+  @Consume('isTablet') isTabletCard: boolean = false;
   @Prop note: Note = {
     id: '',
     title: '',
@@ -75,8 +77,13 @@ export struct NoteCard {
     .width('100%')
     .padding(this.gridMode ? 8 : 10)
     .borderRadius(this.themeConfig.borderRadius)
-    .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CARD))
-    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CARD, this.themeConfig.isDarkMode))
+    .backdropBlur(MaterialConstants.getBlur(
+      this.isTabletCard ? MaterialConstants.THIN : MaterialConstants.CARD
+    ))
+    .backgroundColor(MaterialConstants.getOverlayColor(
+      this.isTabletCard ? MaterialConstants.THIN : MaterialConstants.CARD,
+      this.themeConfig.isDarkMode
+    ))
     .onClick(() => {
       this.onCardClick();
     });

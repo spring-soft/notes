@@ -227,8 +227,8 @@ struct Index {
       }
       .width(240)
       .height('100%')
-      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THICK))
-      .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THICK, this.themeConfig.isDarkMode))
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
+      .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
       .border({
         width: { right: 1 },
         color: this.themeConfig.isDarkMode

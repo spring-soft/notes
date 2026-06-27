@@ -104,25 +104,26 @@ export struct NotesPage {
           EmptyState({
             icon: ICON.EMPTY_NOTES, title: '还没有笔记', subtitle: '点击右下角按钮创建第一条笔记',
           });
-        } else if (this.isTablet && this.viewMode === 1) {
-          // ═══ Tablet Grid (2 columns) ═══
+        } else if (this.isTablet) {
+          // ═══ Tablet: always 2 columns — list=full cards, grid=compact cards ═══
           Scroll() {
             Column() {
               ForEach(this.getNotePairs(), (pair: Note[], _pi: number) => {
                 Row() {
                   ForEach(pair, (note: Note, _ni: number) => {
                     NoteCard({
-                      note: note, gridMode: true,
+                      note: note,
+                      gridMode: this.viewMode === 1,
                       onCardClick: () => { this.navigateToDetail(note.id); },
                     })
                     .layoutWeight(1)
-                    .margin({ left: _ni === 0 ? 16 : 4, right: _ni === 0 ? 4 : 16 });
+                    .margin({ left: _ni === 0 ? 16 : 6, right: _ni === 0 ? 6 : 16 });
                   }, (note: Note) => note.id + 'gc_' + String(note.updatedAt) + '_' + String(this.refreshSignal));
                   if (pair.length === 1) {
-                    Column().layoutWeight(1).margin({ left: 4, right: 16 });
+                    Column().layoutWeight(1).margin({ left: 6, right: 16 });
                   }
                 }
-                .width('100%').margin({ bottom: 12 });
+                .width('100%').margin({ bottom: 10 });
               }, (pair: Note[]) => 'pair_' + pair[0].id + '_' + String(pair.length) + '_' + String(this.refreshSignal));
             }
             .width('100%');
@@ -130,7 +131,7 @@ export struct NotesPage {
           .scrollable(ScrollDirection.Vertical).scrollBar(BarState.Off)
           .edgeEffect(EdgeEffect.Spring).width('100%').layoutWeight(1).padding({ top: 4 });
         } else {
-          // ═══ Single Column List ═══
+          // ═══ Phone: single column list ═══
           Scroll() {
             Column() {
               ForEach(this.viewModel.filteredNotes, (note: Note, _idx: number) => {
