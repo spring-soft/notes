@@ -1,9 +1,8 @@
 import { ThemeConfig, ThemePreset } from '../../model/ThemeConfigModel';
 import { getThemeConfigByPreset } from '../../constants/ThemeConstants';
-import { createGlassColor } from '../../utils/ColorUtils';
 
 /**
- * Custom liquid-glass dialog with specular highlight and deep shadow.
+ * Dialog with solid surface background and shadow.
  * Receives themeConfig via parameter (not @Consume) because @CustomDialog
  * is rendered in an overlay outside the component tree.
  *
@@ -27,90 +26,70 @@ export struct GlassDialog {
   };
 
   build() {
-    Stack() {
-      // ── Main dialog surface ──
-      Column() {
-        if (this.title !== '') {
-          Text(this.title)
-            .fontSize(20 * this.themeConfig.fontScale)
-            .fontWeight(FontWeight.Bold)
+    Column() {
+      if (this.title !== '') {
+        Text(this.title)
+          .fontSize(20 * this.themeConfig.fontScale)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.themeConfig.textColor)
+          .margin({ bottom: 10 });
+      }
+
+      if (this.message !== '') {
+        Text(this.message)
+          .fontSize(15 * this.themeConfig.fontScale)
+          .fontColor(this.themeConfig.textSecondaryColor)
+          .margin({ bottom: 18 });
+      }
+
+      Row() {
+        if (this.showCancel) {
+          Button(this.cancelLabel)
+            .fontSize(15 * this.themeConfig.fontScale)
             .fontColor(this.themeConfig.textColor)
-            .margin({ bottom: 12 });
-        }
-
-        if (this.message !== '') {
-          Text(this.message)
-            .fontSize(16 * this.themeConfig.fontScale)
-            .fontColor(this.themeConfig.textSecondaryColor)
-            .margin({ bottom: 24 });
-        }
-
-        Row() {
-          if (this.showCancel) {
-            Button(this.cancelLabel)
-              .fontSize(16 * this.themeConfig.fontScale)
-              .fontColor(this.themeConfig.textColor)
-              .backgroundColor('rgba(128, 128, 128, 0.12)')
-              .borderRadius(this.themeConfig.borderRadius)
-              .padding({ left: 20, right: 20, top: 10, bottom: 10 })
-              .onClick(() => {
-                this.onCancel();
-                this.controller.close();
-              })
-              .margin({ right: 12 });
-          }
-
-          Button(this.confirmLabel)
-            .fontSize(16 * this.themeConfig.fontScale)
-            .fontColor('#FFFFFF')
-            .backgroundColor(this.themeConfig.primaryColor)
+            .backgroundColor('rgba(128, 128, 128, 0.12)')
             .borderRadius(this.themeConfig.borderRadius)
-            .padding({ left: 24, right: 24, top: 10, bottom: 10 })
+            .padding({ left: 18, right: 18, top: 9, bottom: 9 })
             .onClick(() => {
-              this.onConfirm();
+              this.onCancel();
               this.controller.close();
             });
         }
-        .justifyContent(FlexAlign.End)
-        .width('100%');
-      }
-      .padding(24)
-      .borderRadius(this.themeConfig.borderRadius + 4)
-      .backgroundColor(
-        createGlassColor(
-          this.themeConfig.surfaceColor,
-          this.themeConfig.glassOpacity * 1.5,
-          this.themeConfig.isDarkMode
-        )
-      )
-      .backdropBlur(this.themeConfig.glassBlurRadius * 2)
-      .borderWidth(1)
-      .borderColor(
-        this.themeConfig.isDarkMode
-          ? 'rgba(255, 255, 255, 0.12)'
-          : 'rgba(255, 255, 255, 0.35)'
-      );
 
-      // ── Specular highlight ──
-      Column()
-        .width('100%')
-        .height('100%')
-        .borderRadius(this.themeConfig.borderRadius + 4)
-        .linearGradient({
-          direction: GradientDirection.Top,
-          colors: [
-            [this.themeConfig.isDarkMode
-              ? 'rgba(255, 255, 255, 0.05)'
-              : 'rgba(255, 255, 255, 0.20)', 0.0],
-            ['rgba(255, 255, 255, 0.0)', 0.5],
-          ],
-        })
-        .hitTestBehavior(HitTestMode.None);
+        if (this.showCancel) {
+          Blank().width(16);
+        }
+
+        Button(this.confirmLabel)
+          .fontSize(15 * this.themeConfig.fontScale)
+          .fontColor('#FFFFFF')
+          .backgroundColor(this.themeConfig.primaryColor)
+          .borderRadius(this.themeConfig.borderRadius)
+          .padding({ left: 22, right: 22, top: 9, bottom: 9 })
+          .onClick(() => {
+            this.onConfirm();
+            this.controller.close();
+          });
+      }
+      .justifyContent(FlexAlign.Center)
+      .width('100%');
     }
+    .width(340)
+    .padding(20)
+    .borderRadius(this.themeConfig.borderRadius + 4)
+    .backgroundColor(this.themeConfig.surfaceColor)
+    .borderWidth(1)
+    .borderColor(
+      this.themeConfig.isDarkMode
+        ? 'rgba(255, 255, 255, 0.12)'
+        : 'rgba(0, 0, 0, 0.08)'
+    )
+    .constraintSize({ maxWidth: 380, maxHeight: 300 })
     .shadow({
-      radius: 30,
-      color: 'rgba(0, 0, 0, 0.35)',
-      offsetY: 8,
-    });
+      radius: 20,
+      color: 'rgba(0, 0, 0, 0.25)',
+      offsetY: 6,
+    })
+    .clip(true);
   }
 }

@@ -55,6 +55,8 @@ export struct NoteDetailPage {
         },
       }),
       autoCancel: true,
+      customStyle: true,
+      alignment: DialogAlignment.Center,
     });
 
     // Read noteId from shared NavParams (set by NotesPage before pushing)

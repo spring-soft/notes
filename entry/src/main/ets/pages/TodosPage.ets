@@ -258,7 +258,6 @@ export struct TodosPage {
           }
           .borderRadius({ topLeft: 20, topRight: 20 })
           .backgroundColor(this.themeConfig.surfaceColor)
-          .backdropBlur(this.themeConfig.glassBlurRadius)
           .shadow({ radius: 20, color: 'rgba(0,0,0,0.3)', offsetY: -4 })
           .position({ left: 0, right: 0, bottom: 0 })
           .transition(

@@ -47,4 +47,7 @@ export class ICON {
   static readonly ALARM: string = '⏰';
   static readonly IMAGE: string = '🖼';
   static readonly RECORDING: string = '🎙';
+  static readonly EDIT: string = '✎';
+  static readonly VIEW_GRID: string = '▦';
+  static readonly VIEW_LIST: string = '☰';
 }

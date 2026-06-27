@@ -55,9 +55,8 @@ export struct PomodoroSessionStats {
     .backgroundColor(
       this.themeConfig.isDarkMode
         ? 'rgba(255, 255, 255, 0.06)'
-        : 'rgba(255, 255, 255, 0.4)'
+        : this.themeConfig.surfaceColor
     )
-    .backdropBlur(this.themeConfig.glassBlurRadius)
     .borderWidth(1)
     .borderColor(
       this.themeConfig.isDarkMode
