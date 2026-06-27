@@ -181,6 +181,47 @@ export struct SettingsPage {
           .backgroundColor(this.themeConfig.surfaceColor)
           .margin({ left: 20, right: 20, bottom: 16 });
 
+          // ── Immersive Material Section ──
+          this.sectionHeader('沉浸光感');
+
+          Column() {
+            // Toggle: enable/disable immersive material
+            Row() {
+              Text('启用沉浸光感')
+                .fontSize(15 * this.themeConfig.fontScale)
+                .fontColor(this.themeConfig.textColor)
+                .layoutWeight(1);
+
+              Toggle({
+                type: ToggleType.Switch,
+                isOn: this.themeConfig.immersiveEnabled,
+              })
+                .selectedColor(this.themeConfig.primaryColor)
+                .onChange((isOn: boolean) => {
+                  this.themeVM.updateImmersiveEnabled(isOn);
+                });
+            }
+            .width('100%');
+
+            // Material quality selector
+            Text('材质质量')
+              .fontSize(13 * this.themeConfig.fontScale)
+              .fontColor(this.themeConfig.textSecondaryColor)
+              .margin({ top: 16, bottom: 8 });
+
+            Row() {
+              this.materialLevelChip('自适应', 0);
+              this.materialLevelChip('精致', 1);
+              this.materialLevelChip('柔和', 2);
+              this.materialLevelChip('流畅', 3);
+            }
+            .width('100%');
+          }
+          .padding(16)
+          .borderRadius(this.borderRadiusValue)
+          .backgroundColor(this.themeConfig.surfaceColor)
+          .margin({ left: 20, right: 20, bottom: 16 });
+
           // ── Background Section ──
           this.sectionHeader('背景图片');
 
@@ -263,7 +304,7 @@ export struct SettingsPage {
               .fontWeight(FontWeight.Medium)
               .fontColor(this.themeConfig.textColor);
 
-            Text('版本 1.1.0 · HarmonyOS NEXT')
+            Text('版本 2.0.0 · HarmonyOS NEXT')
               .fontSize(13 * this.themeConfig.fontScale)
               .fontColor(this.themeConfig.textSecondaryColor)
               .margin({ top: 4 });
@@ -296,6 +337,31 @@ export struct SettingsPage {
       .fontColor(this.themeConfig.textSecondaryColor)
       .textCase(TextCase.UpperCase)
       .padding({ left: 24, right: 24, top: 0, bottom: 8 });
+  }
+
+  @Builder
+  materialLevelChip(label: string, level: number) {
+    Text(label)
+      .fontSize(13 * this.themeConfig.fontScale)
+      .fontWeight(this.themeConfig.materialLevel === level ? FontWeight.Medium : FontWeight.Normal)
+      .fontColor(
+        this.themeConfig.materialLevel === level
+          ? this.themeConfig.primaryColor
+          : this.themeConfig.textSecondaryColor
+      )
+      .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+      .borderRadius(14)
+      .backgroundColor(
+        this.themeConfig.materialLevel === level
+          ? (this.themeConfig.isDarkMode
+            ? this.themeConfig.primaryColor + '30'
+            : this.themeConfig.primaryColor + '1A')
+          : Color.Transparent
+      )
+      .margin({ right: 8 })
+      .onClick(() => {
+        this.themeVM.updateMaterialLevel(level);
+      });
   }
 
   @Builder
