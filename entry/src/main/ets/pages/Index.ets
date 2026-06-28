@@ -6,6 +6,7 @@ import { DatabaseHelper } from '../repository/DatabaseHelper';
 import { TabItemConfig, getTabItems, NavDestinationNames } from '../constants/AppConstants';
 import { ThemeBackground } from '../components/common/ThemeBackground';
 import { MaterialConstants } from '../constants/MaterialConstants';
+import { supportsImmersive } from '../utils/MaterialCapability';
 import { ICON } from '../utils/IconGlyphs';
 import { common } from '@kit.AbilityKit';
 import { HdsTabs, HdsTabsController, hdsMaterial } from '@kit.UIDesignKit';
@@ -39,6 +40,7 @@ struct Index {
   @Local windowSize: WindowSize = { width: 0, height: 0, breakpoint: BreakpointType.SM };
   @Local isInitialized: boolean = false;
   @Local themeUpdateSignal: number = 0;
+  @Local supportsImmersiveEffect: boolean = false;
 
   private tabsController: HdsTabsController = new HdsTabsController();
   private tabItems: TabItemConfig[] = getTabItems();
@@ -52,6 +54,7 @@ struct Index {
 
   aboutToAppear(): void {
     this.currentNavStack = this.tabNavStacks[0];
+    this.supportsImmersiveEffect = supportsImmersive();
     this.initializeApp();
   }
 
@@ -184,9 +187,24 @@ struct Index {
     .barHeight(64)
     .barFloatingStyle({
       barBottomMargin: 28,
+      // Gradient mask creates a smooth visual transition between the
+      // page content and the tab bar — essential for immersive material
+      // to have a zone where content colors bleed into the bar.
+      gradientMask: {
+        maskColor: this.themeConfig.isDarkMode
+          ? 'rgba(10,10,10,0.25)'
+          : 'rgba(240,240,245,0.20)',
+        maskHeight: 96
+      },
+      // Use explicit IMMERSIVE + EXQUISITE when device supports it.
+      // ADAPTIVE mode silently degrades to near-invisible on many devices.
       systemMaterialEffect: {
-        materialType: hdsMaterial.MaterialType.ADAPTIVE,
-        materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
+        materialType: this.supportsImmersiveEffect
+          ? hdsMaterial.MaterialType.IMMERSIVE
+          : hdsMaterial.MaterialType.NONE,
+        materialLevel: this.supportsImmersiveEffect
+          ? hdsMaterial.MaterialLevel.EXQUISITE
+          : hdsMaterial.MaterialLevel.SMOOTH
       }
     })
     .scrollable(false)
@@ -302,11 +320,11 @@ struct Index {
     Column() {
       SymbolGlyph(this.getTabIcon(tab.id))
         .fontSize(24)
-        .fontColor([
-          this.currentTabIndex === index
-            ? this.themeConfig.primaryColor
-            : this.themeConfig.textSecondaryColor
-        ]);
+        .fontColor(this.currentTabIndex === index
+          ? [this.themeConfig.primaryColor]
+          : [this.themeConfig.textSecondaryColor])
+        .animation({ duration: 250, curve: Curve.EaseOut });
+
       Text(tab.title)
         .fontSize(11)
         .fontColor(
@@ -318,7 +336,19 @@ struct Index {
     }
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
-    .padding({ top: 8 });
+    .padding({ top: 8, bottom: 4, left: 4, right: 4 })
+    // Active-tab glow: a subtle colored background pill that gives the
+    // selected tab presence — essential visual feedback whether or not
+    // the GPU systemMaterialEffect is rendering.
+    .borderRadius(20)
+    .backgroundColor(
+      this.currentTabIndex === index
+        ? (this.themeConfig.isDarkMode
+          ? this.themeConfig.primaryColor + '20'
+          : this.themeConfig.primaryColor + '12')
+        : Color.Transparent
+    )
+    .animation({ duration: 250, curve: Curve.EaseOut });
   }
 
   @Builder

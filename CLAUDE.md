@@ -199,6 +199,7 @@ TodoAddSheet save:
 49. **IconGlyphs PAUSE_BARS 与 PAUSE 重复** — 两者都是 `$r('sys.symbol.pause_fill')`，移除 PAUSE_BARS，PomodoroControls 改用 ICON.PAUSE。
 50. **ThemeBackground private lighten() 与 ColorUtils.lightenColor 重复** — 移除私有方法，改用已有的 `lightenColor` 工具函数。
 51. **SettingsPage schedulePomodoroSave 命名误导** — 方法立即保存无任何调度/防抖，重命名为 `persistPomodoroConfig`。
+52. **HdsTabs systemMaterialEffect 不渲染** — 三个根因：① ThemeBackground 光球全部在屏幕中上部（y: -40 / 40% / 70%），tab 栏位于底部（y: 85%+），背后只有 ~9% 透明度的微弱底色，GPU 材质无内容可采样；② `materialType: ADAPTIVE` 在设备不支持 IMMERSIVE 时静默退化到近乎不可见；③ 缺少 `gradientMask` 过渡层。修复：① ThemeBackground 新增底部两个光球（y: 80% 180vp + y: 88% 120vp），确保 tab 栏背后有丰富渐变色供材质采样；② `phoneLayout()` 改用 `supportsImmersive()` 运行时检测，支持时 `IMMERSIVE + EXQUISITE`，不支持时 `NONE` 避免无效材质开销；③ 新增 `gradientMask({ maskColor, maskHeight: 96 })` 创建内容到 tab 栏的平滑过渡；④ `tabBarBuilder` 选中 tab 增加 `primaryColor + '12-20%'` 半透明底色 pill + 250ms 动画，无论 GPU 材质是否渲染都提供可见的视觉反馈。
 
 ## ArkTS Strict Rules
 - No spread operator `...` → explicit property copy when creating new ThemeConfig
