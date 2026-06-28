@@ -116,7 +116,12 @@ export struct SettingsPage {
     if (connected) {
       this.novidromeStatus = '✓ 连接成功';
     } else {
-      this.novidromeStatus = '✗ 连接失败';
+      const errMsg: string = getMusicViewModel().getNovidromeError();
+      if (errMsg !== '') {
+        this.novidromeStatus = '✗ ' + errMsg;
+      } else {
+        this.novidromeStatus = '✗ 连接失败 — 请检查服务器地址和网络';
+      }
     }
   }
 

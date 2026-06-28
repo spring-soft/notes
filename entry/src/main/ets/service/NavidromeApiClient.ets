@@ -24,6 +24,7 @@ const TAG: string = 'NavidromeApiClient';
  */
 export class NavidromeApiClient {
   private config: NovidromeConfig;
+  lastError: string = '';
 
   constructor(config: NovidromeConfig) {
     this.config = this.normalizeConfig(config);
@@ -242,8 +243,12 @@ export class NavidromeApiClient {
       const json: string = await this.sendGetRequest('ping');
       const parsed = JSON.parse(json) as SubsonicResponseBase;
       hilog.info(DOMAIN, TAG, 'Ping response: %{public}s', parsed.status);
+      this.lastError = '';
       return parsed.status === 'ok';
-    } catch (_err) {
+    } catch (err) {
+      const e: BusinessError = err as BusinessError;
+      this.lastError = e.message;
+      hilog.error(DOMAIN, TAG, 'Ping failed: %{public}s', e.message);
       return false;
     }
   }

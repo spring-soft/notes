@@ -360,6 +360,13 @@ export class MusicViewModel {
     return this.novidromeConnected;
   }
 
+  getNovidromeError(): string {
+    if (this.novidromeClient !== null) {
+      return this.novidromeClient.lastError;
+    }
+    return 'Navidrome 客户端未初始化';
+  }
+
   async updateNovidromeConfig(config: NovidromeConfig): Promise<void> {
     this.novidromeConfig = config;
     await this.settingsRepository.saveNovidromeConfig(config);
