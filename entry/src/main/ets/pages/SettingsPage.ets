@@ -107,7 +107,7 @@ export struct SettingsPage {
               direction: GradientDirection.Bottom,
               colors: [
                 [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
-                [Color.Transparent, 1.0],
+                [this.themeConfig.isDarkMode ? 'rgba(20,20,20,0.00)' : 'rgba(255,255,255,0.00)', 1.0],
               ],
             });
 

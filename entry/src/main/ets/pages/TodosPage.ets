@@ -28,7 +28,6 @@ export struct TodosPage {
   @Local showCategoryManager: boolean = false;
   @Local newCategoryName: string = '';
   @Local newCategoryColor: string = '#4A90D9';
-  @Local isSaving: boolean = false;
   @Local refreshSignal: number = 0;
 
   aboutToAppear(): void {
@@ -64,7 +63,7 @@ export struct TodosPage {
               direction: GradientDirection.Bottom,
               colors: [
                 [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
-                [Color.Transparent, 1.0],
+                [this.themeConfig.isDarkMode ? 'rgba(20,20,20,0.00)' : 'rgba(255,255,255,0.00)', 1.0],
               ],
             });
 
@@ -258,7 +257,14 @@ export struct TodosPage {
             TodoAddSheet({
               categories: this.viewModel.categories,
               onSave: (title: string, _description: string, priority: TodoPriority, categoryId: string, customCategoryName: string) => {
-                this.doSave(title, _description, priority, categoryId, customCategoryName);
+                if (title.trim() === '') {
+                  return;
+                }
+                // Fire-and-forget: save + DB reload runs in background.
+                // The ViewModel's @Trace filteredTodos update will trigger
+                // a list re-render automatically when the async work completes.
+                this.handleTodoSave(title, _description, priority, categoryId, customCategoryName);
+                this.showAddSheet = false;
               },
               onCancel: () => {
                 this.showAddSheet = false;
@@ -368,37 +374,6 @@ export struct TodosPage {
     }
 
     await this.viewModel.createTodo(title, description, priority, finalCategoryId, 0, 0, 0);
-  }
-
-  /**
-   * Synchronous entry point for the @Event onSave callback.
-   * @Event declares => void, so this method is void (not async).
-   * All async work is chained via .then()/.catch() — the same
-   * fire-and-forget pattern used by NoteDetailPage.saveNote().
-   */
-  private doSave(
-    title: string,
-    description: string,
-    priority: TodoPriority,
-    categoryId: string,
-    customCategoryName: string
-  ): void {
-    if (this.isSaving || title.trim() === '') {
-      return;
-    }
-    this.isSaving = true;
-    // handleTodoSave already reloads from DB inside createTodo(),
-    // so we only need to bump refreshSignal for LazyForEach keys.
-    this.handleTodoSave(title, description, priority, categoryId, customCategoryName)
-      .then(() => {
-        this.refreshSignal++;
-        this.isSaving = false;
-        this.showAddSheet = false;
-      })
-      .catch((err: Error) => {
-        console.error('TodosPage.doSave: save failed - ' + String(err));
-        this.isSaving = false;
-      });
   }
 
   private getCategoryName(categoryId: string): string {
