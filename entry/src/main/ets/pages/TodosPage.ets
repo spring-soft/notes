@@ -262,9 +262,16 @@ export struct TodosPage {
                   return;
                 }
                 this.isSaving = true;
-                await this.handleTodoSave(title, _description, priority, categoryId, customCategoryName);
-                this.isSaving = false;
-                this.showAddSheet = false;
+                try {
+                  await this.handleTodoSave(title, _description, priority, categoryId, customCategoryName);
+                  // Reload list from DB and bump refreshSignal so LazyForEach picks up the new item
+                  await this.loadTodos();
+                  this.showAddSheet = false;
+                } catch (err) {
+                  console.error('TodosPage.onSave: save failed - ' + String(err));
+                } finally {
+                  this.isSaving = false;
+                }
               },
               onCancel: () => {
                 this.showAddSheet = false;
