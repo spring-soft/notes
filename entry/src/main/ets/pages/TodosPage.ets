@@ -29,44 +29,9 @@ export struct TodosPage {
   @Local newCategoryName: string = '';
   @Local newCategoryColor: string = '#4A90D9';
   @Local refreshSignal: number = 0;
-  @Local isSaving: boolean = false;
-  // @Monitor-driven save: onSave sets these synchronously,
-  // @Monitor triggers the actual async DB work.  This keeps
-  // the @Event callback sync (=> void) while still awaiting
-  // persistence before closing the sheet.
-  @Local saveTrigger: number = 0;
-  private pendingTitle: string = '';
-  private pendingDesc: string = '';
-  private pendingPriority: TodoPriority = TodoPriority.MEDIUM;
-  private pendingCategoryId: string = '';
-  private pendingCustomCat: string = '';
 
   aboutToAppear(): void {
     this.loadTodos();
-  }
-
-  @Monitor('saveTrigger')
-  onSaveTrigger(): void {
-    if (this.saveTrigger > 0 && !this.isSaving && this.pendingTitle.trim() !== '') {
-      this.isSaving = true;
-      const title: string = this.pendingTitle;
-      const desc: string = this.pendingDesc;
-      const priority: TodoPriority = this.pendingPriority;
-      const catId: string = this.pendingCategoryId;
-      const customCat: string = this.pendingCustomCat;
-      this.pendingTitle = '';
-      this.handleTodoSave(title, desc, priority, catId, customCat)
-        .then(() => {
-          this.isSaving = false;
-          this.showAddSheet = false;
-          // Reload from DB to confirm persistence, then force re-render
-          this.loadTodos();
-        })
-        .catch((err: Error) => {
-          console.error('TodosPage save failed: ' + String(err));
-          this.isSaving = false;
-        });
-    }
   }
 
   private async loadTodos(): Promise<void> {
@@ -314,18 +279,12 @@ export struct TodosPage {
                 if (title.trim() === '') {
                   return;
                 }
-                if (this.isSaving) {
-                  return;
-                }
-                // Sync hand-off to @Monitor — the framework calls
-                // onSaveTrigger() which awaits the DB write before
-                // closing the sheet.  Keeps @Event happy (=> void).
-                this.pendingTitle = title;
-                this.pendingDesc = _description;
-                this.pendingPriority = priority;
-                this.pendingCategoryId = categoryId;
-                this.pendingCustomCat = customCategoryName;
-                this.saveTrigger++;
+                // Fire-and-forget: the ViewModel does in-memory update
+                // immediately after DB insert, so the list updates via
+                // @Trace reactivity.  WAL checkpoint in TodoRepository
+                // ensures the write reaches disk for persistence.
+                this.handleTodoSave(title, _description, priority, categoryId, customCategoryName);
+                this.showAddSheet = false;
               },
               onCancel: () => {
                 this.showAddSheet = false;
