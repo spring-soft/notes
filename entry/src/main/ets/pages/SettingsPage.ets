@@ -8,6 +8,8 @@ import { ColorPickerComponent } from '../components/business/ColorPicker';
 import { ImagePickerButton } from '../components/business/ImagePickerButton';
 import { getThemeConfigByPreset } from '../constants/ThemeConstants';
 import { PomodoroConstants } from '../constants/PomodoroConstants';
+import { NovidromeConfig } from '../model/MusicModel';
+import { getMusicViewModel } from '../viewmodel/MusicViewModel';
 
 /**
  * Slider type enum — determines display format and themeVM update behavior.
@@ -39,6 +41,11 @@ export struct SettingsPage {
   @Local blurRadiusValue: number = 20;
   @Local glassOpacityValue: number = 50; // percentage, 0–100
   @Local imageOpacityValue: number = 100; // percentage, 0–100
+  @Local novidromeServerUrl: string = '';
+  @Local novidromeUsername: string = '';
+  @Local novidromePassword: string = '';
+  @Local novidromeEnabled: boolean = false;
+  @Local novidromeStatus: string = '';
 
   aboutToAppear(): void {
     this.selectedPreset = this.themeVM.currentPreset;
@@ -47,6 +54,7 @@ export struct SettingsPage {
     this.glassOpacityValue = Math.round(this.themeConfig.glassOpacity * 100);
     this.imageOpacityValue = Math.round(this.themeConfig.backgroundImageOpacity * 100);
     this.loadSavedPomodoroConfig();
+    this.loadNovidromeConfig();
   }
 
   /**
@@ -73,6 +81,43 @@ export struct SettingsPage {
   private async savePomodoroConfigToPreferences(config: PomodoroConfig): Promise<void> {
     const repo: SettingsRepository = this.createSettingsRepo();
     await repo.savePomodoroConfig(config);
+  }
+
+  private async loadNovidromeConfig(): Promise<void> {
+    const repo: SettingsRepository = this.createSettingsRepo();
+    const config: NovidromeConfig = await repo.loadNovidromeConfig();
+    this.novidromeServerUrl = config.serverUrl;
+    this.novidromeUsername = config.username;
+    this.novidromePassword = config.password;
+    this.novidromeEnabled = config.enabled;
+  }
+
+  private async saveNovidromeConfig(): Promise<void> {
+    const repo: SettingsRepository = this.createSettingsRepo();
+    const config: NovidromeConfig = {
+      serverUrl: this.novidromeServerUrl,
+      username: this.novidromeUsername,
+      password: this.novidromePassword,
+      enabled: this.novidromeEnabled,
+    };
+    await repo.saveNovidromeConfig(config);
+  }
+
+  private async testNovidromeConnection(): Promise<void> {
+    this.novidromeStatus = '连接中...';
+    const config: NovidromeConfig = {
+      serverUrl: this.novidromeServerUrl,
+      username: this.novidromeUsername,
+      password: this.novidromePassword,
+      enabled: true,
+    };
+    await getMusicViewModel().updateNovidromeConfig(config);
+    const connected: boolean = await getMusicViewModel().connectNovidrome();
+    if (connected) {
+      this.novidromeStatus = '✓ 连接成功';
+    } else {
+      this.novidromeStatus = '✗ 连接失败';
+    }
   }
 
   private async loadSavedPomodoroConfig(): Promise<void> {
@@ -345,6 +390,93 @@ export struct SettingsPage {
                 this.persistPomodoroConfig();
               },
             });
+          }
+          .padding(16)
+          .borderRadius(this.borderRadiusValue)
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
+          .margin({ left: 20, right: 20, bottom: 16 });
+
+          // ── Navidrome Section ──
+          this.sectionHeader('音乐服务');
+
+          Column() {
+            Row() {
+              Text('启用 Navidrome')
+                .fontSize(15 * this.themeConfig.fontScale)
+                .fontColor(this.themeConfig.textColor)
+                .fontWeight(FontWeight.Medium);
+              Blank();
+              Toggle({ type: ToggleType.Switch, isOn: this.novidromeEnabled })
+                .selectedColor(this.themeConfig.primaryColor)
+                .onChange((isOn: boolean) => {
+                  this.novidromeEnabled = isOn;
+                  this.saveNovidromeConfig();
+                });
+            }
+            .width('100%');
+
+            if (this.novidromeEnabled) {
+              TextInput({ text: this.novidromeServerUrl, placeholder: '服务器地址 (例: http://192.168.1.100:4533)' })
+                .fontSize(14)
+                .fontColor(this.themeConfig.textColor)
+                .backgroundColor(this.themeConfig.isDarkMode ? '#FFFFFF10' : '#00000008')
+                .borderRadius(12)
+                .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+                .margin({ top: 12 })
+                .onChange((value: string) => {
+                  this.novidromeServerUrl = value;
+                  this.saveNovidromeConfig();
+                });
+
+              TextInput({ text: this.novidromeUsername, placeholder: '用户名' })
+                .fontSize(14)
+                .fontColor(this.themeConfig.textColor)
+                .backgroundColor(this.themeConfig.isDarkMode ? '#FFFFFF10' : '#00000008')
+                .borderRadius(12)
+                .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+                .margin({ top: 10 })
+                .onChange((value: string) => {
+                  this.novidromeUsername = value;
+                  this.saveNovidromeConfig();
+                });
+
+              TextInput({ text: this.novidromePassword, placeholder: '密码' })
+                .fontSize(14)
+                .fontColor(this.themeConfig.textColor)
+                .type(InputType.Password)
+                .backgroundColor(this.themeConfig.isDarkMode ? '#FFFFFF10' : '#00000008')
+                .borderRadius(12)
+                .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+                .margin({ top: 10 })
+                .onChange((value: string) => {
+                  this.novidromePassword = value;
+                  this.saveNovidromeConfig();
+                });
+
+              Row() {
+                Button('测试连接')
+                  .fontSize(14)
+                  .fontColor(this.themeConfig.primaryColor)
+                  .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
+                  .borderRadius(8)
+                  .padding({ left: 20, right: 20, top: 8, bottom: 8 })
+                  .onClick(() => {
+                    this.testNovidromeConnection();
+                  });
+
+                if (this.novidromeStatus !== '') {
+                  Text(this.novidromeStatus)
+                    .fontSize(14)
+                    .fontColor(
+                      this.novidromeStatus.startsWith('✓') ? '#4CAF50' : this.novidromeStatus.startsWith('✗') ? '#F44336' : this.themeConfig.textSecondaryColor
+                    )
+                    .margin({ left: 12 });
+                }
+              }
+              .width('100%')
+              .margin({ top: 12 });
+            }
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)

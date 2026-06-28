@@ -1,0 +1,502 @@
+import {
+  Track,
+  Playlist,
+  PlayerState,
+  RepeatMode,
+  MusicSource,
+  MusicPageTab,
+  NovidromeConfig,
+  MusicPlayerConfig,
+  SubsonicArtist,
+  SubsonicAlbum,
+  SubsonicSong,
+  SubsonicSearchResult3,
+  getDefaultNovidromeConfig,
+} from '../model/MusicModel';
+import { ID } from '../model/AppConstantsModel';
+import { MusicRepository } from '../repository/MusicRepository';
+import { SettingsRepository } from '../repository/SettingsRepository';
+import { MusicPlayerService } from '../service/MusicPlayerService';
+import { NavidromeApiClient } from '../service/NavidromeApiClient';
+import { MusicConstants, getDefaultMusicPlayerConfig } from '../constants/MusicConstants';
+import { generateId } from '../utils/IdGenerator';
+
+/**
+ * Central orchestrator for the music player feature.
+ * Exists as a module-level singleton so playback survives tab switches
+ * (HarmonyOS Tabs destroys non-visible TabContent).
+ *
+ * Pattern matches PomodoroViewModel exactly: @ObservedV2 + @Trace +
+ * tickHandler callback for UI sync + module-level singleton.
+ */
+@ObservedV2
+export class MusicViewModel {
+  // ── Playback State ──
+  @Trace playerState: PlayerState = PlayerState.IDLE;
+  @Trace currentTrack: Track | null = null;
+  @Trace currentPositionMs: number = 0;
+  @Trace durationMs: number = 0;
+  @Trace volume: number = MusicConstants.DEFAULT_VOLUME;
+  @Trace repeatMode: RepeatMode = MusicConstants.DEFAULT_REPEAT_MODE;
+  @Trace shuffleEnabled: boolean = MusicConstants.DEFAULT_SHUFFLE;
+  @Trace isMiniPlayerVisible: boolean = false;
+
+  // ── Library ──
+  @Trace tracks: Track[] = [];
+  @Trace playlists: Playlist[] = [];
+  @Trace isLoadingTracks: boolean = false;
+  @Trace currentTab: MusicPageTab = MusicPageTab.TRACKS;
+
+  // ── Navidrome State ──
+  @Trace novidromeConfig: NovidromeConfig = getDefaultNovidromeConfig();
+  @Trace novidromeConnected: boolean = false;
+  @Trace novidromeArtists: SubsonicArtist[] = [];
+  @Trace novidromeAlbums: SubsonicAlbum[] = [];
+  @Trace novidromeSongs: SubsonicSong[] = [];
+  @Trace novidromeSearchQuery: string = '';
+
+  // ── Private services/repos ──
+  private playerService: MusicPlayerService;
+  private repository: MusicRepository;
+  private settingsRepository: SettingsRepository;
+  private novidromeClient: NavidromeApiClient | null = null;
+
+  // ── UI callbacks (set by pages) ──
+  private tickHandler: ((posMs: number, durMs: number, state: PlayerState) => void) | null = null;
+  private miniPlayerHandler: ((posMs: number, durMs: number, state: PlayerState, visible: boolean) => void) | null = null;
+
+  constructor(repository: MusicRepository, settingsRepository: SettingsRepository) {
+    this.repository = repository;
+    this.settingsRepository = settingsRepository;
+    this.playerService = new MusicPlayerService();
+
+    // Register player callbacks
+    this.playerService.onStateChange((state: PlayerState) => {
+      this.playerState = state;
+      this.notifyTick();
+      this.notifyMiniPlayer();
+    });
+
+    this.playerService.onPositionUpdate((currentMs: number, totalMs: number) => {
+      this.currentPositionMs = currentMs;
+      this.durationMs = totalMs;
+      this.notifyTick();
+      this.notifyMiniPlayer();
+    });
+
+    this.playerService.onTrackEnd(() => {
+      this.handleTrackEnd();
+    });
+
+    this.playerService.onError((_message: string) => {
+      this.playerState = PlayerState.ERROR;
+      this.notifyTick();
+      this.notifyMiniPlayer();
+    });
+  }
+
+  private notifyTick(): void {
+    if (this.tickHandler !== null) {
+      this.tickHandler(this.currentPositionMs, this.durationMs, this.playerState);
+    }
+  }
+
+  private notifyMiniPlayer(): void {
+    if (this.miniPlayerHandler !== null) {
+      this.miniPlayerHandler(
+        this.currentPositionMs,
+        this.durationMs,
+        this.playerState,
+        this.isMiniPlayerVisible
+      );
+    }
+  }
+
+  /**
+   * Registers a callback that the page uses to update its @Local fields.
+   * Pattern matches PomodoroViewModel.setTickHandler.
+   */
+  setTickHandler(handler: ((posMs: number, durMs: number, state: PlayerState) => void) | null): void {
+    this.tickHandler = handler;
+  }
+
+  /**
+   * Registers a callback for the MiniPlayer global overlay in Index.ets.
+   */
+  setMiniPlayerHandler(handler: ((posMs: number, durMs: number, state: PlayerState, visible: boolean) => void) | null): void {
+    this.miniPlayerHandler = handler;
+  }
+
+  // ── Initialization ──
+
+  async initialize(): Promise<void> {
+    // Load persisted configs
+    const musicConfig: MusicPlayerConfig = await this.settingsRepository.loadMusicPlayerConfig();
+    this.volume = musicConfig.volume;
+    this.repeatMode = musicConfig.repeatMode;
+    this.shuffleEnabled = musicConfig.shuffleEnabled;
+    this.playerService.setVolume(musicConfig.volume);
+
+    this.novidromeConfig = await this.settingsRepository.loadNovidromeConfig();
+    if (this.novidromeConfig.enabled && this.novidromeConfig.serverUrl !== '') {
+      this.createNovidromeClient();
+    }
+
+    await this.loadTracks();
+    await this.loadPlaylists();
+  }
+
+  // ── Track Library ──
+
+  async loadTracks(): Promise<void> {
+    this.isLoadingTracks = true;
+    this.tracks = await this.repository.getAllTracks();
+    this.isLoadingTracks = false;
+  }
+
+  async loadTracksBySource(source: MusicSource): Promise<void> {
+    this.tracks = await this.repository.getTracksBySource(source);
+  }
+
+  async searchTracks(query: string): Promise<void> {
+    if (query.trim() === '') {
+      await this.loadTracks();
+    } else {
+      this.tracks = await this.repository.searchTracks(query);
+    }
+  }
+
+  async deleteTrack(id: ID): Promise<void> {
+    await this.repository.deleteTrack(id);
+    if (this.currentTrack !== null && this.currentTrack.id === id) {
+      this.playerService.stop();
+      this.currentTrack = null;
+      this.isMiniPlayerVisible = false;
+    }
+    await this.loadTracks();
+  }
+
+  // ── Playback Control ──
+
+  async playTrack(track: Track): Promise<void> {
+    // Resolve stream URL for Navidrome tracks
+    if (track.source === MusicSource.NOVIDROME && this.novidromeClient !== null && track.serverTrackId !== '') {
+      track.fileUri = this.novidromeClient.getStreamUrl(track.serverTrackId);
+    }
+
+    try {
+      await this.playerService.loadTrack(track);
+      this.currentTrack = track;
+      this.playerService.play();
+      this.isMiniPlayerVisible = true;
+      await this.savePlayerConfig();
+      this.notifyTick();
+    } catch (_err) {
+      this.playerState = PlayerState.ERROR;
+      this.notifyTick();
+    }
+  }
+
+  playPause(): void {
+    if (this.playerState === PlayerState.PLAYING) {
+      this.playerService.pause();
+    } else if (this.playerState === PlayerState.PAUSED || this.playerState === PlayerState.STOPPED
+      || this.playerState === PlayerState.LOADING) {
+      this.playerService.play();
+    }
+  }
+
+  playNext(): void {
+    if (this.tracks.length === 0) {
+      return;
+    }
+
+    const currentIndex: number = this.getCurrentTrackIndex();
+    let nextIndex: number = -1;
+
+    if (this.shuffleEnabled && this.tracks.length > 1) {
+      // Pick a random track different from current
+      let randomIdx: number = currentIndex;
+      while (randomIdx === currentIndex && this.tracks.length > 1) {
+        randomIdx = Math.floor(Math.random() * this.tracks.length);
+      }
+      nextIndex = randomIdx;
+    } else {
+      nextIndex = currentIndex + 1;
+      if (nextIndex >= this.tracks.length) {
+        if (this.repeatMode === RepeatMode.REPEAT_ALL) {
+          nextIndex = 0;
+        } else {
+          this.playerService.stop();
+          return;
+        }
+      }
+    }
+
+    if (nextIndex >= 0 && nextIndex < this.tracks.length) {
+      this.playTrack(this.tracks[nextIndex]);
+    }
+  }
+
+  playPrevious(): void {
+    if (this.tracks.length === 0) {
+      return;
+    }
+
+    const currentIndex: number = this.getCurrentTrackIndex();
+    // If more than 3 seconds in, restart current track
+    if (this.currentPositionMs > 3000) {
+      this.playerService.seekTo(0);
+      return;
+    }
+
+    let prevIndex: number = currentIndex - 1;
+    if (prevIndex < 0) {
+      prevIndex = this.tracks.length - 1;
+    }
+    this.playTrack(this.tracks[prevIndex]);
+  }
+
+  seekTo(positionMs: number): void {
+    this.playerService.seekTo(positionMs);
+  }
+
+  setVolume(level: number): void {
+    this.volume = Math.max(0, Math.min(1, level));
+    this.playerService.setVolume(this.volume);
+    this.savePlayerConfig();
+  }
+
+  toggleRepeatMode(): void {
+    if (this.repeatMode === RepeatMode.OFF) {
+      this.repeatMode = RepeatMode.REPEAT_ALL;
+    } else if (this.repeatMode === RepeatMode.REPEAT_ALL) {
+      this.repeatMode = RepeatMode.REPEAT_ONE;
+    } else {
+      this.repeatMode = RepeatMode.OFF;
+    }
+    this.savePlayerConfig();
+  }
+
+  toggleShuffle(): void {
+    this.shuffleEnabled = !this.shuffleEnabled;
+    this.savePlayerConfig();
+  }
+
+  private handleTrackEnd(): void {
+    if (this.repeatMode === RepeatMode.REPEAT_ONE) {
+      this.playerService.seekTo(0);
+      this.playerService.play();
+    } else {
+      this.playNext();
+    }
+  }
+
+  private getCurrentTrackIndex(): number {
+    if (this.currentTrack === null) {
+      return -1;
+    }
+    for (let i: number = 0; i < this.tracks.length; i++) {
+      if (this.tracks[i].id === this.currentTrack.id) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  // ── Playlist Management ──
+
+  async loadPlaylists(): Promise<void> {
+    this.playlists = await this.repository.getAllPlaylists();
+    // Load track counts
+    for (let i: number = 0; i < this.playlists.length; i++) {
+      const tracks: Track[] = await this.repository.getTracksForPlaylist(this.playlists[i].id);
+      this.playlists[i].trackCount = tracks.length;
+    }
+  }
+
+  async createPlaylist(name: string): Promise<void> {
+    const playlist: Playlist = {
+      id: generateId(),
+      name: name,
+      createdAt: Date.now(),
+    };
+    await this.repository.createPlaylist(playlist);
+    await this.loadPlaylists();
+  }
+
+  async deletePlaylist(id: ID): Promise<void> {
+    await this.repository.deletePlaylist(id);
+    await this.loadPlaylists();
+  }
+
+  async addToPlaylist(playlistId: ID, trackId: ID): Promise<void> {
+    await this.repository.addTrackToPlaylist(playlistId, trackId);
+    await this.loadPlaylists();
+  }
+
+  async playPlaylist(playlistId: ID): Promise<void> {
+    const playlistTracks: Track[] = await this.repository.getTracksForPlaylist(playlistId);
+    if (playlistTracks.length > 0) {
+      this.tracks = playlistTracks;
+      await this.playTrack(playlistTracks[0]);
+    }
+  }
+
+  // ── Navidrome Integration ──
+
+  private createNovidromeClient(): void {
+    this.novidromeClient = new NavidromeApiClient(this.novidromeConfig);
+  }
+
+  async connectNovidrome(): Promise<boolean> {
+    if (this.novidromeClient === null) {
+      this.createNovidromeClient();
+    }
+    if (this.novidromeClient === null) {
+      return false;
+    }
+    this.novidromeConnected = await this.novidromeClient.ping();
+    return this.novidromeConnected;
+  }
+
+  async updateNovidromeConfig(config: NovidromeConfig): Promise<void> {
+    this.novidromeConfig = config;
+    await this.settingsRepository.saveNovidromeConfig(config);
+    if (config.enabled && config.serverUrl !== '') {
+      this.createNovidromeClient();
+    } else {
+      this.novidromeClient = null;
+      this.novidromeConnected = false;
+    }
+  }
+
+  async browseNovidromeArtists(): Promise<void> {
+    if (this.novidromeClient === null) {
+      return;
+    }
+    try {
+      this.novidromeArtists = await this.novidromeClient.getArtists();
+    } catch (_err) {
+      this.novidromeArtists = [];
+    }
+  }
+
+  async browseNovidromeAlbums(artistId?: string): Promise<void> {
+    if (this.novidromeClient === null) {
+      return;
+    }
+    try {
+      this.novidromeAlbums = await this.novidromeClient.getAlbums(artistId);
+    } catch (_err) {
+      this.novidromeAlbums = [];
+    }
+  }
+
+  async browseNovidromeSongs(albumId: string): Promise<void> {
+    if (this.novidromeClient === null) {
+      return;
+    }
+    try {
+      this.novidromeSongs = await this.novidromeClient.getSongs(albumId);
+    } catch (_err) {
+      this.novidromeSongs = [];
+    }
+  }
+
+  async searchNovidrome(query: string): Promise<void> {
+    if (this.novidromeClient === null) {
+      return;
+    }
+    try {
+      this.novidromeSearchQuery = query;
+      const result: SubsonicSearchResult3 = await this.novidromeClient.search3(query);
+      // Convert search results to tracks
+      const foundTracks: Track[] = [];
+      if (result.song !== undefined) {
+        for (let i: number = 0; i < result.song.length; i++) {
+          foundTracks.push(this.subsonicSongToTrack(result.song[i]));
+        }
+      }
+      this.tracks = foundTracks;
+    } catch (_err) {
+      this.tracks = [];
+    }
+  }
+
+  async importNovidromeTrack(song: SubsonicSong): Promise<Track> {
+    const track: Track = this.subsonicSongToTrack(song);
+    // Check if already in library
+    const existing: Track | null = await this.repository.getTrackById(track.id);
+    if (existing !== null) {
+      return existing;
+    }
+    await this.repository.insertTrack(track);
+    await this.loadTracks();
+    return track;
+  }
+
+  private subsonicSongToTrack(song: SubsonicSong): Track {
+    let albumArtUrl: string = '';
+    if (this.novidromeClient !== null && song.coverArt !== undefined && song.coverArt !== '') {
+      albumArtUrl = this.novidromeClient.getCoverArtUrl(song.coverArt, 300);
+    }
+
+    return {
+      id: song.id,
+      title: song.title,
+      artist: song.artist !== undefined ? song.artist : 'Unknown Artist',
+      album: song.album !== undefined ? song.album : '',
+      durationMs: song.duration !== undefined ? song.duration * 1000 : 0,
+      fileUri: '',
+      albumArtUri: albumArtUrl,
+      source: MusicSource.NOVIDROME,
+      serverTrackId: song.id,
+      dateAdded: Date.now(),
+    };
+  }
+
+  // ── Persistence ──
+
+  private async savePlayerConfig(): Promise<void> {
+    const config: MusicPlayerConfig = {
+      volume: this.volume,
+      repeatMode: this.repeatMode,
+      shuffleEnabled: this.shuffleEnabled,
+      lastTrackId: this.currentTrack !== null ? this.currentTrack.id : '',
+      lastPosition: this.currentPositionMs,
+    };
+    await this.settingsRepository.saveMusicPlayerConfig(config);
+  }
+
+  // ── Cleanup ──
+
+  destroy(): void {
+    this.playerService.destroy();
+    this.tickHandler = null;
+  }
+}
+
+// ── Module-level singleton ──────────────────────────────────────────────
+// MusicPage is destroyed/recreated on tab switch because HarmonyOS Tabs
+// tears down non-visible TabContent. Storing the ViewModel at module level
+// keeps playback alive when the user switches tabs.
+
+let _instance: MusicViewModel | null = null;
+
+export function initMusicViewModel(
+  repository: MusicRepository,
+  settingsRepository: SettingsRepository
+): MusicViewModel {
+  if (_instance === null) {
+    _instance = new MusicViewModel(repository, settingsRepository);
+  }
+  return _instance;
+}
+
+export function getMusicViewModel(): MusicViewModel {
+  if (_instance === null) {
+    throw new Error('MusicViewModel not initialized — call initMusicViewModel first');
+  }
+  return _instance;
+}

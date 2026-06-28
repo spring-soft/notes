@@ -15,8 +15,13 @@ import { NoteDetailPage } from './NoteDetailPage';
 import { TodosPage } from './TodosPage';
 import { PomodoroPage } from './PomodoroPage';
 import { SettingsPage } from './SettingsPage';
+import { MusicPage } from './MusicPage';
+import { MusicPlayerPage } from './MusicPlayerPage';
 import { initPomodoroViewModel, PomodoroViewModel } from '../viewmodel/PomodoroViewModel';
 import { PomodoroRepository } from '../repository/PomodoroRepository';
+import { initMusicViewModel, MusicViewModel } from '../viewmodel/MusicViewModel';
+import { MusicRepository } from '../repository/MusicRepository';
+import { MiniPlayer } from '../components/business/MiniPlayer';
 
 /**
  * Root navigation shell for the app.
@@ -50,6 +55,7 @@ struct Index {
     new NavPathStack(),  // [1] Todos
     new NavPathStack(),  // [2] Pomodoro
     new NavPathStack(),  // [3] Settings
+    new NavPathStack(),  // [4] Music
   ];
 
   aboutToAppear(): void {
@@ -71,6 +77,11 @@ struct Index {
     const pomodoroVM: PomodoroViewModel =
       initPomodoroViewModel(pomodoroRepo, settingsRepo);
     await pomodoroVM.initialize();
+
+    // Initialize MusicViewModel singleton for surviving tab switches
+    const musicRepo: MusicRepository = new MusicRepository(DatabaseHelper.getInstance().getStore());
+    const musicVM: MusicViewModel = initMusicViewModel(musicRepo, settingsRepo);
+    await musicVM.initialize();
 
     // Sync @Provide('themeConfig') whenever themeVM changes
     // themeUpdateSignal forces Index + all children to re-render via @State
@@ -136,7 +147,8 @@ struct Index {
 
   @Builder
   phoneLayout() {
-    HdsTabs({ controller: this.tabsController, index: this.currentTabIndex }) {
+    Stack() {
+      HdsTabs({ controller: this.tabsController, index: this.currentTabIndex }) {
       // Tab 0 — Notes
       TabContent() {
         Navigation(this.tabNavStacks[0]) {
@@ -181,6 +193,18 @@ struct Index {
         .hideToolBar(true)
       }
       .tabBar(this.tabBarBuilder(this.tabItems[3], 3));
+
+      // Tab 4 — Music
+      TabContent() {
+        Navigation(this.tabNavStacks[4]) {
+          MusicPage();
+        }
+        .mode(NavigationMode.Stack)
+        .hideTitleBar(true)
+        .hideToolBar(true)
+        .navDestination(this.musicPlayerBuilder)
+      }
+      .tabBar(this.tabBarBuilder(this.tabItems[4], 4));
     }
     .barOverlap(true)
     .barPosition(BarPosition.End)
@@ -213,6 +237,20 @@ struct Index {
       this.currentTabIndex = index;
       this.currentNavStack = this.tabNavStacks[index];
     });
+
+      // MiniPlayer global overlay — visible above tab bar
+      // when music is playing, regardless of which tab is active.
+      MiniPlayer({
+        onTap: () => {
+          this.tabNavStacks[this.currentTabIndex].clear();
+          this.currentTabIndex = 4;
+          this.currentNavStack = this.tabNavStacks[4];
+          this.tabNavStacks[4].pushPathByName('music_player', {} as Record<string, Object>);
+        }
+      })
+        .position({ left: 0, right: 0, bottom: 64 })
+        .zIndex(100);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -247,8 +285,25 @@ struct Index {
       });
 
       // Right side content — per-section Navigation
-      Column() {
-        this.tabletSectionContent();
+      Stack() {
+        Column() {
+          this.tabletSectionContent();
+        }
+        .layoutWeight(1)
+        .height('100%');
+
+        // MiniPlayer overlay for tablet
+        // Offset by sidebar width (240vp)
+        MiniPlayer({
+          onTap: () => {
+            this.tabNavStacks[this.currentTabIndex].clear();
+            this.currentTabIndex = 4;
+            this.currentNavStack = this.tabNavStacks[4];
+            this.tabNavStacks[4].pushPathByName('music_player', {} as Record<string, Object>);
+          }
+        })
+          .position({ left: 0, right: 0, bottom: 0 })
+          .zIndex(100);
       }
       .layoutWeight(1)
       .height('100%');
@@ -296,6 +351,16 @@ struct Index {
       .hideToolBar(true)
       .width('100%')
       .height('100%');
+    } else if (this.currentTabIndex === 4) {
+      Navigation(this.tabNavStacks[4]) {
+        MusicPage();
+      }
+      .mode(NavigationMode.Stack)
+      .hideTitleBar(true)
+      .hideToolBar(true)
+      .width('100%')
+      .height('100%')
+      .navDestination(this.musicPlayerBuilder);
     }
   }
 
@@ -308,6 +373,13 @@ struct Index {
   notesDetailBuilder(name: string, param: Object) {
     if (name === 'note_detail') {
       NoteDetailPage();
+    }
+  }
+
+  @Builder
+  musicPlayerBuilder(name: string, param: Object) {
+    if (name === 'music_player') {
+      MusicPlayerPage();
     }
   }
 
@@ -404,6 +476,8 @@ struct Index {
       return ICON.POMODORO;
     } else if (tabId === 'settings') {
       return ICON.SETTINGS;
+    } else if (tabId === 'music') {
+      return ICON.MUSIC;
     }
     return ICON.EMPTY_GENERAL;
   }

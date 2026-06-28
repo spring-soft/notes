@@ -40,6 +40,8 @@ export class NavDestinationNames {
   static readonly TODOS_LIST: string = 'todos_list';
   static readonly POMODORO: string = 'pomodoro';
   static readonly SETTINGS: string = 'settings';
+  static readonly MUSIC_LIST: string = 'music_list';
+  static readonly MUSIC_PLAYER: string = 'music_player';
 }
 
 /**
@@ -82,6 +84,13 @@ export function getTabItems(): TabItemConfig[] {
       icon: '',
       selectedIcon: '',
       navDestination: NavDestinationNames.SETTINGS,
+    },
+    {
+      id: 'music',
+      title: '音乐',
+      icon: '',
+      selectedIcon: '',
+      navDestination: NavDestinationNames.MUSIC_LIST,
     },
   ];
 }

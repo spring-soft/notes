@@ -58,4 +58,16 @@ export class ICON {
   static readonly EDIT: Resource = $r('sys.symbol.square_and_pencil');
   static readonly VIEW_GRID: Resource = $r('sys.symbol.square_grid_2x2');
   static readonly VIEW_LIST: Resource = $r('sys.symbol.list_bullet');
+
+  // ── Music ──
+  static readonly MUSIC: Resource = $r('sys.symbol.music_note');
+  static readonly PREVIOUS: Resource = $r('sys.symbol.backward_fill');
+  static readonly NEXT: Resource = $r('sys.symbol.forward_fill');
+  static readonly SHUFFLE: Resource = $r('sys.symbol.shuffle');
+  static readonly REPEAT: Resource = $r('sys.symbol.repeat');
+  static readonly REPEAT_ONE: Resource = $r('sys.symbol.repeat_1');
+  static readonly VOLUME: Resource = $r('sys.symbol.speaker_wave_2');
+  static readonly VOLUME_MUTE: Resource = $r('sys.symbol.speaker_slash');
+  static readonly MUSIC_LIST: Resource = $r('sys.symbol.music_note_list');
+  static readonly STREAM: Resource = $r('sys.symbol.antenna_radiowaves_left_and_right');
 }

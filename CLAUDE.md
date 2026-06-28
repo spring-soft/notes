@@ -15,12 +15,14 @@
 ### Navigation (per-tab Navigation pattern)
 ```
 Index.ets (@Entry, @ComponentV2, @Provider source)
-├── HdsTabs (4 tabs, barPosition: End, barOverlap)
+├── HdsTabs (5 tabs, barPosition: End, barOverlap)
 │   ├── TabContent[0] → Navigation(navStack[0]) → NotesPage
 │   ├── TabContent[1] → Navigation(navStack[1]) → TodosPage
 │   ├── TabContent[2] → Navigation(navStack[2]) → PomodoroPage
-│   └── TabContent[3] → Navigation(navStack[3]) → SettingsPage
-└── Tablet: Row(sideNav 240vp + content area with per-section Navigation)
+│   ├── TabContent[3] → Navigation(navStack[3]) → SettingsPage
+│   └── TabContent[4] → Navigation(navStack[4]) → MusicPage
+├── Stack wrapper with MiniPlayer overlay (global, above tab bar)
+└── Tablet: Row(sideNav 240vp + content area with per-section Navigation + MiniPlayer)
 ```
 
 ### Page routing
@@ -87,7 +89,7 @@ NoteDetailPage save/delete:
 
 ### Database
 - `DatabaseHelper` singleton → `relationalStore.RdbStore`
-- 5 tables: notes, todo_categories, todos, pomodoro_sessions, voice_memos
+- 8 tables: notes, todo_categories, todos, pomodoro_sessions, voice_memos, music_tracks, music_playlists, music_playlist_tracks
 - `SettingsRepository` uses Preferences for theme/pomodoro config
 - DB initialized in `Index.initializeApp()` BEFORE any UI renders
 - `initPromise` deduplicates concurrent initialize() calls (EntryAbility fire-and-forget + Index awaited)
@@ -110,6 +112,42 @@ TodoAddSheet save:
 - `PRESET_TODO_CATEGORIES`: ['工作', '个人', '购物', '学习', '健康', '其他']
 - Custom category: TextInput + getOrCreateCategory() materializes name into UUID-based category
 - Category manager UI: create/delete categories inline with color dots
+
+### Music data flow
+```
+MusicPage.aboutToAppear()
+  → register tickHandler → updates @Local displayState/PositionMs/DurationMs
+  → viewModel.loadTracks() → queries music_tracks RDB → tracks populated
+  → viewModel.loadPlaylists() → queries music_playlists RDB
+
+MusicPage.playTrack(track):
+  → viewModel.playTrack(track)
+  → playerService.loadTrack(track)  (sets AVPlayer url — local file:// or Navidrome HTTP)
+  → playerService.play()
+  → isMiniPlayerVisible = true → MiniPlayer appears globally
+
+MiniPlayer (global overlay in Index.ets):
+  → Self-contained: subscribes to MusicViewModel via miniPlayerHandler
+  → Tap → switch to tab[4] + push 'music_player' NavDestination
+  → Play/pause/next call viewModel directly
+
+MusicPlayerPage (full-screen Now Playing):
+  → TickHandler for live position/duration
+  → MusicControls: shuffle/prev/play-pause/next/repeat
+  → Seek via Slider (0-100%), volume via Slider
+
+Navidrome integration:
+  → SettingsPage: server URL + username + password + test connection
+  → NavidromeApiClient: Subsonic REST API with MD5(password+salt) auth
+  → Stream URL resolved to track.fileUri before playback
+  → Import tracks from Navidrome into local music_tracks DB
+```
+- **MusicViewModel singleton** — module-level `initMusicViewModel()`/`getMusicViewModel()`, survives tab switches
+- **MiniPlayer global overlay** — rendered in Index.ets Stack (phone: above tab bar, tablet: bottom of content area), self-contained with own handler
+- **Subsonic API** — `ping()`, `getArtists()`, `getAlbums()`, `getSongs()`, `search3()`, `getStreamUrl()`, `getCoverArtUrl()`
+- **Repeat modes**: OFF → REPEAT_ALL → REPEAT_ONE cycling
+- **Shuffle**: random next track from full list
+- **Permissions**: `ohos.permission.INTERNET` + `ohos.permission.READ_MEDIA`
 
 ## Key Files
 
@@ -141,6 +179,17 @@ TodoAddSheet save:
 | `constants/AppConstants.ets` | Version 2.0.0, route names, limits |
 | `constants/MaterialConstants.ets` | 5-tier depth hierarchy constants + getBlur()/getOverlayColor() helpers |
 | `utils/MaterialCapability.ets` | Device material detection via real `hdsMaterial.getSystemMaterialTypes()` |
+| `model/MusicModel.ets` | Track, Playlist, NovidromeConfig, MusicPlayerConfig interfaces + Subsonic response types |
+| `constants/MusicConstants.ets` | Music defaults (volume, repeatMode, shuffle), Navidrome API version, UI constants |
+| `repository/MusicRepository.ets` | RDB CRUD for tracks, playlists, playlist-track junction (JOIN query) |
+| `service/NavidromeApiClient.ets` | Subsonic REST API client with MD5 auth, HTTP via @kit.NetworkKit |
+| `service/MusicPlayerService.ets` | AVPlayer wrapper with state machine, callback pattern |
+| `viewmodel/MusicViewModel.ets` | @ObservedV2 singleton orchestrator, playNext/Previous with repeat+shuffle logic |
+| `pages/MusicPage.ets` | Main music tab — track list, album/artist/playlist views, search, sub-tab chips |
+| `pages/MusicPlayerPage.ets` | Full-screen Now Playing NavDestination — album art, controls, seek, volume |
+| `components/business/MusicTrackItem.ets` | Track row with album art thumbnail, title, artist, duration |
+| `components/business/MusicControls.ets` | Playback controls: shuffle, prev, play/pause, next, repeat |
+| `components/business/MiniPlayer.ets` | Global mini player bar — self-contained, subscribes to MusicViewModel |
 
 ## Fixed Bugs (all verified with BUILD SUCCESSFUL)
 
@@ -204,6 +253,7 @@ TodoAddSheet save:
 55. **TodoRepository 显式事务移除 + WAL checkpoint + post-insert 验证** — 笔记保存可持久化但待办不行：① 移除 TodoRepository 全部 6 个写操作的显式事务（`beginTransaction`/`commit`/`rollBack`），改为与 NoteRepository 完全一致的 plain `await this.store.insert/update/delete()`——NoteRepository 无事务能持久化，显式事务反而可能引入 WAL 刷新时序问题；② 新增 `PRAGMA wal_checkpoint(FULL)` 在执行 insert 后强制 WAL 刷盘（catch 忽略不支持的实现）；③ `createTodo` 新增 post-insert 读回验证（`getById` 确认数据可读）。
 56. **Header 渐变过渡重构（无极模糊边界）** — 根因：TodosPage/PomodoroPage/SettingsPage 的 header 只有 inner title Row 有 `backgroundColor`，outer Column 无背景色但 backdropBlur 在 outer Column——导致梯度渐变从 16% 透明叠加开始且底色为透明，backdropBlur 的二元开/关边界在 header 底边形成可见切割线。修复：① 三个页面的 `backgroundColor` 从 inner title Row 移到 outer Column（匹配 NotesPage 验证过的模式），使整个 header 区域有统一 frosted 底色；② 最终去掉所有梯度 Column，header 模糊干净截止于标题栏边缘；③ spacer 调整至 80vp（后进一步调至 88vp）。
 57. **待办保存架构重构：save logic 移入 TodoAddSheet** — 根因：笔记的 save button 和 async save logic 都在 NoteDetailPage 同一组件内，可以直接 `await`。待办的 save button 在 TodoAddSheet（子组件），save logic 在 TodosPage（父组件），通过 `@Event` 通信——`@Event` 要求 `=> void` 返回类型，导致 async 保存无法被 await。修复：将保存逻辑（`doSave()`）移入 TodoAddSheet 自身——像 `NoteDetailPage.saveNote()` 一样，`doSave()` 是 `private async` 方法直接 `await viewModel.createTodo()`，完成后才调用 `@Event onSaved` 通知父组件关 sheet。TodosPage 只需传 `viewModel` 给 sheet + onSaved 关 sheet，不再有 `handleTodoSave`。
+58. **新增音乐播放器功能（5th tab）** — 完整音乐播放模块：① 本地音乐文件回放（AVPlayer + file:// URI）；② 全功能播放器 UI（Now Playing 全屏页 + 全局 MiniPlayer 悬浮条）；③ **Navidrome/Subsonic 流媒体集成** — MD5 认证、REST API（getArtists/getAlbums/getSongs/search3/stream）、可配置服务器地址+用户名+密码；④ 3 张新 RDB 表（music_tracks/music_playlists/music_playlist_tracks）；⑤ MusicViewModel 模块级单例（切 tab 不中断播放）；⑥ SettingsPage 新增"音乐服务"配置区（Toggle + TextInput + 测试连接）；⑦ 5 个新 UI 组件（MusicTrackItem/MusicControls/MiniPlayer + 2 页面）；⑧ 17 个新文件 + 8 个修改文件；⑨ 权限：INTERNET + READ_MEDIA。
 
 ## ArkTS Strict Rules
 - No spread operator `...` → explicit property copy when creating new ThemeConfig
