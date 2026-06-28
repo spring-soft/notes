@@ -232,13 +232,28 @@ export class NavidromeApiClient {
     }
   }
 
+  // ── Response Parsing ──
+
+  /**
+   * Unwraps the Subsonic JSON envelope.
+   * All Subsonic JSON responses are wrapped in a "subsonic-response" object.
+   * Example: {"subsonic-response":{"status":"ok","version":"1.16.1",...}}
+   */
+  private unwrap(json: string): Record<string, Object> {
+    const raw = JSON.parse(json) as Record<string, Object>;
+    const inner = raw['subsonic-response'] as Record<string, Object>;
+    return inner;
+  }
+
   private parseResponse<T extends SubsonicResponseBase>(json: string, endpoint: string): T {
-    const parsed: T = JSON.parse(json) as T;
-    if (parsed.status !== 'ok') {
-      const msg: string = parsed.error !== undefined ? parsed.error.message : 'Unknown error';
+    const resp = this.unwrap(json);
+    const status: string = resp['status'] as string;
+    if (status !== 'ok') {
+      const errObj = resp['error'] as Record<string, Object>;
+      const msg: string = errObj !== undefined ? errObj['message'] as string : 'Unknown error';
       throw new Error('Subsonic error: ' + msg);
     }
-    return parsed;
+    return resp as T;
   }
 
   // ── Public API Methods ──
@@ -246,10 +261,11 @@ export class NavidromeApiClient {
   async ping(): Promise<boolean> {
     try {
       const json: string = await this.sendGetRequest('ping');
-      const parsed = JSON.parse(json) as SubsonicResponseBase;
-      hilog.info(DOMAIN, TAG, 'Ping response: %{public}s', parsed.status);
+      const resp = this.unwrap(json);
+      const status: string = resp['status'] as string;
+      hilog.info(DOMAIN, TAG, 'Ping response: %{public}s', status);
       this.lastError = '';
-      return parsed.status === 'ok';
+      return status === 'ok';
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       this.lastError = e.message;
@@ -283,8 +299,8 @@ export class NavidromeApiClient {
     const json: string = await this.sendGetRequest(endpoint);
 
     if (artistId !== undefined && artistId !== '') {
-      const parsed = JSON.parse(json) as Record<string, Object>;
-      const artistObj = parsed['artist'] as Record<string, Object>;
+      const resp = this.unwrap(json);
+      const artistObj = resp['artist'] as Record<string, Object>;
       if (artistObj !== undefined && artistObj['album'] !== undefined) {
         return artistObj['album'] as SubsonicAlbum[];
       }
@@ -299,8 +315,8 @@ export class NavidromeApiClient {
     const endpoint: string = 'getAlbum?id=' + albumId;
     const json: string = await this.sendGetRequest(endpoint);
 
-    const parsed = JSON.parse(json) as Record<string, Object>;
-    const albumObj = parsed['album'] as Record<string, Object>;
+    const resp = this.unwrap(json);
+    const albumObj = resp['album'] as Record<string, Object>;
     if (albumObj !== undefined && albumObj['song'] !== undefined) {
       return albumObj['song'] as SubsonicSong[];
     }
