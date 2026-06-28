@@ -55,9 +55,7 @@
         ]
       }
     ],
-    "network": {
-      "cleartextTraffic": true
-    },
+
     "extensionAbilities": [
       {
         "name": "EntryBackupAbility",

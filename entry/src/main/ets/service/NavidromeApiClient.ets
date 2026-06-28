@@ -92,8 +92,11 @@ export class NavidromeApiClient {
 
   private md5Hash(input: number[]): number[] {
     const msgLen: number = input.length;
-    const paddedLen: number = (((msgLen + 8) >> 6) + 1) << 4;
-    const padded: number[] = new Array<number>(paddedLen).fill(0);
+    // paddedLen = number of 32-bit words (16 per 64-byte block)
+    const wordCount: number = (((msgLen + 8) >> 6) + 1) << 4;
+    // padded array must hold wordCount * 4 bytes (each element is one byte)
+    const paddedByteLen: number = wordCount * 4;
+    const padded: number[] = new Array<number>(paddedByteLen).fill(0);
 
     for (let i: number = 0; i < msgLen; i++) {
       padded[i] = input[i];
@@ -101,10 +104,11 @@ export class NavidromeApiClient {
     padded[msgLen] = 0x80;
 
     const bitLen: number = msgLen * 8;
-    padded[paddedLen - 8] = bitLen & 0xFF;
-    padded[paddedLen - 7] = (bitLen >> 8) & 0xFF;
-    padded[paddedLen - 6] = (bitLen >> 16) & 0xFF;
-    padded[paddedLen - 5] = (bitLen >> 24) & 0xFF;
+    // Store 64-bit message length at the last 8 bytes of the final 64-byte block
+    padded[paddedByteLen - 8] = bitLen & 0xFF;
+    padded[paddedByteLen - 7] = (bitLen >> 8) & 0xFF;
+    padded[paddedByteLen - 6] = (bitLen >> 16) & 0xFF;
+    padded[paddedByteLen - 5] = (bitLen >> 24) & 0xFF;
 
     let a: number = 0x67452301;
     let b: number = 0xEFCDAB89;
@@ -123,7 +127,8 @@ export class NavidromeApiClient {
       6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
     ];
 
-    for (let offset: number = 0; offset < paddedLen; offset += 16) {
+    // Iterate over 64-byte blocks (16 words = 64 bytes per block)
+    for (let offset: number = 0; offset < paddedByteLen; offset += 64) {
       const aa: number = a;
       const bb: number = b;
       const cc: number = c;
