@@ -86,34 +86,14 @@ export struct SettingsPage {
 
   build() {
     NavDestination() {
-      Column() {
-          // Header — fixed at top, immersive blur surface
-          Row() {
-            Text('设置')
-              .fontSize(28 * this.themeConfig.fontScale)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.themeConfig.textColor);
-          }
-          .width('100%')
-          .padding({ left: 20, right: 20, top: 44, bottom: 16 })
-          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
-          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
-
-          // Gradient fade: smooth transition from blurred header to clear content below
-          Column()
-            .width('100%')
-            .height(28)
-            .linearGradient({
-              direction: GradientDirection.Bottom,
-              colors: [
-                [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
-                [this.themeConfig.isDarkMode ? 'rgba(20,20,20,0.00)' : 'rgba(255,255,255,0.00)', 1.0],
-              ],
-            });
-
-          // Scrollable content
-          Scroll() {
-            Column() {
+      Stack() {
+        // ═══════════════════════════════════════════════════════════
+        // Layer 0: Full-screen scrollable content
+        // ═══════════════════════════════════════════════════════════
+        Scroll() {
+          Column() {
+            // Spacer — clears the floating header + gradient
+            Blank().height(92);
           this.sectionHeader('主题配色');
 
           Column() {
@@ -397,16 +377,47 @@ export struct SettingsPage {
             }
             .width('100%');
           }
-          .layoutWeight(1)
+          .width('100%')
+          .height('100%')
           .scrollBar(BarState.Off)
           .edgeEffect(EdgeEffect.Spring);
+
+        // ═══════════════════════════════════════════════════════════
+        // Layer 1: Floating header — frosted glass, pinned at top
+        // ═══════════════════════════════════════════════════════════
+        Column() {
+          Row() {
+            Text('设置')
+              .fontSize(28 * this.themeConfig.fontScale)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.themeConfig.textColor);
+          }
+          .width('100%')
+          .padding({ left: 20, right: 20, bottom: 8 });
+
+          // Gradient fade — smooth blur-to-clear transition
+          Column()
+            .width('100%')
+            .height(24)
+            .linearGradient({
+              direction: GradientDirection.Bottom,
+              colors: [
+                [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
+                [this.themeConfig.isDarkMode ? 'rgba(20,20,20,0.00)' : 'rgba(255,255,255,0.00)', 1.0],
+              ],
+            });
         }
-        .width('100%')
-        .height('100%');
+        .position({ top: 0, left: 0, right: 0 })
+        .padding({ top: 44 })
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
       }
-      .hideTitleBar(true)
-      .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
-      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
+      .width('100%')
+      .height('100%');
+    }
+    .hideTitleBar(true)
+    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
   }
 
   @Builder

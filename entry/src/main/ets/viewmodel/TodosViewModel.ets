@@ -121,10 +121,14 @@ export class TodosViewModel {
       completedAt: 0,
     };
     await this.repository.insert(todo);
-    // Reload from DB so in-memory state matches what's actually on disk.
-    // If the insert was cached but not flushed, the reload returns stale
-    // data — at least we don't show phantom todos that vanish on restart.
-    this.todos = await this.repository.getAll(this.activeFilter);
+    // Update in-memory state immediately for responsive UI.
+    // (DB reload via getAll() can return stale data if the WAL
+    //  hasn't been flushed yet, causing the new todo to not appear.)
+    const newTodosList: TodoItem[] = [todo];
+    for (const t of this.todos) {
+      newTodosList.push(t);
+    }
+    this.todos = newTodosList;
     this.applyFilters();
     return todo;
   }
@@ -151,8 +155,16 @@ export class TodosViewModel {
       completedAt: !todo.isCompleted ? now() : 0,
     };
     await this.repository.update(updated);
-    // Reload from DB so in-memory state matches disk
-    this.todos = await this.repository.getAll(this.activeFilter);
+    // Update in-memory immediately
+    const newTodos: TodoItem[] = [];
+    for (const t of this.todos) {
+      if (t.id === id) {
+        newTodos.push(updated);
+      } else {
+        newTodos.push(t);
+      }
+    }
+    this.todos = newTodos;
     this.applyFilters();
   }
 
@@ -161,8 +173,16 @@ export class TodosViewModel {
    */
   async updateTodo(updatedTodo: TodoItem): Promise<void> {
     await this.repository.update(updatedTodo);
-    // Reload from DB so in-memory state matches disk
-    this.todos = await this.repository.getAll(this.activeFilter);
+    // Update in-memory immediately
+    const newTodos: TodoItem[] = [];
+    for (const t of this.todos) {
+      if (t.id === updatedTodo.id) {
+        newTodos.push(updatedTodo);
+      } else {
+        newTodos.push(t);
+      }
+    }
+    this.todos = newTodos;
     this.applyFilters();
   }
 
@@ -171,8 +191,14 @@ export class TodosViewModel {
    */
   async deleteTodo(id: ID): Promise<void> {
     await this.repository.delete(id);
-    // Reload from DB so in-memory state matches disk
-    this.todos = await this.repository.getAll(this.activeFilter);
+    // Update in-memory immediately
+    const newTodos: TodoItem[] = [];
+    for (const t of this.todos) {
+      if (t.id !== id) {
+        newTodos.push(t);
+      }
+    }
+    this.todos = newTodos;
     this.applyFilters();
   }
 
@@ -190,8 +216,13 @@ export class TodosViewModel {
       sortOrder: maxOrder + 1,
     };
     await this.repository.insertCategory(category);
-    // Reload from DB so in-memory state matches disk
-    this.categories = await this.repository.getAllCategories();
+    // Update in-memory immediately
+    const newCategories: TodoCategory[] = [];
+    for (const c of this.categories) {
+      newCategories.push(c);
+    }
+    newCategories.push(category);
+    this.categories = newCategories;
     return category;
   }
 
@@ -200,10 +231,21 @@ export class TodosViewModel {
    */
   async deleteCategory(id: ID): Promise<void> {
     await this.repository.deleteCategory(id);
-    // Reload from DB so in-memory state matches disk
-    this.categories = await this.repository.getAllCategories();
-    // Reload todos since category deletion cascades
-    this.todos = await this.repository.getAll(this.activeFilter);
+    // Update in-memory immediately
+    const catsAfter: TodoCategory[] = [];
+    for (const c of this.categories) {
+      if (c.id !== id) {
+        catsAfter.push(c);
+      }
+    }
+    this.categories = catsAfter;
+    const todosAfter: TodoItem[] = [];
+    for (const t of this.todos) {
+      if (t.categoryId !== id) {
+        todosAfter.push(t);
+      }
+    }
+    this.todos = todosAfter;
     this.applyFilters();
   }
 

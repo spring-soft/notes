@@ -42,30 +42,12 @@ export struct TodosPage {
   build() {
     NavDestination() {
       Stack() {
+        // ═══════════════════════════════════════════════════════════
+        // Layer 0: Main content — filter tabs + todo list
+        // ═══════════════════════════════════════════════════════════
         Column() {
-          // Header — immersive blur surface
-          Row() {
-            Text('待办')
-              .fontSize(28 * this.themeConfig.fontScale)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.themeConfig.textColor);
-          }
-          .width('100%')
-          .padding({ left: 20, right: 20, top: 44, bottom: 12 })
-          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
-          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
-
-          // Gradient fade below header
-          Column()
-            .width('100%')
-            .height(28)
-            .linearGradient({
-              direction: GradientDirection.Bottom,
-              colors: [
-                [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
-                [this.themeConfig.isDarkMode ? 'rgba(20,20,20,0.00)' : 'rgba(255,255,255,0.00)', 1.0],
-              ],
-            });
+          // Spacer — clears the floating header + gradient
+          Blank().height(80);
 
           // Filter tabs
           Row() {
@@ -233,7 +215,39 @@ export struct TodosPage {
         .width('100%')
         .height('100%');
 
-        // FAB
+        // ═══════════════════════════════════════════════════════════
+        // Layer 1: Floating header — frosted glass, pinned at top
+        // ═══════════════════════════════════════════════════════════
+        Column() {
+          Row() {
+            Text('待办')
+              .fontSize(28 * this.themeConfig.fontScale)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.themeConfig.textColor);
+          }
+          .width('100%')
+          .padding({ left: 20, right: 20, bottom: 8 });
+
+          // Gradient fade — smooth blur-to-clear transition
+          Column()
+            .width('100%')
+            .height(24)
+            .linearGradient({
+              direction: GradientDirection.Bottom,
+              colors: [
+                [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
+                [this.themeConfig.isDarkMode ? 'rgba(20,20,20,0.00)' : 'rgba(255,255,255,0.00)', 1.0],
+              ],
+            });
+        }
+        .position({ top: 0, left: 0, right: 0 })
+        .padding({ top: 44 })
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
+
+        // ═══════════════════════════════════════════════════════════
+        // Layer 2: FAB
+        // ═══════════════════════════════════════════════════════════
         Stack() {
           Button() {
             SymbolGlyph(ICON.PLUS)

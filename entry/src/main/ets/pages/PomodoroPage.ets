@@ -59,35 +59,15 @@ export struct PomodoroPage {
 
   build() {
     NavDestination() {
-      Column() {
-
-        // Header — immersive blur surface
-        Row() {
-          Text('专注')
-            .fontSize(28 * this.themeConfig.fontScale)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.themeConfig.textColor);
-        }
-        .width('100%')
-        .padding({ left: 20, right: 20, top: 44, bottom: 12 })
-        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
-        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
-
-        // Gradient fade below header
-        Column()
-          .width('100%')
-          .height(28)
-          .linearGradient({
-            direction: GradientDirection.Bottom,
-            colors: [
-              [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
-              [this.themeConfig.isDarkMode ? 'rgba(20,20,20,0.00)' : 'rgba(255,255,255,0.00)', 1.0],
-            ],
-          });
-
-        // Scrollable content below fixed header
+      Stack() {
+        // ═══════════════════════════════════════════════════════════
+        // Layer 0: Full-screen scrollable content
+        // ═══════════════════════════════════════════════════════════
         Scroll() {
           Column() {
+            // Spacer — clears the floating header + gradient
+            Blank().height(80);
+
             // Session type selector
             Row() {
               this.sessionTypeChip(PomodoroSessionType.WORK, '专注', 0);
@@ -144,9 +124,40 @@ export struct PomodoroPage {
           }
           .width('100%');
         }
-        .layoutWeight(1)
+        .width('100%')
+        .height('100%')
         .scrollBar(BarState.Off)
         .edgeEffect(EdgeEffect.Spring);
+
+        // ═══════════════════════════════════════════════════════════
+        // Layer 1: Floating header — frosted glass, pinned at top
+        // ═══════════════════════════════════════════════════════════
+        Column() {
+          Row() {
+            Text('专注')
+              .fontSize(28 * this.themeConfig.fontScale)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.themeConfig.textColor);
+          }
+          .width('100%')
+          .padding({ left: 20, right: 20, bottom: 8 });
+
+          // Gradient fade — smooth blur-to-clear transition
+          Column()
+            .width('100%')
+            .height(24)
+            .linearGradient({
+              direction: GradientDirection.Bottom,
+              colors: [
+                [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
+                [this.themeConfig.isDarkMode ? 'rgba(20,20,20,0.00)' : 'rgba(255,255,255,0.00)', 1.0],
+              ],
+            });
+        }
+        .position({ top: 0, left: 0, right: 0 })
+        .padding({ top: 44 })
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
       }
       .width('100%')
       .height('100%');
