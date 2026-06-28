@@ -28,9 +28,16 @@ export struct TodosPage {
   @Local showCategoryManager: boolean = false;
   @Local newCategoryName: string = '';
   @Local newCategoryColor: string = '#4A90D9';
+  @Local isSaving: boolean = false;
+  @Local refreshSignal: number = 0;
 
   aboutToAppear(): void {
-    this.viewModel.loadData();
+    this.loadTodos();
+  }
+
+  private async loadTodos(): Promise<void> {
+    await this.viewModel.loadData();
+    this.refreshSignal++;
   }
 
   build() {
@@ -202,9 +209,9 @@ export struct TodosPage {
                         },
                       });
                     }
-                  }, (todo: TodoItem) => todo.id);
+                  }, (todo: TodoItem) => todo.id + '_' + String(this.refreshSignal));
                 };
-              }, (categoryId: string) => categoryId);
+              }, (categoryId: string) => categoryId + '_' + String(this.refreshSignal));
             }
             .width('100%')
             .layoutWeight(1)
@@ -238,11 +245,14 @@ export struct TodosPage {
           Column() {
             TodoAddSheet({
               categories: this.viewModel.categories,
-              onSave: (title: string, _description: string, priority: TodoPriority, categoryId: string, customCategoryName: string) => {
-                if (title.trim() !== '') {
-                  this.handleTodoSave(title, _description, priority, categoryId, customCategoryName);
-                  this.showAddSheet = false;
+              onSave: async (title: string, _description: string, priority: TodoPriority, categoryId: string, customCategoryName: string) => {
+                if (this.isSaving || title.trim() === '') {
+                  return;
                 }
+                this.isSaving = true;
+                await this.handleTodoSave(title, _description, priority, categoryId, customCategoryName);
+                this.isSaving = false;
+                this.showAddSheet = false;
               },
               onCancel: () => {
                 this.showAddSheet = false;
@@ -264,7 +274,7 @@ export struct TodosPage {
     }
     .hideTitleBar(true)
     .onShown(() => {
-      this.viewModel.loadData();
+      this.loadTodos();
     })
     .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);

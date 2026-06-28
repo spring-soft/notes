@@ -5,7 +5,7 @@ import { SettingsRepository } from '../repository/SettingsRepository';
 import { PomodoroTimerService } from '../service/PomodoroTimerService';
 import { generateId } from '../utils/IdGenerator';
 import { now, startOfToday, endOfToday } from '../utils/DateUtils';
-import { formatDuration } from '../utils/DateUtils';
+import { formatDuration } from '../utils/DateUtils';//能支持沉浸观感的
 import { getDefaultPomodoroConfig } from '../constants/PomodoroConstants';
 
 /**
