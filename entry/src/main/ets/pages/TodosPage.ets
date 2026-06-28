@@ -46,8 +46,8 @@ export struct TodosPage {
         // Layer 0: Main content — filter tabs + todo list
         // ═══════════════════════════════════════════════════════════
         Column() {
-          // Spacer — clears the floating header + gradient
-          Blank().height(80);
+          // Spacer — clears the floating header + gradient mask
+          Blank().height(120);
 
           // Filter tabs
           Row() {
@@ -217,8 +217,13 @@ export struct TodosPage {
 
         // ═══════════════════════════════════════════════════════════
         // Layer 1: Floating header — frosted glass, pinned at top
+        //
+        // backdropBlur is binary (on/off).  The gradient overlay masks
+        // the blur visibility: opaque → blur visible, transparent →
+        // blur invisible, creating an illusion of gradual fade.
         // ═══════════════════════════════════════════════════════════
         Column() {
+          // Title area — solid bg for readability
           Row() {
             Text('待办')
               .fontSize(28 * this.themeConfig.fontScale)
@@ -226,12 +231,13 @@ export struct TodosPage {
               .fontColor(this.themeConfig.textColor);
           }
           .width('100%')
-          .padding({ left: 20, right: 20, bottom: 8 });
+          .padding({ left: 20, right: 20, top: 0, bottom: 4 })
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
-          // Gradient fade — smooth blur-to-clear transition
+          // Gradient mask — bridges blurred title area to clear content
           Column()
             .width('100%')
-            .height(24)
+            .height(48)
             .linearGradient({
               direction: GradientDirection.Bottom,
               colors: [
@@ -242,8 +248,7 @@ export struct TodosPage {
         }
         .position({ top: 0, left: 0, right: 0 })
         .padding({ top: 44 })
-        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
-        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN));
 
         // ═══════════════════════════════════════════════════════════
         // Layer 2: FAB

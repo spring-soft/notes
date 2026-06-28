@@ -77,20 +77,41 @@ export class TodoRepository {
 
   async insert(todo: TodoItem): Promise<void> {
     const valueBucket: relationalStore.ValuesBucket = this.todoToValuesBucket(todo);
-    await this.store.insert(TABLE_TODOS, valueBucket);
+    await this.store.beginTransaction();
+    try {
+      await this.store.insert(TABLE_TODOS, valueBucket);
+      await this.store.commit();
+    } catch (e) {
+      await this.store.rollBack();
+      throw new Error('TodoRepository transaction failed');
+    }
   }
 
   async update(todo: TodoItem): Promise<void> {
     const valueBucket: relationalStore.ValuesBucket = this.todoToValuesBucket(todo);
     const predicates: relationalStore.RdbPredicates = new relationalStore.RdbPredicates(TABLE_TODOS);
     predicates.equalTo(COL_TODOS_ID, todo.id);
-    await this.store.update(valueBucket, predicates);
+    await this.store.beginTransaction();
+    try {
+      await this.store.update(valueBucket, predicates);
+      await this.store.commit();
+    } catch (e) {
+      await this.store.rollBack();
+      throw new Error('TodoRepository transaction failed');
+    }
   }
 
   async delete(id: ID): Promise<void> {
     const predicates: relationalStore.RdbPredicates = new relationalStore.RdbPredicates(TABLE_TODOS);
     predicates.equalTo(COL_TODOS_ID, id);
-    await this.store.delete(predicates);
+    await this.store.beginTransaction();
+    try {
+      await this.store.delete(predicates);
+      await this.store.commit();
+    } catch (e) {
+      await this.store.rollBack();
+      throw new Error('TodoRepository transaction failed');
+    }
   }
 
   async deleteByCategoryId(categoryId: ID): Promise<void> {
@@ -129,21 +150,43 @@ export class TodoRepository {
 
   async insertCategory(category: TodoCategory): Promise<void> {
     const valueBucket: relationalStore.ValuesBucket = this.categoryToValuesBucket(category);
-    await this.store.insert(TABLE_TODO_CATEGORIES, valueBucket);
+    await this.store.beginTransaction();
+    try {
+      await this.store.insert(TABLE_TODO_CATEGORIES, valueBucket);
+      await this.store.commit();
+    } catch (e) {
+      await this.store.rollBack();
+      throw new Error('TodoRepository transaction failed');
+    }
   }
 
   async updateCategory(category: TodoCategory): Promise<void> {
     const valueBucket: relationalStore.ValuesBucket = this.categoryToValuesBucket(category);
     const predicates: relationalStore.RdbPredicates = new relationalStore.RdbPredicates(TABLE_TODO_CATEGORIES);
     predicates.equalTo(COL_TODO_CAT_ID, category.id);
-    await this.store.update(valueBucket, predicates);
+    await this.store.beginTransaction();
+    try {
+      await this.store.update(valueBucket, predicates);
+      await this.store.commit();
+    } catch (e) {
+      await this.store.rollBack();
+      throw new Error('TodoRepository transaction failed');
+    }
   }
 
   async deleteCategory(id: ID): Promise<void> {
-    await this.deleteByCategoryId(id);
-    const predicates: relationalStore.RdbPredicates = new relationalStore.RdbPredicates(TABLE_TODO_CATEGORIES);
-    predicates.equalTo(COL_TODO_CAT_ID, id);
-    await this.store.delete(predicates);
+    // Wrap both deletes (todos + category) in one transaction for atomicity
+    await this.store.beginTransaction();
+    try {
+      await this.deleteByCategoryId(id);
+      const predicates: relationalStore.RdbPredicates = new relationalStore.RdbPredicates(TABLE_TODO_CATEGORIES);
+      predicates.equalTo(COL_TODO_CAT_ID, id);
+      await this.store.delete(predicates);
+      await this.store.commit();
+    } catch (e) {
+      await this.store.rollBack();
+      throw new Error('TodoRepository transaction failed');
+    }
   }
 
   // ── Row Mappers ──

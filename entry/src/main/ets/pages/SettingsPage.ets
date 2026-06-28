@@ -92,8 +92,8 @@ export struct SettingsPage {
         // ═══════════════════════════════════════════════════════════
         Scroll() {
           Column() {
-            // Spacer — clears the floating header + gradient
-            Blank().height(92);
+            // Spacer — clears the floating header + gradient mask
+            Blank().height(120);
           this.sectionHeader('主题配色');
 
           Column() {
@@ -384,8 +384,14 @@ export struct SettingsPage {
 
         // ═══════════════════════════════════════════════════════════
         // Layer 1: Floating header — frosted glass, pinned at top
+        //
+        // backdropBlur is binary (on/off).  We mask its visibility
+        // with a gradient overlay: blur is active across the entire
+        // Column, but the gradient fades from opaque (blur visible)
+        // to transparent (blur invisible → clear content).
         // ═══════════════════════════════════════════════════════════
         Column() {
+          // Title area — solid bg for readability
           Row() {
             Text('设置')
               .fontSize(28 * this.themeConfig.fontScale)
@@ -393,12 +399,13 @@ export struct SettingsPage {
               .fontColor(this.themeConfig.textColor);
           }
           .width('100%')
-          .padding({ left: 20, right: 20, bottom: 8 });
+          .padding({ left: 20, right: 20, top: 0, bottom: 4 })
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
-          // Gradient fade — smooth blur-to-clear transition
+          // Gradient mask — bridges blurred title area to clear content
           Column()
             .width('100%')
-            .height(24)
+            .height(48)
             .linearGradient({
               direction: GradientDirection.Bottom,
               colors: [
@@ -409,8 +416,7 @@ export struct SettingsPage {
         }
         .position({ top: 0, left: 0, right: 0 })
         .padding({ top: 44 })
-        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
-        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN));
       }
       .width('100%')
       .height('100%');

@@ -65,8 +65,8 @@ export struct PomodoroPage {
         // ═══════════════════════════════════════════════════════════
         Scroll() {
           Column() {
-            // Spacer — clears the floating header + gradient
-            Blank().height(80);
+            // Spacer — clears the floating header + gradient mask
+            Blank().height(120);
 
             // Session type selector
             Row() {
@@ -131,8 +131,16 @@ export struct PomodoroPage {
 
         // ═══════════════════════════════════════════════════════════
         // Layer 1: Floating header — frosted glass, pinned at top
+        //
+        // backdropBlur is binary in ArkUI (on/off), so we mask the
+        // blur VISIBILITY with a gradient overlay: the blur is always
+        // active across the entire header Column, but the gradient
+        // fades from opaque (blur clearly visible) to transparent
+        // (blur invisible, content looks clear).  This creates the
+        // illusion of a gradual blur-to-clear transition.
         // ═══════════════════════════════════════════════════════════
         Column() {
+          // Title area — solid bg for readability
           Row() {
             Text('专注')
               .fontSize(28 * this.themeConfig.fontScale)
@@ -140,12 +148,15 @@ export struct PomodoroPage {
               .fontColor(this.themeConfig.textColor);
           }
           .width('100%')
-          .padding({ left: 20, right: 20, bottom: 8 });
+          .padding({ left: 20, right: 20, top: 0, bottom: 4 })
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
-          // Gradient fade — smooth blur-to-clear transition
+          // Gradient mask — bridges blurred title area to clear content.
+          // The blur is active here (inherited from outer Column) but the
+          // gradient overlay makes it gradually invisible.
           Column()
             .width('100%')
-            .height(24)
+            .height(48)
             .linearGradient({
               direction: GradientDirection.Bottom,
               colors: [
@@ -156,8 +167,7 @@ export struct PomodoroPage {
         }
         .position({ top: 0, left: 0, right: 0 })
         .padding({ top: 44 })
-        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
-        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN));
       }
       .width('100%')
       .height('100%');
