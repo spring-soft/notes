@@ -86,9 +86,8 @@ export struct SettingsPage {
 
   build() {
     NavDestination() {
-      Scroll() {
-        Column() {
-          // Header — immersive blur surface
+      Column() {
+          // Header — fixed at top, immersive blur surface
           Row() {
             Text('设置')
               .fontSize(28 * this.themeConfig.fontScale)
@@ -112,7 +111,9 @@ export struct SettingsPage {
               ],
             });
 
-          // ── Appearance Section ──
+          // Scrollable content
+          Scroll() {
+            Column() {
           this.sectionHeader('主题配色');
 
           Column() {
@@ -392,18 +393,20 @@ export struct SettingsPage {
           .margin({ left: 20, right: 20, bottom: 40 });
 
           // Bottom spacer
-          Blank().height(80);
+              Blank().height(80);
+            }
+            .width('100%');
+          }
+          .layoutWeight(1)
+          .scrollBar(BarState.Off)
+          .edgeEffect(EdgeEffect.Spring);
         }
-        .width('100%');
+        .width('100%')
+        .height('100%');
       }
-      .width('100%')
-      .height('100%')
-      .scrollBar(BarState.Off)
-      .edgeEffect(EdgeEffect.Spring);
-    }
-    .hideTitleBar(true)
-    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
-    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
+      .hideTitleBar(true)
+      .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
   }
 
   @Builder

@@ -257,26 +257,8 @@ export struct TodosPage {
           Column() {
             TodoAddSheet({
               categories: this.viewModel.categories,
-              // NOTE: @Event onSave is declared => void, so the callback MUST be
-              // synchronous.  Use .then()/.catch() chains for the async work
-              // instead of async/await — otherwise the framework may silently
-              // drop the callback at runtime due to the Promise<void> vs void
-              // type mismatch.
               onSave: (title: string, _description: string, priority: TodoPriority, categoryId: string, customCategoryName: string) => {
-                if (this.isSaving || title.trim() === '') {
-                  return;
-                }
-                this.isSaving = true;
-                this.handleTodoSave(title, _description, priority, categoryId, customCategoryName)
-                  .then(() => this.loadTodos())
-                  .then(() => {
-                    this.isSaving = false;
-                    this.showAddSheet = false;
-                  })
-                  .catch((err: Error) => {
-                    console.error('TodosPage.onSave: save failed - ' + String(err));
-                    this.isSaving = false;
-                  });
+                this.doSave(title, _description, priority, categoryId, customCategoryName);
               },
               onCancel: () => {
                 this.showAddSheet = false;
@@ -386,6 +368,37 @@ export struct TodosPage {
     }
 
     await this.viewModel.createTodo(title, description, priority, finalCategoryId, 0, 0, 0);
+  }
+
+  /**
+   * Synchronous entry point for the @Event onSave callback.
+   * @Event declares => void, so this method is void (not async).
+   * All async work is chained via .then()/.catch() — the same
+   * fire-and-forget pattern used by NoteDetailPage.saveNote().
+   */
+  private doSave(
+    title: string,
+    description: string,
+    priority: TodoPriority,
+    categoryId: string,
+    customCategoryName: string
+  ): void {
+    if (this.isSaving || title.trim() === '') {
+      return;
+    }
+    this.isSaving = true;
+    // handleTodoSave already reloads from DB inside createTodo(),
+    // so we only need to bump refreshSignal for LazyForEach keys.
+    this.handleTodoSave(title, description, priority, categoryId, customCategoryName)
+      .then(() => {
+        this.refreshSignal++;
+        this.isSaving = false;
+        this.showAddSheet = false;
+      })
+      .catch((err: Error) => {
+        console.error('TodosPage.doSave: save failed - ' + String(err));
+        this.isSaving = false;
+      });
   }
 
   private getCategoryName(categoryId: string): string {

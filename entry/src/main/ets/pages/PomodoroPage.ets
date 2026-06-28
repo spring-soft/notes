@@ -85,59 +85,68 @@ export struct PomodoroPage {
             ],
           });
 
-        // Session type selector
-        Row() {
-          this.sessionTypeChip(PomodoroSessionType.WORK, '专注', 0);
-          this.sessionTypeChip(PomodoroSessionType.SHORT_BREAK, '短休息', 0);
-          this.sessionTypeChip(PomodoroSessionType.LONG_BREAK, '长休息', 0);
-        }
-        .width('100%')
-        .padding({ left: 20, right: 20, bottom: 24 })
-        .justifyContent(FlexAlign.SpaceEvenly);
-
-        // Timer circle — uses @State displayProgress/displayRemaining for real-time updates
-        Column() {
-          PomodoroCircle({
-            progress: this.displayProgress,
-            remainingTime: this.formatRemaining(),
-            sessionLabel: this.viewModel.getSessionLabel(),
-            isRunning: this.isTimerRunning(),
-          });
-        }
-        .width('100%')
-        .alignItems(HorizontalAlign.Center)
-        .padding({ top: 20, bottom: 32 })
-        .animation({ duration: 300, curve: Curve.EaseInOut });
-
-        // Controls — uses @State displayState for button state
-        PomodoroControls({
-          currentState: this.displayState,
-          isRunning: this.isTimerRunning(),
-          stateSignal: this.stateUpdateSignal,
-          onStartPause: () => {
-            if (this.isTimerRunning()) {
-              this.viewModel.pauseTimer();
-            } else {
-              this.viewModel.startTimer();
+        // Scrollable content below fixed header
+        Scroll() {
+          Column() {
+            // Session type selector
+            Row() {
+              this.sessionTypeChip(PomodoroSessionType.WORK, '专注', 0);
+              this.sessionTypeChip(PomodoroSessionType.SHORT_BREAK, '短休息', 0);
+              this.sessionTypeChip(PomodoroSessionType.LONG_BREAK, '长休息', 0);
             }
-          },
-          onReset: () => {
-            this.viewModel.resetTimer();
-          },
-          onSkip: () => {
-            this.viewModel.skipToNext();
-          },
-        });
+            .width('100%')
+            .padding({ left: 20, right: 20, bottom: 24 })
+            .justifyContent(FlexAlign.SpaceEvenly);
 
-        // Today's stats
-        Column() {
-          PomodoroSessionStats({
-            completedCount: this.viewModel.todayCompletedCount,
-            totalMinutes: this.viewModel.todayTotalMinutes,
-          });
+            // Timer circle — uses @State displayProgress/displayRemaining for real-time updates
+            Column() {
+              PomodoroCircle({
+                progress: this.displayProgress,
+                remainingTime: this.formatRemaining(),
+                sessionLabel: this.viewModel.getSessionLabel(),
+                isRunning: this.isTimerRunning(),
+              });
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Center)
+            .padding({ top: 20, bottom: 32 })
+            .animation({ duration: 300, curve: Curve.EaseInOut });
+
+            // Controls — uses @State displayState for button state
+            PomodoroControls({
+              currentState: this.displayState,
+              isRunning: this.isTimerRunning(),
+              stateSignal: this.stateUpdateSignal,
+              onStartPause: () => {
+                if (this.isTimerRunning()) {
+                  this.viewModel.pauseTimer();
+                } else {
+                  this.viewModel.startTimer();
+                }
+              },
+              onReset: () => {
+                this.viewModel.resetTimer();
+              },
+              onSkip: () => {
+                this.viewModel.skipToNext();
+              },
+            });
+
+            // Today's stats
+            Column() {
+              PomodoroSessionStats({
+                completedCount: this.viewModel.todayCompletedCount,
+                totalMinutes: this.viewModel.todayTotalMinutes,
+              });
+            }
+            .width('100%')
+            .padding({ left: 20, right: 20, top: 32 });
+          }
+          .width('100%');
         }
-        .width('100%')
-        .padding({ left: 20, right: 20, top: 32 });
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+        .edgeEffect(EdgeEffect.Spring);
       }
       .width('100%')
       .height('100%');
