@@ -173,6 +173,18 @@ export struct NotesPage {
             }
             .width('100%').padding({ left: 20, right: 20, bottom: 6 });
           }
+
+          // Gradient fade below floating header
+          Column()
+            .width('100%')
+            .height(24)
+            .linearGradient({
+              direction: GradientDirection.Bottom,
+              colors: [
+                [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
+                [Color.Transparent, 1.0],
+              ],
+            });
         }
         .position({ top: 0, left: 0, right: 0 })
         .padding({ top: 30 }) // status bar clearance

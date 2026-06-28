@@ -241,6 +241,18 @@ export struct NoteDetailPage {
         .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
         .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
+        // Gradient fade below header
+        Column()
+          .width('100%')
+          .height(24)
+          .linearGradient({
+            direction: GradientDirection.Bottom,
+            colors: [
+              [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
+              [Color.Transparent, 1.0],
+            ],
+          });
+
         // Color picker dropdown
         if (this.showColorPicker) {
           Column() {

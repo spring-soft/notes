@@ -73,6 +73,18 @@ export struct PomodoroPage {
         .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
         .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
+        // Gradient fade below header
+        Column()
+          .width('100%')
+          .height(28)
+          .linearGradient({
+            direction: GradientDirection.Bottom,
+            colors: [
+              [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
+              [Color.Transparent, 1.0],
+            ],
+          });
+
         // Session type selector
         Row() {
           this.sessionTypeChip(PomodoroSessionType.WORK, '专注', 0);

@@ -100,6 +100,18 @@ export struct SettingsPage {
           .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
           .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
+          // Gradient fade: smooth transition from blurred header to clear content below
+          Column()
+            .width('100%')
+            .height(28)
+            .linearGradient({
+              direction: GradientDirection.Bottom,
+              colors: [
+                [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
+                [Color.Transparent, 1.0],
+              ],
+            });
+
           // ── Appearance Section ──
           this.sectionHeader('主题配色');
 
@@ -143,6 +155,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
           .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 16 });
 
@@ -182,6 +195,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
           .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 16 });
 
@@ -210,6 +224,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
           .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 16 });
 
@@ -251,6 +266,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
           .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 16 });
 
@@ -292,6 +308,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
           .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 16 });
 
@@ -350,6 +367,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
           .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 16 });
 
@@ -369,6 +387,7 @@ export struct SettingsPage {
           }
           .padding(16)
           .borderRadius(this.borderRadiusValue)
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
           .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode))
           .margin({ left: 20, right: 20, bottom: 40 });
 

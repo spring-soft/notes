@@ -56,6 +56,18 @@ export struct TodosPage {
           .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
           .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
+          // Gradient fade below header
+          Column()
+            .width('100%')
+            .height(28)
+            .linearGradient({
+              direction: GradientDirection.Bottom,
+              colors: [
+                [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
+                [Color.Transparent, 1.0],
+              ],
+            });
+
           // Filter tabs
           Row() {
             this.filterTab('全部', 0, TodoFilterType.ALL);
