@@ -257,21 +257,26 @@ export struct TodosPage {
           Column() {
             TodoAddSheet({
               categories: this.viewModel.categories,
-              onSave: async (title: string, _description: string, priority: TodoPriority, categoryId: string, customCategoryName: string) => {
+              // NOTE: @Event onSave is declared => void, so the callback MUST be
+              // synchronous.  Use .then()/.catch() chains for the async work
+              // instead of async/await — otherwise the framework may silently
+              // drop the callback at runtime due to the Promise<void> vs void
+              // type mismatch.
+              onSave: (title: string, _description: string, priority: TodoPriority, categoryId: string, customCategoryName: string) => {
                 if (this.isSaving || title.trim() === '') {
                   return;
                 }
                 this.isSaving = true;
-                try {
-                  await this.handleTodoSave(title, _description, priority, categoryId, customCategoryName);
-                  // Reload list from DB and bump refreshSignal so LazyForEach picks up the new item
-                  await this.loadTodos();
-                  this.showAddSheet = false;
-                } catch (err) {
-                  console.error('TodosPage.onSave: save failed - ' + String(err));
-                } finally {
-                  this.isSaving = false;
-                }
+                this.handleTodoSave(title, _description, priority, categoryId, customCategoryName)
+                  .then(() => this.loadTodos())
+                  .then(() => {
+                    this.isSaving = false;
+                    this.showAddSheet = false;
+                  })
+                  .catch((err: Error) => {
+                    console.error('TodosPage.onSave: save failed - ' + String(err));
+                    this.isSaving = false;
+                  });
               },
               onCancel: () => {
                 this.showAddSheet = false;
