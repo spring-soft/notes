@@ -121,9 +121,15 @@ export class TodosViewModel {
       completedAt: 0,
     };
     await this.repository.insert(todo);
+    // Verify the insert actually reached disk by reading it back.
+    // If this returns null the WAL wasn't flushed and data would
+    // be lost on process kill.
+    const verified: TodoItem | null = await this.repository.getById(todo.id);
+    if (verified === null) {
+      console.error('TodosViewModel.createTodo: post-insert verification FAILED — ' +
+        'todo id=' + todo.id + ' not readable after insert');
+    }
     // Update in-memory state immediately for responsive UI.
-    // (DB reload via getAll() can return stale data if the WAL
-    //  hasn't been flushed yet, causing the new todo to not appear.)
     const newTodosList: TodoItem[] = [todo];
     for (const t of this.todos) {
       newTodosList.push(t);
