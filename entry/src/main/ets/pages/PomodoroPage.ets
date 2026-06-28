@@ -65,8 +65,8 @@ export struct PomodoroPage {
         // ═══════════════════════════════════════════════════════════
         Scroll() {
           Column() {
-            // Spacer — clears the floating header + gradient mask
-            Blank().height(140);
+            // Spacer — clears the floating header
+            Blank().height(80);
 
             // Session type selector
             Row() {
@@ -150,12 +150,10 @@ export struct PomodoroPage {
           .width('100%')
           .padding({ left: 20, right: 20, top: 0, bottom: 4 });
 
-          // Gradient mask — bridges frosted header to clear content.
-          // backdropBlur is binary; the gradient overlay makes blur
-          // visibility fade gradually by masking with decreasing opacity.
+          // Short blur fade below header
           Column()
             .width('100%')
-            .height(72)
+            .height(12)
             .linearGradient({
               direction: GradientDirection.Bottom,
               colors: [
