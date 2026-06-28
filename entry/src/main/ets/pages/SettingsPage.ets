@@ -93,7 +93,7 @@ export struct SettingsPage {
         Scroll() {
           Column() {
             // Spacer — clears the floating header
-            Blank().height(80);
+            Blank().height(76);
           this.sectionHeader('主题配色');
 
           Column() {
@@ -401,17 +401,6 @@ export struct SettingsPage {
           .width('100%')
           .padding({ left: 20, right: 20, top: 0, bottom: 4 });
 
-          // Short blur fade below header
-          Column()
-            .width('100%')
-            .height(12)
-            .linearGradient({
-              direction: GradientDirection.Bottom,
-              colors: [
-                [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
-                [this.themeConfig.isDarkMode ? 'rgba(20,20,20,0.00)' : 'rgba(255,255,255,0.00)', 1.0],
-              ],
-            });
         }
         .position({ top: 0, left: 0, right: 0 })
         .padding({ top: 44 })
