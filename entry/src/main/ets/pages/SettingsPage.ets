@@ -93,7 +93,7 @@ export struct SettingsPage {
         Scroll() {
           Column() {
             // Spacer — clears the floating header + gradient mask
-            Blank().height(120);
+            Blank().height(140);
           this.sectionHeader('主题配色');
 
           Column() {
@@ -391,7 +391,7 @@ export struct SettingsPage {
         // to transparent (blur invisible → clear content).
         // ═══════════════════════════════════════════════════════════
         Column() {
-          // Title area — solid bg for readability
+          // Title area
           Row() {
             Text('设置')
               .fontSize(28 * this.themeConfig.fontScale)
@@ -399,13 +399,14 @@ export struct SettingsPage {
               .fontColor(this.themeConfig.textColor);
           }
           .width('100%')
-          .padding({ left: 20, right: 20, top: 0, bottom: 4 })
-          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
+          .padding({ left: 20, right: 20, top: 0, bottom: 4 });
 
-          // Gradient mask — bridges blurred title area to clear content
+          // Gradient mask — bridges frosted header to clear content.
+          // backdropBlur is binary; the gradient overlay makes blur
+          // visibility fade gradually by masking with decreasing opacity.
           Column()
             .width('100%')
-            .height(48)
+            .height(72)
             .linearGradient({
               direction: GradientDirection.Bottom,
               colors: [
@@ -416,7 +417,8 @@ export struct SettingsPage {
         }
         .position({ top: 0, left: 0, right: 0 })
         .padding({ top: 44 })
-        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN));
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
       }
       .width('100%')
       .height('100%');

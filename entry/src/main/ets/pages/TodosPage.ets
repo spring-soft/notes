@@ -29,6 +29,7 @@ export struct TodosPage {
   @Local newCategoryName: string = '';
   @Local newCategoryColor: string = '#4A90D9';
   @Local refreshSignal: number = 0;
+  @Local isSaving: boolean = false;
 
   aboutToAppear(): void {
     this.loadTodos();
@@ -47,7 +48,7 @@ export struct TodosPage {
         // ═══════════════════════════════════════════════════════════
         Column() {
           // Spacer — clears the floating header + gradient mask
-          Blank().height(120);
+          Blank().height(140);
 
           // Filter tabs
           Row() {
@@ -223,7 +224,7 @@ export struct TodosPage {
         // blur invisible, creating an illusion of gradual fade.
         // ═══════════════════════════════════════════════════════════
         Column() {
-          // Title area — solid bg for readability
+          // Title area
           Row() {
             Text('待办')
               .fontSize(28 * this.themeConfig.fontScale)
@@ -231,13 +232,14 @@ export struct TodosPage {
               .fontColor(this.themeConfig.textColor);
           }
           .width('100%')
-          .padding({ left: 20, right: 20, top: 0, bottom: 4 })
-          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
+          .padding({ left: 20, right: 20, top: 0, bottom: 4 });
 
-          // Gradient mask — bridges blurred title area to clear content
+          // Gradient mask — bridges frosted header to clear content.
+          // backdropBlur is binary; the gradient overlay makes blur
+          // visibility fade gradually by masking with decreasing opacity.
           Column()
             .width('100%')
-            .height(48)
+            .height(72)
             .linearGradient({
               direction: GradientDirection.Bottom,
               colors: [
@@ -248,7 +250,8 @@ export struct TodosPage {
         }
         .position({ top: 0, left: 0, right: 0 })
         .padding({ top: 44 })
-        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN));
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
         // ═══════════════════════════════════════════════════════════
         // Layer 2: FAB
@@ -279,11 +282,22 @@ export struct TodosPage {
                 if (title.trim() === '') {
                   return;
                 }
-                // Fire-and-forget: save + DB reload runs in background.
-                // The ViewModel's @Trace filteredTodos update will trigger
-                // a list re-render automatically when the async work completes.
-                this.handleTodoSave(title, _description, priority, categoryId, customCategoryName);
-                this.showAddSheet = false;
+                if (this.isSaving) {
+                  return;
+                }
+                this.isSaving = true;
+                // Await the DB write via .then() so the sheet stays open
+                // until persistence completes (matching NoteDetailPage's
+                // await-insert-then-pop pattern).  The outer callback is
+                // sync (=> void) so @Event does not drop it.
+                this.handleTodoSave(title, _description, priority, categoryId, customCategoryName)
+                  .then(() => {
+                    this.isSaving = false;
+                    this.showAddSheet = false;
+                  })
+                  .catch(() => {
+                    this.isSaving = false;
+                  });
               },
               onCancel: () => {
                 this.showAddSheet = false;
