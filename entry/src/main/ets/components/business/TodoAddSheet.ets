@@ -1,6 +1,9 @@
 import { TodoPriority, TodoItem, TodoCategory, PRESET_TODO_CATEGORIES } from '../../model/TodoModel';
 import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../../model/ThemeConfigModel';
 import { ID } from '../../model/AppConstantsModel';
+import { TodosViewModel } from '../../viewmodel/TodosViewModel';
+import { TodoRepository } from '../../repository/TodoRepository';
+import { DatabaseHelper } from '../../repository/DatabaseHelper';
 
 /**
  * Bottom sheet / inline form for adding a new todo item.
@@ -9,6 +12,9 @@ import { ID } from '../../model/AppConstantsModel';
 export struct TodoAddSheet {
   @Consumer('themeConfig') themeConfig: ThemeConfig = DEFAULT_THEME_CONFIG;
   @Param categories: TodoCategory[] = [];
+  @Param viewModel: TodosViewModel = new TodosViewModel(
+    new TodoRepository(DatabaseHelper.getInstance().getStore())
+  );
   @Local title: string = '';
   @Local description: string = '';
   @Local selectedPriority: TodoPriority = TodoPriority.MEDIUM;
@@ -17,10 +23,10 @@ export struct TodoAddSheet {
   @Local showCategoryPicker: boolean = false;
   @Local customCategoryName: string = '';
   @Local selectedCategoryColor: string = '#4A90D9';
+  @Local isSaving: boolean = false;
 
-  @Event onSave: (title: string, description: string, priority: TodoPriority, categoryId: ID, customCategoryName: string) => void =
-    (_t: string, _d: string, _p: TodoPriority, _c: ID, _cn: string) => {
-    };
+  @Event onSaved: () => void = () => {
+  };
   @Event onCancel: () => void = () => {
   };
 
@@ -209,8 +215,10 @@ export struct TodoAddSheet {
           .backgroundColor(this.themeConfig.primaryColor)
           .borderRadius(this.themeConfig.borderRadius)
           .layoutWeight(1)
+          .enabled(!this.isSaving)
+          .opacity(this.isSaving ? 0.6 : 1.0)
           .onClick(() => {
-            this.onSave(this.title, this.description, this.selectedPriority, this.selectedCategoryId, this.customCategoryName);
+            this.doSave();
           });
       }
       .width('100%')
@@ -282,6 +290,46 @@ export struct TodoAddSheet {
       case TodoPriority.LOW:
       default:
         return '#4CAF50';
+    }
+  }
+
+  /**
+   * Handles the save internally with full async/await — matching the
+   * note save pattern where the save button and save logic live in the
+   * same component.  The @Event onSaved only fires AFTER the DB write
+   * completes, so the parent can safely close the sheet knowing the
+   * data is persisted.
+   */
+  private async doSave(): Promise<void> {
+    if (this.title.trim() === '') {
+      return;
+    }
+    if (this.isSaving) {
+      return;
+    }
+    this.isSaving = true;
+    try {
+      let finalCategoryId: string = this.selectedCategoryId;
+      // If user typed or selected a custom category name, materialize it
+      if (this.customCategoryName.trim() !== '') {
+        const category: TodoCategory = await this.viewModel.getOrCreateCategory(
+          this.customCategoryName.trim(),
+          this.selectedCategoryColor
+        );
+        finalCategoryId = category.id;
+      }
+      await this.viewModel.createTodo(
+        this.title,
+        this.description,
+        this.selectedPriority,
+        finalCategoryId,
+        0, 0, 0
+      );
+      this.onSaved();
+    } catch (err) {
+      console.error('TodoAddSheet.doSave: save failed - ' + String(err));
+    } finally {
+      this.isSaving = false;
     }
   }
 }

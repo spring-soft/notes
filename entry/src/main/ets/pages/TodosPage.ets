@@ -1,7 +1,7 @@
 import { TodosViewModel } from '../viewmodel/TodosViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { ReminderViewModel } from '../viewmodel/ReminderViewModel';
-import { TodoItem, TodoCategory, TodoPriority, TodoFilterType } from '../model/TodoModel';
+import { TodoItem, TodoCategory, TodoFilterType } from '../model/TodoModel';
 import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
 import { MaterialConstants } from '../constants/MaterialConstants';
 import { TodoRepository } from '../repository/TodoRepository';
@@ -47,7 +47,7 @@ export struct TodosPage {
         // ═══════════════════════════════════════════════════════════
         Column() {
           // Spacer — clears the floating header
-          Blank().height(76);
+          Blank().height(88);
 
           // Filter tabs
           Row() {
@@ -264,15 +264,8 @@ export struct TodosPage {
           Column() {
             TodoAddSheet({
               categories: this.viewModel.categories,
-              onSave: (title: string, _description: string, priority: TodoPriority, categoryId: string, customCategoryName: string) => {
-                if (title.trim() === '') {
-                  return;
-                }
-                // Fire-and-forget: the ViewModel does in-memory update
-                // immediately after DB insert, so the list updates via
-                // @Trace reactivity.  WAL checkpoint in TodoRepository
-                // ensures the write reaches disk for persistence.
-                this.handleTodoSave(title, _description, priority, categoryId, customCategoryName);
+              viewModel: this.viewModel,
+              onSaved: () => {
                 this.showAddSheet = false;
               },
               onCancel: () => {
@@ -362,27 +355,6 @@ export struct TodosPage {
         itemCount: this.getTodoCount(categoryId),
       });
     }
-  }
-
-  private async handleTodoSave(
-    title: string,
-    description: string,
-    priority: TodoPriority,
-    categoryId: string,
-    customCategoryName: string
-  ): Promise<void> {
-    let finalCategoryId: string = categoryId;
-
-    // If user typed or selected a category name, materialize it (get or create)
-    if (customCategoryName.trim() !== '') {
-      const category: TodoCategory = await this.viewModel.getOrCreateCategory(
-        customCategoryName.trim(),
-        '#4A90D9'
-      );
-      finalCategoryId = category.id;
-    }
-
-    await this.viewModel.createTodo(title, description, priority, finalCategoryId, 0, 0, 0);
   }
 
   private getCategoryName(categoryId: string): string {
