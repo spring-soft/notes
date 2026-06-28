@@ -11,6 +11,7 @@ import {
   SubsonicDirectoryResponse,
   SubsonicAlbumListResponse,
   SubsonicSearchResponse,
+  SubsonicResponseBase,
 } from '../model/MusicModel';
 import { MusicConstants } from '../constants/MusicConstants';
 

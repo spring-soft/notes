@@ -119,7 +119,7 @@ export struct MusicPage {
                         && this.viewModel.currentTrack.id === track.id
                         && this.displayState === PlayerState.PLAYING,
                       index: index + 1,
-                      onClick: () => {
+                      onItemClick: () => {
                         this.viewModel.playTrack(track);
                       },
                       onMore: () => {
@@ -236,8 +236,7 @@ export struct MusicPage {
 
   @Builder
   albumGroupView() {
-    const albums: string[] = this.getUniqueAlbums();
-    ForEach(albums, (album: string, _idx: number) => {
+    ForEach(this.getUniqueAlbums(), (album: string, _idx: number) => {
       Column() {
         Text(album !== '' ? album : '未知专辑')
           .fontSize(16 * this.themeConfig.fontScale)
@@ -251,7 +250,7 @@ export struct MusicPage {
               && this.viewModel.currentTrack.id === track.id
               && this.displayState === PlayerState.PLAYING,
             index: _j + 1,
-            onClick: () => {
+            onItemClick: () => {
               this.viewModel.playTrack(track);
             },
           })
@@ -268,8 +267,7 @@ export struct MusicPage {
 
   @Builder
   artistGroupView() {
-    const artists: string[] = this.getUniqueArtists();
-    ForEach(artists, (artist: string, _idx: number) => {
+    ForEach(this.getUniqueArtists(), (artist: string, _idx: number) => {
       Column() {
         Text(artist !== '' ? artist : '未知艺术家')
           .fontSize(16 * this.themeConfig.fontScale)
@@ -283,7 +281,7 @@ export struct MusicPage {
               && this.viewModel.currentTrack.id === track.id
               && this.displayState === PlayerState.PLAYING,
             index: _j + 1,
-            onClick: () => {
+            onItemClick: () => {
               this.viewModel.playTrack(track);
             },
           })
@@ -311,8 +309,7 @@ export struct MusicPage {
               .fontSize(15 * this.themeConfig.fontScale)
               .fontColor(this.themeConfig.textColor)
               .maxLines(1);
-            const count: number = playlist.trackCount !== undefined ? playlist.trackCount : 0;
-            Text(String(count) + ' 首')
+            Text(String(playlist.trackCount !== undefined ? playlist.trackCount : 0) + ' 首')
               .fontSize(12 * this.themeConfig.fontScale)
               .fontColor(this.themeConfig.textSecondaryColor)
               .margin({ top: 2 });

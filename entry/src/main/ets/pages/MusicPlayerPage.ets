@@ -158,8 +158,7 @@ export struct MusicPlayerPage {
 
             // Volume slider
             Row() {
-              const isMuted: boolean = this.viewModel.volume === 0;
-              SymbolGlyph(isMuted ? ICON.VOLUME_MUTE : ICON.VOLUME)
+              SymbolGlyph(this.viewModel.volume === 0 ? ICON.VOLUME_MUTE : ICON.VOLUME)
                 .fontSize(18)
                 .fontColor([this.themeConfig.textSecondaryColor]);
 

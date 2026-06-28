@@ -24,7 +24,7 @@ export struct MusicTrackItem {
   };
   @Param isPlaying: boolean = false;
   @Param index: number = 1;
-  @Event onClick: () => void = () => {};
+  @Event onItemClick: () => void = () => {};
   @Event onMore: () => void = () => {};
 
   build() {
@@ -115,7 +115,7 @@ export struct MusicTrackItem {
     .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
     .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
     .onClick(() => {
-      this.onClick();
+      this.onItemClick();
     });
   }
 
