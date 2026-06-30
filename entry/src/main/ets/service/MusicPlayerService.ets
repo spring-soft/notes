@@ -1,7 +1,7 @@
 import { media } from '@kit.MediaKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { Track, PlayerState } from '../model/MusicModel';
+import { Track, PlayerState, MusicSource } from '../model/MusicModel';
 
 const DOMAIN: number = 0x0001;
 const TAG: string = 'MusicPlayerService';
@@ -100,6 +100,10 @@ export class MusicPlayerService {
       } else if (state === 'error') {
         this.setState(PlayerState.ERROR);
         this.autoPlayWhenReady = false;
+        hilog.error(DOMAIN, TAG, 'AVPlayer entered error state');
+        if (this.onErrorCallback !== null) {
+          this.onErrorCallback('播放器进入错误状态');
+        }
       } else if (state === 'released') {
         this.setState(PlayerState.IDLE);
         this.autoPlayWhenReady = false;
@@ -123,9 +127,69 @@ export class MusicPlayerService {
     this.avPlayer.on('error', (err: BusinessError) => {
       hilog.error(DOMAIN, TAG, 'AVPlayer error: %{public}d, %{public}s', err.code, err.message);
       this.setState(PlayerState.ERROR);
+      this.autoPlayWhenReady = false;
       if (this.onErrorCallback !== null) {
         this.onErrorCallback('播放错误: ' + err.message);
       }
+    });
+  }
+
+  // ── State Wait Helper ──
+
+  /**
+   * Waits for the AVPlayer to reach a specific state, or times out.
+   *
+   * HarmonyOS AVPlayer.reset() is synchronous in call but the state
+   * transition to 'idle' happens asynchronously.  Setting url before
+   * the reset completes results in the URL being applied to a stale
+   * state then cleared by the pending reset — playback silently fails.
+   * This helper ensures we only proceed once the state machine has
+   * settled on the target value.
+   */
+  private waitForState(targetState: string, timeoutMs: number): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const player: media.AVPlayer | null = this.avPlayer;
+      if (player === null) {
+        resolve();
+        return;
+      }
+
+      // Already at target — resolve immediately
+      if (player.state === targetState) {
+        resolve();
+        return;
+      }
+
+      let settled: boolean = false;
+      const handler = (state: string) => {
+        if (settled) {
+          return;
+        }
+        if (state === targetState) {
+          settled = true;
+          player.off('stateChange', handler);
+          resolve();
+        } else if (state === 'error') {
+          settled = true;
+          player.off('stateChange', handler);
+          hilog.warn(DOMAIN, TAG,
+            'Player entered error while waiting for %{public}s', targetState);
+          resolve(); // Don't hang — let the caller handle the error state
+        }
+      };
+
+      player.on('stateChange', handler);
+
+      setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          player.off('stateChange', handler);
+          hilog.warn(DOMAIN, TAG,
+            'Timed out after %{public}d ms waiting for state %{public}s',
+            timeoutMs, targetState);
+          resolve(); // Don't hang forever
+        }
+      }, timeoutMs);
     });
   }
 
@@ -136,21 +200,29 @@ export class MusicPlayerService {
       this.setState(PlayerState.LOADING);
       const player: media.AVPlayer = await this.ensurePlayer();
 
-      // Always reset to idle before loading a new URL so setting url
-      // triggers a fresh idle→initialized→prepared cycle.  Also apply
-      // the stored volume to the (possibly new) AVPlayer instance.
+      // 1. Reset and wait for the player to reach 'idle'.
+      //    MUST wait — otherwise setting url races with the async reset
+      //    transition and the URL can be silently discarded.
       player.reset();
+      await this.waitForState('idle', 5000);
+
+      // 2. Apply stored volume to the (possibly new) AVPlayer instance.
       player.setVolume(this.volumeLevel);
 
-      // Determine URL based on source
+      // 3. Determine URL based on source.
       let url: string = '';
-      if (track.source === 'novidrome') {
-        url = track.fileUri; // Already the full stream URL from getStreamUrl()
+      if (track.source === MusicSource.NOVIDROME) {
+        // Navidrome stream — full HTTP URL already resolved by ViewModel
+        url = track.fileUri;
       } else {
+        // Local file — prepend file:// protocol
         url = 'file://' + track.fileUri;
       }
 
-      hilog.info(DOMAIN, TAG, 'Loading track URL: %{public}s', url);
+      hilog.info(DOMAIN, TAG, 'Loading track URL (%{public}s): %{public}s',
+        track.source, url);
+
+      // 4. Set URL (triggers idle → initialized → prepared)
       this.autoPlayWhenReady = true;
       player.url = url;
       this.currentTrackId = track.id;
@@ -170,16 +242,30 @@ export class MusicPlayerService {
 
   play(): void {
     if (this.avPlayer === null) {
+      hilog.warn(DOMAIN, TAG, 'play() called but avPlayer is null');
       return;
     }
     const state: string = this.avPlayer.state;
-    // Prepared/paused/completed — can play immediately.
-    if (state === 'prepared' || state === 'paused' || state === 'completed') {
+    hilog.info(DOMAIN, TAG, 'play() called, current state: %{public}s', state);
+
+    // Prepared / paused / completed / stopped — can play (or replay).
+    if (state === 'prepared' || state === 'paused'
+      || state === 'completed' || state === 'stopped') {
       this.avPlayer.play();
     } else if (state === 'initialized' || state === 'idle') {
       // URL was just set and the codec is still initializing.  Defer play
       // to the stateChange handler via autoPlayWhenReady.
       this.autoPlayWhenReady = true;
+    } else if (state === 'playing') {
+      // Already playing — no action needed.
+    } else if (state === 'error') {
+      // Player is in error state.  Reset and the caller should retry.
+      hilog.warn(DOMAIN, TAG, 'play() called in error state — resetting');
+      this.autoPlayWhenReady = true;
+      this.avPlayer.reset();
+    } else {
+      // 'released' or unknown — can't play.
+      hilog.warn(DOMAIN, TAG, 'play() called in unhandled state: %{public}s', state);
     }
   }
 

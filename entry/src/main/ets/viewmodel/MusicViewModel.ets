@@ -56,6 +56,7 @@ export class MusicViewModel {
   @Trace novidromeAllSongs: SubsonicSong[] = [];
   @Trace novidromeSearchQuery: string = '';
   @Trace novidromeError: string = '';
+  @Trace playbackError: string = '';
 
   // ── Favorites (local RDB playlist) ──
   @Trace favoritePlaylistId: string = '';
@@ -94,7 +95,8 @@ export class MusicViewModel {
       this.handleTrackEnd();
     });
 
-    this.playerService.onError((_message: string) => {
+    this.playerService.onError((message: string) => {
+      this.playbackError = message;
       this.playerState = PlayerState.ERROR;
       this.notifyTick();
       this.notifyMiniPlayer();
@@ -192,13 +194,15 @@ export class MusicViewModel {
     }
 
     try {
+      this.playbackError = '';
       await this.playerService.loadTrack(track);
       this.currentTrack = track;
       this.playerService.play();
       this.isMiniPlayerVisible = true;
       await this.savePlayerConfig();
       this.notifyTick();
-    } catch (_err) {
+    } catch (err) {
+      this.playbackError = '播放失败: ' + (err as Error).message;
       this.playerState = PlayerState.ERROR;
       this.notifyTick();
     }

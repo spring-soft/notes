@@ -246,10 +246,9 @@ export struct NotesPage {
 
   private navigateToDetail(noteId: string): void {
     NavParams.noteId = noteId;
-    // animated: false — prevents the default slide-from-right transition
-    // that causes the notes list header and cards to slide left as a group
-    // before the detail page appears.  Instead, the page switch is instant.
+    // animated: true — enables the default Navigation push transition
+    // (slide-from-right) which provides smooth visual continuity.
     this.navStack.pushPathByName('note_detail',
-      {} as Record<string, Object>, false);
+      {} as Record<string, Object>, true);
   }
 }

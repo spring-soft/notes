@@ -329,7 +329,7 @@ export struct MusicPage {
             MaterialConstants.FAB, this.themeConfig.isDarkMode))
           .onClick(() => {
             this.navStack.pushPathByName('music_player',
-              {} as Record<string, Object>, false);
+              {} as Record<string, Object>, true);
           });
         }
       }

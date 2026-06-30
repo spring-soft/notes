@@ -210,7 +210,7 @@ export struct MusicPlayerPage {
             .borderRadius(20)
             .backgroundColor(Color.Transparent)
             .onClick(() => {
-              this.navStack.pop(false);
+              this.navStack.pop(true);
             });
 
             Text('正在播放')
