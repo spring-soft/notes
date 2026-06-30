@@ -5,10 +5,14 @@ import { PomodoroConfig } from '../model/PomodoroSessionModel';
 import { AppConstants } from '../constants/AppConstants';
 import { getDefaultPomodoroConfig } from '../constants/PomodoroConstants';
 import { getThemeConfigByPreset, ThemePreset } from '../constants/ThemeConstants';
+import { NovidromeConfig, MusicPlayerConfig, getDefaultNovidromeConfig } from '../model/MusicModel';
+import { getDefaultMusicPlayerConfig } from '../constants/MusicConstants';
 
 const KEY_THEME_CONFIG: string = 'theme_config';
 const KEY_THEME_PRESET: string = 'theme_preset';
 const KEY_POMODORO_CONFIG: string = 'pomodoro_config';
+const KEY_NOVIDROME_CONFIG: string = 'novidrome_config';
+const KEY_MUSIC_PLAYER_CONFIG: string = 'music_player_config';
 
 export class SettingsRepository {
   private context: common.Context;
@@ -80,11 +84,49 @@ export class SettingsRepository {
     return getDefaultPomodoroConfig();
   }
 
+  // ── Novidrome ──
+
+  async saveNovidromeConfig(config: NovidromeConfig): Promise<void> {
+    const pref: preferences.Preferences = await this.getPreferences();
+    const json: string = JSON.stringify(config);
+    await pref.put(KEY_NOVIDROME_CONFIG, json);
+    await pref.flush();
+  }
+
+  async loadNovidromeConfig(): Promise<NovidromeConfig> {
+    const pref: preferences.Preferences = await this.getPreferences();
+    const json: string = await pref.get(KEY_NOVIDROME_CONFIG, '') as string;
+    if (json !== '') {
+      return JSON.parse(json) as NovidromeConfig;
+    }
+    return getDefaultNovidromeConfig();
+  }
+
+  // ── Music Player ──
+
+  async saveMusicPlayerConfig(config: MusicPlayerConfig): Promise<void> {
+    const pref: preferences.Preferences = await this.getPreferences();
+    const json: string = JSON.stringify(config);
+    await pref.put(KEY_MUSIC_PLAYER_CONFIG, json);
+    await pref.flush();
+  }
+
+  async loadMusicPlayerConfig(): Promise<MusicPlayerConfig> {
+    const pref: preferences.Preferences = await this.getPreferences();
+    const json: string = await pref.get(KEY_MUSIC_PLAYER_CONFIG, '') as string;
+    if (json !== '') {
+      return JSON.parse(json) as MusicPlayerConfig;
+    }
+    return getDefaultMusicPlayerConfig();
+  }
+
   async clearAll(): Promise<void> {
     const pref: preferences.Preferences = await this.getPreferences();
     await pref.delete(KEY_THEME_CONFIG);
     await pref.delete(KEY_THEME_PRESET);
     await pref.delete(KEY_POMODORO_CONFIG);
+    await pref.delete(KEY_NOVIDROME_CONFIG);
+    await pref.delete(KEY_MUSIC_PLAYER_CONFIG);
     await pref.flush();
   }
 }

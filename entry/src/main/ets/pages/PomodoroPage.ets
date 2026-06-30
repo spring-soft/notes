@@ -59,73 +59,102 @@ export struct PomodoroPage {
 
   build() {
     NavDestination() {
-      Column() {
+      Stack() {
+        // ═══════════════════════════════════════════════════════════
+        // Layer 0: Full-screen scrollable content
+        // ═══════════════════════════════════════════════════════════
+        Scroll() {
+          Column() {
+            // Spacer — clears the floating header
+            Blank().height(76);
 
-        // Header — immersive blur surface
-        Row() {
-          Text('专注')
-            .fontSize(28 * this.themeConfig.fontScale)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.themeConfig.textColor);
+            // Session type selector
+            Row() {
+              this.sessionTypeChip(PomodoroSessionType.WORK, '专注', 0);
+              this.sessionTypeChip(PomodoroSessionType.SHORT_BREAK, '短休息', 0);
+              this.sessionTypeChip(PomodoroSessionType.LONG_BREAK, '长休息', 0);
+            }
+            .width('100%')
+            .padding({ left: 20, right: 20, bottom: 24 })
+            .justifyContent(FlexAlign.SpaceEvenly);
+
+            // Timer circle — uses @State displayProgress/displayRemaining for real-time updates
+            Column() {
+              PomodoroCircle({
+                progress: this.displayProgress,
+                remainingTime: this.formatRemaining(),
+                sessionLabel: this.viewModel.getSessionLabel(),
+                isRunning: this.isTimerRunning(),
+              });
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Center)
+            .padding({ top: 20, bottom: 32 })
+            .animation({ duration: 300, curve: Curve.EaseInOut });
+
+            // Controls — uses @State displayState for button state
+            PomodoroControls({
+              currentState: this.displayState,
+              isRunning: this.isTimerRunning(),
+              stateSignal: this.stateUpdateSignal,
+              onStartPause: () => {
+                if (this.isTimerRunning()) {
+                  this.viewModel.pauseTimer();
+                } else {
+                  this.viewModel.startTimer();
+                }
+              },
+              onReset: () => {
+                this.viewModel.resetTimer();
+              },
+              onSkip: () => {
+                this.viewModel.skipToNext();
+              },
+            });
+
+            // Today's stats
+            Column() {
+              PomodoroSessionStats({
+                completedCount: this.viewModel.todayCompletedCount,
+                totalMinutes: this.viewModel.todayTotalMinutes,
+              });
+            }
+            .width('100%')
+            .padding({ left: 20, right: 20, top: 32 });
+          }
+          .width('100%');
         }
         .width('100%')
-        .padding({ left: 20, right: 20, top: 44, bottom: 12 })
+        .height('100%')
+        .scrollBar(BarState.Off)
+        .edgeEffect(EdgeEffect.Spring);
+
+        // ═══════════════════════════════════════════════════════════
+        // Layer 1: Floating header — frosted glass, pinned at top
+        //
+        // backdropBlur is binary in ArkUI (on/off), so we mask the
+        // blur VISIBILITY with a gradient overlay: the blur is always
+        // active across the entire header Column, but the gradient
+        // fades from opaque (blur clearly visible) to transparent
+        // (blur invisible, content looks clear).  This creates the
+        // illusion of a gradual blur-to-clear transition.
+        // ═══════════════════════════════════════════════════════════
+        Column() {
+          // Title area
+          Row() {
+            Text('专注')
+              .fontSize(28 * this.themeConfig.fontScale)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.themeConfig.textColor);
+          }
+          .width('100%')
+          .padding({ left: 20, right: 20, top: 0, bottom: 4 });
+
+        }
+        .position({ top: 0, left: 0, right: 0 })
+        .padding({ top: 44 })
         .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
         .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
-
-        // Session type selector
-        Row() {
-          this.sessionTypeChip(PomodoroSessionType.WORK, '专注', 0);
-          this.sessionTypeChip(PomodoroSessionType.SHORT_BREAK, '短休息', 0);
-          this.sessionTypeChip(PomodoroSessionType.LONG_BREAK, '长休息', 0);
-        }
-        .width('100%')
-        .padding({ left: 20, right: 20, bottom: 24 })
-        .justifyContent(FlexAlign.SpaceEvenly);
-
-        // Timer circle — uses @State displayProgress/displayRemaining for real-time updates
-        Column() {
-          PomodoroCircle({
-            progress: this.displayProgress,
-            remainingTime: this.formatRemaining(),
-            sessionLabel: this.viewModel.getSessionLabel(),
-            isRunning: this.isTimerRunning(),
-          });
-        }
-        .width('100%')
-        .alignItems(HorizontalAlign.Center)
-        .padding({ top: 20, bottom: 32 })
-        .animation({ duration: 300, curve: Curve.EaseInOut });
-
-        // Controls — uses @State displayState for button state
-        PomodoroControls({
-          currentState: this.displayState,
-          isRunning: this.isTimerRunning(),
-          stateSignal: this.stateUpdateSignal,
-          onStartPause: () => {
-            if (this.isTimerRunning()) {
-              this.viewModel.pauseTimer();
-            } else {
-              this.viewModel.startTimer();
-            }
-          },
-          onReset: () => {
-            this.viewModel.resetTimer();
-          },
-          onSkip: () => {
-            this.viewModel.skipToNext();
-          },
-        });
-
-        // Today's stats
-        Column() {
-          PomodoroSessionStats({
-            completedCount: this.viewModel.todayCompletedCount,
-            totalMinutes: this.viewModel.todayTotalMinutes,
-          });
-        }
-        .width('100%')
-        .padding({ left: 20, right: 20, top: 32 });
       }
       .width('100%')
       .height('100%');

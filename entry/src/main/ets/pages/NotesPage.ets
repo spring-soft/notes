@@ -173,6 +173,18 @@ export struct NotesPage {
             }
             .width('100%').padding({ left: 20, right: 20, bottom: 6 });
           }
+
+          // Gradient fade below floating header
+          Column()
+            .width('100%')
+            .height(24)
+            .linearGradient({
+              direction: GradientDirection.Bottom,
+              colors: [
+                [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
+                [this.themeConfig.isDarkMode ? 'rgba(20,20,20,0.00)' : 'rgba(255,255,255,0.00)', 1.0],
+              ],
+            });
         }
         .position({ top: 0, left: 0, right: 0 })
         .padding({ top: 30 }) // status bar clearance
@@ -234,6 +246,10 @@ export struct NotesPage {
 
   private navigateToDetail(noteId: string): void {
     NavParams.noteId = noteId;
-    this.navStack.pushPathByName('note_detail', {} as Record<string, Object>);
+    // animated: false — avoid default slide transition that causes the
+    // notes list header and cards to shift left as a group.  Fade animation
+    // is handled manually by NoteDetailPage (pageOpacity + animatedPop).
+    this.navStack.pushPathByName('note_detail',
+      {} as Record<string, Object>, false);
   }
 }

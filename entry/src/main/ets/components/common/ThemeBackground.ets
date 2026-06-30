@@ -78,6 +78,28 @@ export struct ThemeBackground {
           .fill(this.themeConfig.primaryColor + '0A')
           .blur(40)
           .position({ x: '30%', y: '40%' });
+
+        // Layer 2e: Bottom ambient orb — provides sampling surface for
+        // HdsTabs systemMaterialEffect (tab bar needs rich content behind
+        // it to refract light; without this orb the GPU material samples
+        // nothing but flat background color).
+        Circle()
+          .width(this.isTablet ? 200 : 180)
+          .height(this.isTablet ? 200 : 180)
+          .fill(this.isTablet
+            ? this.themeConfig.accentColor + '10'
+            : this.themeConfig.accentColor + '18')
+          .blur(this.isTablet ? 50 : 55)
+          .position({ x: '10%', y: '80%' });
+
+        // Layer 2f: Bottom-right corner orb — additional sampling
+        // density directly behind the tab bar area (y > 85%)
+        Circle()
+          .width(120)
+          .height(120)
+          .fill(this.themeConfig.primaryColor + '14')
+          .blur(45)
+          .position({ x: '75%', y: '88%' });
       }
     }
     .width('100%')

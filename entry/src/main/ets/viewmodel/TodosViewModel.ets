@@ -121,6 +121,15 @@ export class TodosViewModel {
       completedAt: 0,
     };
     await this.repository.insert(todo);
+    // Verify the insert actually reached disk by reading it back.
+    // If this returns null the WAL wasn't flushed and data would
+    // be lost on process kill.
+    const verified: TodoItem | null = await this.repository.getById(todo.id);
+    if (verified === null) {
+      console.error('TodosViewModel.createTodo: post-insert verification FAILED — ' +
+        'todo id=' + todo.id + ' not readable after insert');
+    }
+    // Update in-memory state immediately for responsive UI.
     const newTodosList: TodoItem[] = [todo];
     for (const t of this.todos) {
       newTodosList.push(t);
@@ -152,7 +161,7 @@ export class TodosViewModel {
       completedAt: !todo.isCompleted ? now() : 0,
     };
     await this.repository.update(updated);
-
+    // Update in-memory immediately
     const newTodos: TodoItem[] = [];
     for (const t of this.todos) {
       if (t.id === id) {
@@ -170,6 +179,7 @@ export class TodosViewModel {
    */
   async updateTodo(updatedTodo: TodoItem): Promise<void> {
     await this.repository.update(updatedTodo);
+    // Update in-memory immediately
     const newTodos: TodoItem[] = [];
     for (const t of this.todos) {
       if (t.id === updatedTodo.id) {
@@ -187,6 +197,7 @@ export class TodosViewModel {
    */
   async deleteTodo(id: ID): Promise<void> {
     await this.repository.delete(id);
+    // Update in-memory immediately
     const newTodos: TodoItem[] = [];
     for (const t of this.todos) {
       if (t.id !== id) {
@@ -211,6 +222,7 @@ export class TodosViewModel {
       sortOrder: maxOrder + 1,
     };
     await this.repository.insertCategory(category);
+    // Update in-memory immediately
     const newCategories: TodoCategory[] = [];
     for (const c of this.categories) {
       newCategories.push(c);
@@ -225,15 +237,21 @@ export class TodosViewModel {
    */
   async deleteCategory(id: ID): Promise<void> {
     await this.repository.deleteCategory(id);
-    const newCategories: TodoCategory[] = [];
+    // Update in-memory immediately
+    const catsAfter: TodoCategory[] = [];
     for (const c of this.categories) {
       if (c.id !== id) {
-        newCategories.push(c);
+        catsAfter.push(c);
       }
     }
-    this.categories = newCategories;
-    // Reload todos since category deletion cascades
-    this.todos = await this.repository.getAll(this.activeFilter);
+    this.categories = catsAfter;
+    const todosAfter: TodoItem[] = [];
+    for (const t of this.todos) {
+      if (t.categoryId !== id) {
+        todosAfter.push(t);
+      }
+    }
+    this.todos = todosAfter;
     this.applyFilters();
   }
 

@@ -120,7 +120,7 @@ export struct NoteDetailPage {
       // Trigger NotesPage refresh BEFORE popping so the list is already
       // up-to-date when the user returns (onShown is unreliable).
       NavParams.triggerNotesRefresh();
-      this.navStack.pop();
+      this.navStack.pop(false);
     } catch (err) {
       console.error('NoteDetailPage.saveNote: save failed - ' + String(err));
     } finally {
@@ -151,7 +151,7 @@ export struct NoteDetailPage {
     }
     NavParams.needsNotesRefresh = true;
     NavParams.triggerNotesRefresh();
-    this.navStack.pop();
+    this.navStack.pop(false);
   }
 
   private isPresetCategory(category: string): boolean {
@@ -180,7 +180,7 @@ export struct NoteDetailPage {
           .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
     .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
           .onClick(() => {
-            this.navStack.pop();
+            this.navStack.pop(false);
           });
 
           Blank();
@@ -240,6 +240,18 @@ export struct NoteDetailPage {
         .padding({ left: 16, right: 16, top: 44, bottom: 8 })
         .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
         .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
+
+        // Gradient fade below header
+        Column()
+          .width('100%')
+          .height(24)
+          .linearGradient({
+            direction: GradientDirection.Bottom,
+            colors: [
+              [MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode), 0.0],
+              [this.themeConfig.isDarkMode ? 'rgba(20,20,20,0.00)' : 'rgba(255,255,255,0.00)', 1.0],
+            ],
+          });
 
         // Color picker dropdown
         if (this.showColorPicker) {
@@ -371,6 +383,7 @@ export struct NoteDetailPage {
       .width('100%')
       .height('100%');
     }
-    .hideTitleBar(true);
+    .hideTitleBar(true)
+;
   }
 }

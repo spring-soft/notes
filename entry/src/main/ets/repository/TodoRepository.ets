@@ -78,6 +78,14 @@ export class TodoRepository {
   async insert(todo: TodoItem): Promise<void> {
     const valueBucket: relationalStore.ValuesBucket = this.todoToValuesBucket(todo);
     await this.store.insert(TABLE_TODOS, valueBucket);
+    // Force WAL checkpoint so the write reaches disk immediately —
+    // without this, a process kill before the next auto-checkpoint
+    // can lose data that was "successfully" inserted.
+    try {
+      await this.store.executeSql('PRAGMA wal_checkpoint(FULL)');
+    } catch (_e) {
+      // PRAGMA may not be supported in all RDB implementations — ignore
+    }
   }
 
   async update(todo: TodoItem): Promise<void> {

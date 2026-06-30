@@ -31,6 +31,14 @@
     {
       "name": "app_name",
       "value": "MemoFlow"
+    },
+    {
+      "name": "internet_reason",
+      "value": "用于访问Navidrome音乐服务器进行在线音乐播放"
+    },
+    {
+      "name": "read_media_reason",
+      "value": "用于读取设备上的本地音乐文件"
     }
   ]
 }

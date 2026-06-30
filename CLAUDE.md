@@ -15,12 +15,14 @@
 ### Navigation (per-tab Navigation pattern)
 ```
 Index.ets (@Entry, @ComponentV2, @Provider source)
-├── HdsTabs (4 tabs, barPosition: End, barOverlap)
+├── HdsTabs (5 tabs, barPosition: End, barOverlap)
 │   ├── TabContent[0] → Navigation(navStack[0]) → NotesPage
 │   ├── TabContent[1] → Navigation(navStack[1]) → TodosPage
 │   ├── TabContent[2] → Navigation(navStack[2]) → PomodoroPage
-│   └── TabContent[3] → Navigation(navStack[3]) → SettingsPage
-└── Tablet: Row(sideNav 240vp + content area with per-section Navigation)
+│   ├── TabContent[3] → Navigation(navStack[3]) → SettingsPage
+│   └── TabContent[4] → Navigation(navStack[4]) → MusicPage
+├── Stack wrapper with MiniPlayer overlay (global, above tab bar)
+└── Tablet: Row(sideNav 240vp + content area with per-section Navigation + MiniPlayer)
 ```
 
 ### Page routing
@@ -87,7 +89,7 @@ NoteDetailPage save/delete:
 
 ### Database
 - `DatabaseHelper` singleton → `relationalStore.RdbStore`
-- 5 tables: notes, todo_categories, todos, pomodoro_sessions, voice_memos
+- 8 tables: notes, todo_categories, todos, pomodoro_sessions, voice_memos, music_tracks, music_playlists, music_playlist_tracks
 - `SettingsRepository` uses Preferences for theme/pomodoro config
 - DB initialized in `Index.initializeApp()` BEFORE any UI renders
 - `initPromise` deduplicates concurrent initialize() calls (EntryAbility fire-and-forget + Index awaited)
@@ -110,6 +112,56 @@ TodoAddSheet save:
 - `PRESET_TODO_CATEGORIES`: ['工作', '个人', '购物', '学习', '健康', '其他']
 - Custom category: TextInput + getOrCreateCategory() materializes name into UUID-based category
 - Category manager UI: create/delete categories inline with color dots
+
+### Music data flow
+```
+MusicPage.aboutToAppear()
+  → register tickHandler → updates @Local displayState/PositionMs/DurationMs
+  → initNavidrome() → connectNovidrome() ping → browseNovidromeAlbums() (default tab)
+  → 5 Tab Chips: 全部歌曲/歌手/专辑/歌单/❤️收藏
+    - 全部歌曲: getAllSongs() → browseNovidromeAllSongs() → novidromeAllSongs → playNovidromeTrack()
+    - 歌手: getArtists() → browseNovidromeArtists() → tap artist → browseNovidromeAlbums(id) → tap album → songs → play
+    - 专辑: getAlbumList2 → browseNovidromeAlbums() → tap album → browseNovidromeSongs(id) → play
+    - 歌单: loadPlaylists() → tap playlist → getPlaylistTracks(id) → play
+    - ❤️收藏: loadFavoriteTracks() → 显示收藏曲目 → playTrack()（取消收藏点击 ❤️→自动刷新列表）
+  → Tab 切换懒加载：switchTab() 仅在切换到目标 tab 时才拉取数据
+
+MusicPage.playTrack(track):
+  → viewModel.playNovidromeTrack(song, contextSongs)  (sets this.tracks for next/prev)
+  → playerService.loadTrack(track)  (sets AVPlayer url — Navidrome HTTP stream URL)
+  → playerService.play()  (may defer via autoPlayWhenReady if not yet prepared)
+  → isMiniPlayerVisible = true → MiniPlayer appears globally
+
+MiniPlayer (global overlay in Index.ets):
+  → Self-contained: subscribes to MusicViewModel via miniPlayerHandler
+  → Tap → switch to tab[4] + push 'music_player' NavDestination
+  → Play/pause/next call viewModel directly
+
+MusicPlayerPage (full-screen Now Playing):
+  → TickHandler for live position/duration
+  → MusicControls: shuffle/prev/play-pause/next/repeat
+  → Seek via Slider (0-100%), volume via Slider
+
+Navidrome integration (pure streaming — no local import needed):
+  → SettingsPage: server URL + username + password + test connection
+  → NavidromeApiClient: Subsonic REST API with MD5(password+salt) auth
+  → MusicPage: 4-tab browse → songs → direct stream (no local RDB dependency)
+  → Stream URL resolved and played via AVPlayer HTTP streaming
+  → generateAuthParamsNoFormat() for binary endpoints (stream, coverArt) — no &f=json
+  → MiniPlayer global overlay shows now-playing track
+
+Favorites (local RDB playlist):
+  → "❤️ 收藏" playlist auto-created on first favorite
+  → Heart icon (ICON.HEART/HEART_FILL) on each song row
+  → toggleFavoriteTrack() adds/removes from favorites playlist
+  → Favorites appear in 歌单 tab alongside other playlists
+```
+- **MusicViewModel singleton** — module-level `initMusicViewModel()`/`getMusicViewModel()`, survives tab switches
+- **MiniPlayer global overlay** — rendered in Index.ets Stack (phone: above tab bar, tablet: bottom of content area), self-contained with own handler
+- **Subsonic API** — `ping()`, `getArtists()`, `getAlbums()`, `getSongs()`, `search3()`, `getStreamUrl()`, `getCoverArtUrl()`
+- **Repeat modes**: OFF → REPEAT_ALL → REPEAT_ONE cycling
+- **Shuffle**: random next track from full list
+- **Permissions**: `ohos.permission.INTERNET` + `ohos.permission.READ_MEDIA`
 
 ## Key Files
 
@@ -141,6 +193,17 @@ TodoAddSheet save:
 | `constants/AppConstants.ets` | Version 2.0.0, route names, limits |
 | `constants/MaterialConstants.ets` | 5-tier depth hierarchy constants + getBlur()/getOverlayColor() helpers |
 | `utils/MaterialCapability.ets` | Device material detection via real `hdsMaterial.getSystemMaterialTypes()` |
+| `model/MusicModel.ets` | Track, Playlist, NovidromeConfig, MusicPlayerConfig interfaces + Subsonic response types |
+| `constants/MusicConstants.ets` | Music defaults (volume, repeatMode, shuffle), Navidrome API version, UI constants |
+| `repository/MusicRepository.ets` | RDB CRUD for tracks, playlists, playlist-track junction (JOIN query) |
+| `service/NavidromeApiClient.ets` | Subsonic REST API client — MD5 auth, getAllSongs(), getStreamUrl() uses no-f=json generator, batch album fetch |
+| `service/MusicPlayerService.ets` | AVPlayer wrapper + AVSession background playback — release()+createAVPlayer() per track, state machine, prepare() on initialized, 30s load timeout |
+| `viewmodel/MusicViewModel.ets` | @ObservedV2 singleton — playback, 5-tab browse, favorites playlist, favoriteTracks, playNovidromeTrack() for next/prev nav, @Trace playbackError |
+| `pages/MusicPage.ets` | Pure Navidrome streaming browser — 5-tab (全部歌曲/歌手/专辑/歌单/❤️收藏) + favorites heart, custom playlist create/delete/add, Stack+Visibility anti-ghost |
+| `pages/MusicPlayerPage.ets` | Full-screen Now Playing NavDestination — album art, controls, seek (no volume slider; prev button in header) |
+| `components/business/MusicTrackItem.ets` | Track row with album art thumbnail, title, artist, duration |
+| `components/business/MusicControls.ets` | Playback controls: shuffle, prev, play/pause, next, repeat |
+| `components/business/MiniPlayer.ets` | Global mini player bar — self-contained, subscribes to MusicViewModel, play/pause/prev/next |
 
 ## Fixed Bugs (all verified with BUILD SUCCESSFUL)
 
@@ -199,6 +262,47 @@ TodoAddSheet save:
 49. **IconGlyphs PAUSE_BARS 与 PAUSE 重复** — 两者都是 `$r('sys.symbol.pause_fill')`，移除 PAUSE_BARS，PomodoroControls 改用 ICON.PAUSE。
 50. **ThemeBackground private lighten() 与 ColorUtils.lightenColor 重复** — 移除私有方法，改用已有的 `lightenColor` 工具函数。
 51. **SettingsPage schedulePomodoroSave 命名误导** — 方法立即保存无任何调度/防抖，重命名为 `persistPomodoroConfig`。
+52. **待办退出后消失** — 根因：`TodosPage.onSave` 回调中 `handleTodoSave()` 没有 `await`，`showAddSheet = false` 在 DB 写入完成前就关闭了 sheet。`handleTodoSave` 是 fire-and-forget——用户点保存后 sheet 立即关闭，async 的 DB insert 在后台执行。如果用户在 DB 落盘前退出 app，todo 只存在内存里从未持久化。修复：① `onSave` 改为 async 并在关闭 sheet 前 `await handleTodoSave()`；② 新增 `isSaving` 状态防止重复提交；③ 新增 `refreshSignal` 计数，在 `loadData()` 完成后 +1 强制 UI 重建；④ `refreshSignal` 加入 LazyForEach key 确保异步数据到达后列表重新渲染；⑤ 抽取 `loadTodos()` 方法统一 `aboutToAppear` 和 `onShown` 调用，避免双重 `loadData` 竞态。
+54. **页面模糊效果增强：卡片加模糊 + header 渐变过渡** — 用户反馈：① SettingsPage 所有卡片（主题配色、外观设置、毛玻璃效果、沉浸光感、背景图片、番茄钟、关于共 7 个 section）只有 `backgroundColor` 没有 `backdropBlur`，卡片完全无模糊；② 5 个页面 header 的 `backdropBlur(THIN)` 太死板——硬边矩形模糊，与下方内容无过渡。修复：① SettingsPage 全部 7 张卡片添加 `.backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))`；② 5 个页面 header 下方各新增 24-28vp 渐变过渡 Column（`linearGradient`：header 色 → `Color.Transparent`），实现从模糊区到清晰内容的平滑淡出。 — 三个根因：① ThemeBackground 光球全部在屏幕中上部（y: -40 / 40% / 70%），tab 栏位于底部（y: 85%+），背后只有 ~9% 透明度的微弱底色，GPU 材质无内容可采样；② `materialType: ADAPTIVE` 在设备不支持 IMMERSIVE 时静默退化到近乎不可见；③ 缺少 `gradientMask` 过渡层。修复：① ThemeBackground 新增底部两个光球（y: 80% 180vp + y: 88% 120vp），确保 tab 栏背后有丰富渐变色供材质采样；② `phoneLayout()` 改用 `supportsImmersive()` 运行时检测，支持时 `IMMERSIVE + EXQUISITE`，不支持时 `NONE` 避免无效材质开销；③ 新增 `gradientMask({ maskColor, maskHeight: 96 })` 创建内容到 tab 栏的平滑过渡；④ `tabBarBuilder` 选中 tab 增加 `primaryColor + '12-20%'` 半透明底色 pill + 250ms 动画，无论 GPU 材质是否渲染都提供可见的视觉反馈。
+55. **TodoRepository 显式事务移除 + WAL checkpoint + post-insert 验证** — 笔记保存可持久化但待办不行：① 移除 TodoRepository 全部 6 个写操作的显式事务（`beginTransaction`/`commit`/`rollBack`），改为与 NoteRepository 完全一致的 plain `await this.store.insert/update/delete()`——NoteRepository 无事务能持久化，显式事务反而可能引入 WAL 刷新时序问题；② 新增 `PRAGMA wal_checkpoint(FULL)` 在执行 insert 后强制 WAL 刷盘（catch 忽略不支持的实现）；③ `createTodo` 新增 post-insert 读回验证（`getById` 确认数据可读）。
+56. **Header 渐变过渡重构（无极模糊边界）** — 根因：TodosPage/PomodoroPage/SettingsPage 的 header 只有 inner title Row 有 `backgroundColor`，outer Column 无背景色但 backdropBlur 在 outer Column——导致梯度渐变从 16% 透明叠加开始且底色为透明，backdropBlur 的二元开/关边界在 header 底边形成可见切割线。修复：① 三个页面的 `backgroundColor` 从 inner title Row 移到 outer Column（匹配 NotesPage 验证过的模式），使整个 header 区域有统一 frosted 底色；② 最终去掉所有梯度 Column，header 模糊干净截止于标题栏边缘；③ spacer 调整至 80vp（后进一步调至 88vp）。
+57. **待办保存架构重构：save logic 移入 TodoAddSheet** — 根因：笔记的 save button 和 async save logic 都在 NoteDetailPage 同一组件内，可以直接 `await`。待办的 save button 在 TodoAddSheet（子组件），save logic 在 TodosPage（父组件），通过 `@Event` 通信——`@Event` 要求 `=> void` 返回类型，导致 async 保存无法被 await。修复：将保存逻辑（`doSave()`）移入 TodoAddSheet 自身——像 `NoteDetailPage.saveNote()` 一样，`doSave()` 是 `private async` 方法直接 `await viewModel.createTodo()`，完成后才调用 `@Event onSaved` 通知父组件关 sheet。TodosPage 只需传 `viewModel` 给 sheet + onSaved 关 sheet，不再有 `handleTodoSave`。
+58. **新增音乐播放器功能（5th tab）** — 完整音乐播放模块：① 本地音乐文件回放（AVPlayer + file:// URI）；② 全功能播放器 UI（Now Playing 全屏页 + 全局 MiniPlayer 悬浮条）；③ **Navidrome/Subsonic 流媒体集成** — MD5 认证、REST API（getArtists/getAlbums/getSongs/search3/stream）、可配置服务器地址+用户名+密码；④ 3 张新 RDB 表（music_tracks/music_playlists/music_playlist_tracks）；⑤ MusicViewModel 模块级单例（切 tab 不中断播放）；⑥ SettingsPage 新增"音乐服务"配置区（Toggle + TextInput + 测试连接）；⑦ 5 个新 UI 组件（MusicTrackItem/MusicControls/MiniPlayer + 2 页面）；⑧ 17 个新文件 + 8 个修改文件；⑨ 权限：INTERNET + READ_MEDIA。
+59. **Navidrome 设置页无法连接（3 轮修复）** — 四个根因：① HarmonyOS NEXT 默认拦截 HTTP 明文流量（`cleartextTraffic` 未开启）；② `ping()` catch 块丢弃了错误信息，用户只看到泛泛「✗ 连接失败」；③ **MD5 实现 padding 数组大小 bug** — `paddedLen` 公式算出的是 32-bit 字数但 `new Array(paddedLen)` 把字数当字节数，密码 >8 字符时 bitLen 覆盖 input 字节，MD5 错误 → 认证失败；④ **Subsonic JSON 响应 envelope 未解包** — Navidrome 返回 `{"subsonic-response":{"status":"ok",...}}`，但代码直接读 `parsed.status` 而非 `parsed['subsonic-response']['status']`，`undefined === 'ok'` 永远 false → ping/getArtists/getAlbums/getSongs/search3 全部静默失败。修复：① module.json5 新增 `"network":{"cleartextTraffic":true}`；② NavidromeApiClient 新增 `lastError` 字段 + `getNovidromeError()` 暴露错误；③ SettingsPage 显示具体错误；④ 修正 `md5Hash` 数组大小为 `wordCount*4`；⑤ 新增 `unwrap()` helper 解包 `subsonic-response` envelope，`ping()`/`parseResponse()`/`getAlbums()`/`getSongs()` 全部改为先 unwrap 再访问字段。
+60. **Navidrome 连接成功但音乐页无内容（4 轮修复）** — 根因：MusicPage 只展示本地 RDB 曲库，没有 Navidrome 远程浏览/导入 UI。修复：① MusicPage 新增 Navidrome 3 级层级浏览（艺术家→专辑→歌曲）集成在「全部」tab 内，连通状态显示「Navidrome 已连接」横幅+「浏览音乐」按钮；② 浏览视图使用 `isBrowsingNovidrome` 标志控制显隐，艺术家列表可「返回曲库」退出浏览；③ 歌曲行支持「导入」按钮（单曲入库）+「导入全部」按钮（整张专辑入库）；④ MusicViewModel 新增 `importNovidromeAlbum()` 批量导入方法；⑤ aboutToAppear 中如已配置且曲库为空自动进入浏览；⑥ 修复层级切换残影 bug：`novidromeIsBrowsing = true` 必须在 `novidromeBrowseLevel` 变更之前设置，防止旧数据先渲染再被 loading 覆盖。
+62. **Navidrome 音乐点击播放无响应** — 根因：`getStreamUrl()` 和 `getCoverArtUrl()` 使用了 `generateAuthParams()`（含 `&f=json`），stream endpoint 接收 `f=json` 后可能返回 JSON 错误而非二进制音频数据，导致 AVPlayer 无法解码。修复：① 新增 `generateAuthParamsNoFormat()` 方法（不含 `&f=json`），`getStreamUrl()` 和 `getCoverArtUrl()` 改用此方法；② `MusicPlayerService.loadTrack()` 始终 `reset()` + `setVolume()` 确保干净的播放周期和音量；③ `play()` 方法新增 `initialized`/`idle` 状态处理——这些状态下设置 `autoPlayWhenReady` 标志延迟到 'prepared' 时自动播放。
+63. **音乐页面多维度分类浏览 + 收藏歌单** — 原来只能按专辑浏览，操作不便。修复：① MusicPage 新增 4 个 Tab Chip（全部歌曲/歌手/专辑/歌单），默认选中「专辑」；② 全部歌曲：`NavidromeApiClient.getAllSongs()` 取全部专辑→批量并发取歌→聚合为扁平列表，直接点击播放；③ 歌手：`getArtists()` → 点击进入该歌手专辑列表 → 点击专辑进入歌曲列表；④ 专辑：保留原有专辑→歌曲浏览流程；⑤ 歌单：展示 RDB 播放列表（含自动创建的 ❤️ 收藏），点击进入歌曲列表；⑥ 每个歌曲行新增心形收藏按钮（`ICON.HEART`/`ICON.HEART_FILL`），点击即添加/移除到收藏歌单；⑦ `MusicViewModel` 新增 `browseNovidromeAllSongs()`、`ensureFavoritePlaylist()`、`toggleFavoriteTrack()`、`isTrackFavorited()`、`getPlaylistTracks()`、`playNovidromeTrack()` 方法；⑧ Tab 切换懒加载——仅在切换到对应 Tab 时才拉取数据。
+64. **笔记详情页导航动画横向位移修复** — 根因：`Navigation` 默认 Stack 模式的 push/pop 动画是 Slide（从左滑入/向左滑出），导致笔记列表在 push 时 header 和卡片一起左滑才消失。修复：所有 `pushPathByName()` 和 `pop()` 调用传入第三个参数 `false` 禁用默认 Slide 动画。涉及 `NotesPage.ets`、`NoteDetailPage.ets`、`MusicPage.ets`、`MusicPlayerPage.ets`、`Index.ets`。SDK 24 中第三参数类型为 `animated?: boolean`，不是对象。**（注：#66 在此基础之上添加了手动 Fade 动画来实现平滑淡入淡出过渡。）**
+
+65. **音乐播放完全失效 — AVPlayer reset 竞态条件** — 根因：`MusicPlayerService.loadTrack()` 调用 `player.reset()` 后立即设置 `player.url`，但 `reset()` 的状态转换是异步的（需要等待 'idle' 状态到达）。在 player 还在旧状态时设置 URL，随后 reset 生效会清除该 URL，导致播放静默失败——用户点击播放按钮后无任何响应。修复：① 新增 `waitForState()` Promise 辅助方法，在 `reset()` 后等待 'idle' 状态（5 秒超时+error 状态处理）；② `play()` 补充处理 'stopped'/'error'/'playing' 等遗漏状态；③ 修复 `loadTrack()` 中硬编码字符串 `'novidrome'` → 使用 `MusicSource.NOVIDROME` 枚举；④ `MusicViewModel` 新增 `@Trace playbackError` 字段 + 播放错误回调透传，错误信息现在可见于 UI；⑤ 'error' 状态回调增强：触发 `onErrorCallback` 并记录 hilog。
+
+66. **导航动画过于生硬 — 手动 Fade 方案 → 最终简化为直接无动画** — 四轮迭代：① #64 把全部 push/pop 动画参数设为 `false` 禁用 Slide → 页面瞬间切换无过渡，生硬。② 第一轮修复把 `false` 恢复到 `true` → 恢复了平滑过渡但也带回了 Slide 横向位移（老组件跟着一起运动）。③ 第二轮修复：保持 `pushPathByName`/`pop` 使用 `false`（禁用默认 Slide），在 NavDestination 页面手动实现 Fade 动画：`@Local pageOpacity` + `aboutToAppear()` 中 `animateTo` 驱动 0→1（入场）、`animatedPop()` 先设 1→0 再 `setTimeout` 260ms → `pop(false)`（退场）。外层 Stack 加 `.opacity(this.pageOpacity).animation({ duration: 250, curve: Curve.EaseInOut })`。④ **最终方案（本轮 #70）**：手动 Fade 方案中的 `.animation({})` 属性会动画化 Stack 的**所有**属性变化（包括 Navigation push 期间的布局/位置变化），导致旧页面组件仍出现横向位移。最终移除所有手动动画代码（`pageOpacity`/`animateTo`/`animatedPop`/`.opacity().animation()`），改为纯 `pushPathByName(..., false)` + `pop(false)` 实现无动画页面切换。SDK API 24 中 `pageTransition` 属性在 `NavDestinationAttribute` 上不存在，`transition` 属性不接受 `{duration:0}` 简化参数，故无法通过声明式属性禁用系统过渡。
+
+67. **Navidrome 缓存 + 播放加载超时 + 错误可见性** — 三个改进：① NavidromeApiClient 新增 API 响应缓存（Map + TTL 5 分钟），`sendGetRequest()` 读取/写入缓存，`updateConfig()` 自动清缓存。`getStreamUrl()` 中 trackId 加上 `encodeURIComponent`。② MusicPlayerService 新增 `loadTimeoutId` + 30 秒加载超时→自动报错，防止 AVPlayer HTTP stream 加载挂死无反馈。③ MusicPage 新增播放错误 banner（底部红条显示 `playbackError` + 关闭按钮），FAB 图标根据 `displayState` 切换 PLAY/MUSIC_LIST。
+
+68. **音乐播放完全失效（红色错误条）— AVPlayer 缺少 `prepare()` 调用** — 根因：HarmonyOS AVPlayer 状态机要求 `idle → (set url) → initialized → (call prepare()) → prepared → (call play()) → playing`。`MusicPlayerService.setupListeners()` 的 stateChange handler 在 `'initialized'` 状态时只设 `PlayerState.LOADING` 但**从未调用 `player.prepare()`**，导致播放器永远卡在 `initialized` 状态，30 秒超时后进入 error 状态 → MusicPage 底部错误 banner 变红。修复：① stateChange handler 中 `'initialized'` 分支新增 `this.avPlayer.prepare()` 调用；② `play()` 方法中 `'initialized'` 状态也追加 `prepare()` 以防 handler 与 play() 的竞态。
+
+69. **点击歌曲不跳转全屏播放页** — 根因：`MusicPage.songRow` 的 `onClick` 只调用 `viewModel.playNovidromeTrack()` 开始播放，没有 push `music_player` NavDestination。修复：在 `onClick` 中 `playNovidromeTrack()` 后添加 `this.navStack.pushPathByName('music_player', {} as Record<string, Object>, false)`，点击歌曲即跳转全屏 Now Playing 页面。
+
+70. **笔记详情页动画残留（横向位移）— 手动 Fade .animation() 副作用** — 根因：NoteDetailPage/MusicPlayerPage 外层 Stack 的 `.animation({ duration: 250, curve: Curve.EaseInOut })` 会动画化 Stack **所有**属性变化（不仅 opacity），Navigation push 期间的布局/位置变化也被捕获并平滑化 → 旧页面组件出现横向位移。修复：移除所有手动 Fade 代码（`@Local pageOpacity`/`animateTo`/`animatedPop`/`.opacity().animation()`），改为直接 `navStack.pop(false)`。同时尝试 `.pageTransition({ duration: 0 })` → 编译器报错 `Property 'pageTransition' does not exist on type 'NavDestinationAttribute'`（SDK API 24 不支持）；尝试 `.transition({ duration: 0 })` → 编译器报错 `'duration' does not exist in type 'TransitionOptions | TransitionEffect<...>'`。最终采用纯 `pushPathByName(..., false)` + `pop(false)` 无动画方案（#66 最终方案）。
+
+71. **切歌后无法播放 — AVPlayer release()+createAVPlayer() 替代 reset()** — 根因：切歌时 `loadTrack()` 调用 `player.reset()` 回到 idle，但旧 HTTP stream 的内部状态（缓冲数据、pending 回调）会干扰新 URL 的加载。此外，`reset()` 的异步 'released' 事件可能在重建新播放器后才到达，导致误设 `autoPlayWhenReady=false`。修复：`loadTrack()` 改为完全释放旧播放器 → 创建新实例：① `off()` 解绑所有事件监听；② `release()` 释放旧实例；③ `media.createAVPlayer()` 创建全新播放器（天然 idle 状态）；④ 重新 `setupListeners()`。去掉不再需要的 `ensurePlayer()` 和 `waitForState()` 方法。
+
+72. **流媒体 URL 缓存 — 切歌更流畅** — NavidromeApiClient 新增：① `streamUrlCache: Map<string, string>` 缓存 `getStreamUrl()` 结果（含含随机 salt 的 auth token，token 无状态可复用）；② `coverArtUrlCache: Map<string, string>` 缓存 `getCoverArtUrl()` 结果；③ `invalidateCache()` 同时清空两个 URL 缓存。切歌时免重新生成 salt+MD5，直接复用已缓存的完整 stream URL。
+
+73. **统一毛玻璃设计 — 音乐页面** — ① `MusicPage.songRow` 缺少 `backdropBlur`+`backgroundColor`（歌曲行透明无深度），新增 REGULAR 级模糊+半透明背景，与专辑/歌手/歌单行一致；② `MusicPlayerPage` 专辑封面占位列从 `SURFACE` 级纯色背景升级为 REGULAR 级 backdropBlur 材质。
+
+74. **播放时底栏显示红色 — playbackError 未及时清除** — 根因：一旦触发过播放错误（如 prepare() 失败），`playbackError` 被设置后只在手动关闭或下次 `playTrack()` 时清除。若后续播放成功但 `playbackError` 未重置，红色错误条持续显示。修复：① `MusicViewModel` stateChange 回调中 `state === PLAYING` 时自动清除 `playbackError`；② `MusicPage` 错误条条件从 `playbackError !== ''` 改为 `displayState === ERROR && playbackError !== ''`（双重保险 —— 仅在 ERROR 状态时显示，PLAYING 时不可能出现红条）。
+
+75. **音乐页面动画优化与残影消除** — ① MusicPage 内容区层级切换由 `visibility` 瞬切改为 `opacity` + `.animation({duration:200})` 平滑交叉淡入淡出，同时加 `hitTestBehavior(None)` 防止隐藏层误触；② MusicPlayerPage 新增 `animateTo` 入场淡入（200ms EaseOut）+ 退场淡出（150ms EaseIn）+ `pop(false)`，在无 Slide 的前提下实现柔和过渡。
+
+76. **播放器页面 UI 优化 + 收藏分类 + MiniPlayer 增强** — ① MusicPlayerPage 左侧后退按钮改为上一首（PREVIOUS）按钮；② 移除音量调节滑块（系统音量可直接调整）；③ MusicPage 新增「❤️ 收藏」第 5 个 Tab，显示所有收藏曲目，支持点击播放和取消收藏；④ MusicPage 错误底栏从红色 `#C62828` 改为毛玻璃半透明（backdropBlur + getOverlayColor），与整体设计统一；⑤ MiniPlayer 底栏新增上一首按钮（位于标题右侧、播放/暂停左侧）；⑥ MusicViewModel 新增 `@Trace favoriteTracks: Track[]` + `loadFavoriteTracks()` 方法。
+
+78. **自定义歌单 + 歌曲序号优化** — ① MusicRepository 新增 `isTrackInPlaylist()` 查询 junction 表方法；② MusicPage 歌单 Tab 新增「＋ 新建歌单」按钮 + 每个歌单行新增删除按钮（X，仅非收藏歌单）；③ 歌曲行新增「+」按钮 → 弹出底部 sheet 歌单选择器（列出所有歌单含收藏 + 新建入口）→ 可添加/移除歌曲到任意歌单；④ 三个内联 overlay：创建歌单（居中卡片 TextInput+取消/创建）、添加到歌单（底部 sheet 列出歌单+收藏+新建入口）、删除确认（居中卡片 取消/删除）；⑤ 歌曲序号优化：正在播放曲目序号位置显示 `SymbolGlyph(ICON.STREAM)` + primaryColor，否则显示等宽数字；⑥ 两处应用（songRow + favoriteTrackRow）。
+
+77. **播放器细节优化 — 后退按钮恢复 + 图标去 emoji + 切歌不打断 + 后台播放** — ① MusicPlayerPage 左上角恢复为后退导航按钮（BACK）；② MusicPage 收藏 Tab 从 emoji `❤️` 改为 SymbolGlyph(ICON.HEART_FILL)，错误横幅 `⚠` 和 `✕` 也改为 SymbolGlyph；③ MusicPlayerService.loadTrack() 重构为**重叠切换**：先创建新 AVPlayer → 设 URL → 等待 'prepared'（旧播放器在此期间继续播放）→ 就绪后才释放旧播放器 → 切歌瞬间无静音间隙；'initialized' handler 仅在非 PLAYING 时设 LOADING；④ 新增 AVSession 集成（`enableBackgroundPlayback`）— MusicPlayerService 通过 `avSession.createAVSession` + `activate()` 注册媒体会话，`loadTrack` 时设 metadata，'playing'/'paused' 时同步 play state，`destroy` 时 deactivate+destroy；Index.ets 传 UIAbility context → MusicViewModel.enableBackgroundAudio() → MusicPlayerService.enableBackgroundPlayback()。应用退后台后音频继续播放。⑤ ICON.PREVIOUS 从 backward_fill 改为 backward_end_fill（标准「上一首」图标）。
+
+61. **专辑打开后无歌曲 + 无法流式播放 + MusicPage 重构为纯 Navidrome 流媒体（6 轮修复）** — 六个根因：⓪ **URL 双 `?` bug（第三轮新发现）** — `sendGetRequest()` 始终用 `?` 连接认证参数，当 endpoint 自带 `?`（如 `getAlbumList2?type=newest&size=500`）时 URL 变成 `...?type=newest&size=500?u=...`，第二个 `?` 之后全部被服务器当作 `size` 值的一部分，认证参数丢失 → 服务器返回错误 / 空数据；① **`getAlbumList2` JSON key 错误** — Subsonic `getAlbumList2` 返回 key `"albumList2"` 而非 `"albumList"`，代码读错 key → 永远 undefined；② **`getSongs()` 缺少 status 检查**；③ **错误静默吞噬** — catch 块设 `=[]` 丢弃异常；④ **AVPlayer 播放竞态条件** — `play()` 先于 prepared 状态调用导致静默无操作；⑤ **MusicPage 架构错位 + 过渡残影** — 没有本地音乐却保留本地曲库标签；`if/else` 条件渲染导致旧视图销毁→新视图创建的布局动画，旧窗口随新窗口一起运动。修复：⓪ `sendGetRequest` 检测 endpoint 含 `?` 则用 `&` 连接认证参数；① `SubsonicAlbumListResponse` 新增 `albumList2?:`；② `getSongs()` 新增 status 检查 + `encodeURIComponent` + 单曲兼容；③ MusicViewModel 新增 `@Trace novidromeError`；④ `autoPlayWhenReady` + `reset()`；⑤ MusicPage 完全重写 — 移除本地标签/导入按钮；**用 Stack + Visibility 替代 if/else**，两个视图同时挂载瞬间切换无销毁重建 → 根除过渡残影；loading 遮罩在 browseLevel 变更之前先设 true。
 
 ## ArkTS Strict Rules
 - No spread operator `...` → explicit property copy when creating new ThemeConfig

@@ -1,7 +1,7 @@
 import { TodosViewModel } from '../viewmodel/TodosViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
 import { ReminderViewModel } from '../viewmodel/ReminderViewModel';
-import { TodoItem, TodoCategory, TodoPriority, TodoFilterType } from '../model/TodoModel';
+import { TodoItem, TodoCategory, TodoFilterType } from '../model/TodoModel';
 import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
 import { MaterialConstants } from '../constants/MaterialConstants';
 import { TodoRepository } from '../repository/TodoRepository';
@@ -28,26 +28,26 @@ export struct TodosPage {
   @Local showCategoryManager: boolean = false;
   @Local newCategoryName: string = '';
   @Local newCategoryColor: string = '#4A90D9';
+  @Local refreshSignal: number = 0;
 
   aboutToAppear(): void {
-    this.viewModel.loadData();
+    this.loadTodos();
+  }
+
+  private async loadTodos(): Promise<void> {
+    await this.viewModel.loadData();
+    this.refreshSignal++;
   }
 
   build() {
     NavDestination() {
       Stack() {
+        // ═══════════════════════════════════════════════════════════
+        // Layer 0: Main content — filter tabs + todo list
+        // ═══════════════════════════════════════════════════════════
         Column() {
-          // Header — immersive blur surface
-          Row() {
-            Text('待办')
-              .fontSize(28 * this.themeConfig.fontScale)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.themeConfig.textColor);
-          }
-          .width('100%')
-          .padding({ left: 20, right: 20, top: 44, bottom: 12 })
-          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
-          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
+          // Spacer — clears the floating header
+          Blank().height(88);
 
           // Filter tabs
           Row() {
@@ -202,9 +202,9 @@ export struct TodosPage {
                         },
                       });
                     }
-                  }, (todo: TodoItem) => todo.id);
+                  }, (todo: TodoItem) => todo.id + '_' + String(this.refreshSignal));
                 };
-              }, (categoryId: string) => categoryId);
+              }, (categoryId: string) => categoryId + '_' + String(this.refreshSignal));
             }
             .width('100%')
             .layoutWeight(1)
@@ -215,7 +215,33 @@ export struct TodosPage {
         .width('100%')
         .height('100%');
 
-        // FAB
+        // ═══════════════════════════════════════════════════════════
+        // Layer 1: Floating header — frosted glass, pinned at top
+        //
+        // backdropBlur is binary (on/off).  The gradient overlay masks
+        // the blur visibility: opaque → blur visible, transparent →
+        // blur invisible, creating an illusion of gradual fade.
+        // ═══════════════════════════════════════════════════════════
+        Column() {
+          // Title area
+          Row() {
+            Text('待办')
+              .fontSize(28 * this.themeConfig.fontScale)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.themeConfig.textColor);
+          }
+          .width('100%')
+          .padding({ left: 20, right: 20, top: 0, bottom: 4 });
+
+        }
+        .position({ top: 0, left: 0, right: 0 })
+        .padding({ top: 44 })
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
+
+        // ═══════════════════════════════════════════════════════════
+        // Layer 2: FAB
+        // ═══════════════════════════════════════════════════════════
         Stack() {
           Button() {
             SymbolGlyph(ICON.PLUS)
@@ -238,11 +264,9 @@ export struct TodosPage {
           Column() {
             TodoAddSheet({
               categories: this.viewModel.categories,
-              onSave: (title: string, _description: string, priority: TodoPriority, categoryId: string, customCategoryName: string) => {
-                if (title.trim() !== '') {
-                  this.handleTodoSave(title, _description, priority, categoryId, customCategoryName);
-                  this.showAddSheet = false;
-                }
+              viewModel: this.viewModel,
+              onSaved: () => {
+                this.showAddSheet = false;
               },
               onCancel: () => {
                 this.showAddSheet = false;
@@ -264,7 +288,7 @@ export struct TodosPage {
     }
     .hideTitleBar(true)
     .onShown(() => {
-      this.viewModel.loadData();
+      this.loadTodos();
     })
     .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode))
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM]);
@@ -331,27 +355,6 @@ export struct TodosPage {
         itemCount: this.getTodoCount(categoryId),
       });
     }
-  }
-
-  private async handleTodoSave(
-    title: string,
-    description: string,
-    priority: TodoPriority,
-    categoryId: string,
-    customCategoryName: string
-  ): Promise<void> {
-    let finalCategoryId: string = categoryId;
-
-    // If user typed or selected a category name, materialize it (get or create)
-    if (customCategoryName.trim() !== '') {
-      const category: TodoCategory = await this.viewModel.getOrCreateCategory(
-        customCategoryName.trim(),
-        '#4A90D9'
-      );
-      finalCategoryId = category.id;
-    }
-
-    await this.viewModel.createTodo(title, description, priority, finalCategoryId, 0, 0, 0);
   }
 
   private getCategoryName(categoryId: string): string {
