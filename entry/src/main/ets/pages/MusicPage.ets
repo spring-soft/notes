@@ -987,7 +987,7 @@ export struct MusicPage {
           .fontColor([this.themeConfig.primaryColor])
           .width(28);
       } else {
-        Text(String(song.track > 0 ? song.track : idx + 1))
+        Text(String(idx + 1))
           .fontSize(13 * this.themeConfig.fontScale)
           .fontColor(this.themeConfig.textSecondaryColor)
           .width(28)
