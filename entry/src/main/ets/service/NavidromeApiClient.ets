@@ -312,15 +312,40 @@ export class NavidromeApiClient {
   }
 
   async getSongs(albumId: string): Promise<SubsonicSong[]> {
-    const endpoint: string = 'getAlbum?id=' + albumId;
+    const endpoint: string = 'getAlbum?id=' + encodeURIComponent(albumId);
     const json: string = await this.sendGetRequest(endpoint);
 
     const resp = this.unwrap(json);
-    const albumObj = resp['album'] as Record<string, Object>;
-    if (albumObj !== undefined && albumObj['song'] !== undefined) {
-      return albumObj['song'] as SubsonicSong[];
+
+    // Check Subsonic status before parsing
+    const status: string = resp['status'] as string;
+    if (status !== 'ok') {
+      const errObj = resp['error'] as Record<string, Object>;
+      const msg: string = errObj !== undefined ? errObj['message'] as string : 'Unknown error';
+      hilog.error(DOMAIN, TAG, 'getSongs Subsonic error: %{public}s', msg);
+      this.lastError = '获取歌曲失败: ' + msg;
+      throw new Error('Subsonic error: ' + msg);
     }
-    return [];
+
+    const albumObj = resp['album'] as Record<string, Object>;
+    if (albumObj === undefined) {
+      hilog.warn(DOMAIN, TAG, 'getSongs: no album object in response');
+      return [];
+    }
+
+    const songData = albumObj['song'];
+    if (songData === undefined || songData === null) {
+      hilog.warn(DOMAIN, TAG, 'getSongs: album has no song field, albumId=%{public}s', albumId);
+      return [];
+    }
+
+    // Defend against single-song responses (some servers serialize a
+    // single element as an object instead of a 1-element array).
+    if (Array.isArray(songData)) {
+      return songData as SubsonicSong[];
+    }
+    // Wrap single object into an array
+    return [songData as SubsonicSong];
   }
 
   async search3(query: string): Promise<SubsonicSearchResult3> {

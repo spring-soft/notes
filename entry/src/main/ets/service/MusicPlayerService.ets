@@ -17,6 +17,7 @@ export class MusicPlayerService {
   private volumeLevel: number = 0.7;
   private currentPositionMs: number = 0;
   private durationMs: number = 0;
+  private autoPlayWhenReady: boolean = false;
 
   // Callbacks (set by ViewModel)
   private onStateChangeCallback: ((state: PlayerState) => void) | null = null;
@@ -72,21 +73,36 @@ export class MusicPlayerService {
         this.setState(PlayerState.LOADING);
       } else if (state === 'prepared') {
         this.setState(PlayerState.LOADING);
+        // Auto-play when ready — fixes race condition where play() is
+        // called before the async URL preparation completes (common for
+        // HTTP streams which take longer than local files).
+        if (this.autoPlayWhenReady) {
+          this.autoPlayWhenReady = false;
+          if (this.avPlayer !== null) {
+            this.avPlayer.play();
+          }
+        }
       } else if (state === 'playing') {
         this.setState(PlayerState.PLAYING);
+        this.autoPlayWhenReady = false;
       } else if (state === 'paused') {
         this.setState(PlayerState.PAUSED);
+        this.autoPlayWhenReady = false;
       } else if (state === 'stopped') {
         this.setState(PlayerState.STOPPED);
+        this.autoPlayWhenReady = false;
       } else if (state === 'completed') {
         this.setState(PlayerState.STOPPED);
+        this.autoPlayWhenReady = false;
         if (this.onTrackEndCallback !== null) {
           this.onTrackEndCallback();
         }
       } else if (state === 'error') {
         this.setState(PlayerState.ERROR);
+        this.autoPlayWhenReady = false;
       } else if (state === 'released') {
         this.setState(PlayerState.IDLE);
+        this.autoPlayWhenReady = false;
       }
     });
 
@@ -120,9 +136,11 @@ export class MusicPlayerService {
       this.setState(PlayerState.LOADING);
       const player: media.AVPlayer = await this.ensurePlayer();
 
-      // Reset player to idle state before loading new track
-      if (this.playerState === PlayerState.PLAYING || this.playerState === PlayerState.PAUSED) {
-        await player.stop();
+      // Reset player to idle before loading new URL. stop() alone
+      // keeps the old source; reset() clears it so setting url triggers
+      // a fresh idle→initialized→prepared cycle.
+      if (this.playerState !== PlayerState.IDLE) {
+        player.reset();
       }
 
       // Determine URL based on source
@@ -134,6 +152,7 @@ export class MusicPlayerService {
       }
 
       hilog.info(DOMAIN, TAG, 'Loading track URL: %{public}s', url);
+      this.autoPlayWhenReady = true;
       player.url = url;
       this.currentTrackId = track.id;
       this.currentPositionMs = 0;

@@ -136,11 +136,12 @@ MusicPlayerPage (full-screen Now Playing):
   → MusicControls: shuffle/prev/play-pause/next/repeat
   → Seek via Slider (0-100%), volume via Slider
 
-Navidrome integration:
+Navidrome integration (pure streaming — no local import needed):
   → SettingsPage: server URL + username + password + test connection
   → NavidromeApiClient: Subsonic REST API with MD5(password+salt) auth
-  → Stream URL resolved to track.fileUri before playback
-  → Import tracks from Navidrome into local music_tracks DB
+  → MusicPage: albums → songs → direct stream (no local RDB dependency)
+  → Stream URL resolved and played via AVPlayer HTTP streaming
+  → MiniPlayer global overlay shows now-playing track
 ```
 - **MusicViewModel singleton** — module-level `initMusicViewModel()`/`getMusicViewModel()`, survives tab switches
 - **MiniPlayer global overlay** — rendered in Index.ets Stack (phone: above tab bar, tablet: bottom of content area), self-contained with own handler
@@ -184,8 +185,8 @@ Navidrome integration:
 | `repository/MusicRepository.ets` | RDB CRUD for tracks, playlists, playlist-track junction (JOIN query) |
 | `service/NavidromeApiClient.ets` | Subsonic REST API client with MD5 auth, HTTP via @kit.NetworkKit |
 | `service/MusicPlayerService.ets` | AVPlayer wrapper with state machine, callback pattern |
-| `viewmodel/MusicViewModel.ets` | @ObservedV2 singleton orchestrator, playNext/Previous with repeat+shuffle logic |
-| `pages/MusicPage.ets` | Main music tab — track list, album/artist/playlist views, search, sub-tab chips |
+| `viewmodel/MusicViewModel.ets` | @ObservedV2 singleton — playback control, Navidrome browse/stream, error exposure (novidromeError) |
+| `pages/MusicPage.ets` | Pure Navidrome streaming browser — albums → songs → direct stream, no local library tabs |
 | `pages/MusicPlayerPage.ets` | Full-screen Now Playing NavDestination — album art, controls, seek, volume |
 | `components/business/MusicTrackItem.ets` | Track row with album art thumbnail, title, artist, duration |
 | `components/business/MusicControls.ets` | Playback controls: shuffle, prev, play/pause, next, repeat |
@@ -256,6 +257,7 @@ Navidrome integration:
 58. **新增音乐播放器功能（5th tab）** — 完整音乐播放模块：① 本地音乐文件回放（AVPlayer + file:// URI）；② 全功能播放器 UI（Now Playing 全屏页 + 全局 MiniPlayer 悬浮条）；③ **Navidrome/Subsonic 流媒体集成** — MD5 认证、REST API（getArtists/getAlbums/getSongs/search3/stream）、可配置服务器地址+用户名+密码；④ 3 张新 RDB 表（music_tracks/music_playlists/music_playlist_tracks）；⑤ MusicViewModel 模块级单例（切 tab 不中断播放）；⑥ SettingsPage 新增"音乐服务"配置区（Toggle + TextInput + 测试连接）；⑦ 5 个新 UI 组件（MusicTrackItem/MusicControls/MiniPlayer + 2 页面）；⑧ 17 个新文件 + 8 个修改文件；⑨ 权限：INTERNET + READ_MEDIA。
 59. **Navidrome 设置页无法连接（3 轮修复）** — 四个根因：① HarmonyOS NEXT 默认拦截 HTTP 明文流量（`cleartextTraffic` 未开启）；② `ping()` catch 块丢弃了错误信息，用户只看到泛泛「✗ 连接失败」；③ **MD5 实现 padding 数组大小 bug** — `paddedLen` 公式算出的是 32-bit 字数但 `new Array(paddedLen)` 把字数当字节数，密码 >8 字符时 bitLen 覆盖 input 字节，MD5 错误 → 认证失败；④ **Subsonic JSON 响应 envelope 未解包** — Navidrome 返回 `{"subsonic-response":{"status":"ok",...}}`，但代码直接读 `parsed.status` 而非 `parsed['subsonic-response']['status']`，`undefined === 'ok'` 永远 false → ping/getArtists/getAlbums/getSongs/search3 全部静默失败。修复：① module.json5 新增 `"network":{"cleartextTraffic":true}`；② NavidromeApiClient 新增 `lastError` 字段 + `getNovidromeError()` 暴露错误；③ SettingsPage 显示具体错误；④ 修正 `md5Hash` 数组大小为 `wordCount*4`；⑤ 新增 `unwrap()` helper 解包 `subsonic-response` envelope，`ping()`/`parseResponse()`/`getAlbums()`/`getSongs()` 全部改为先 unwrap 再访问字段。
 60. **Navidrome 连接成功但音乐页无内容（4 轮修复）** — 根因：MusicPage 只展示本地 RDB 曲库，没有 Navidrome 远程浏览/导入 UI。修复：① MusicPage 新增 Navidrome 3 级层级浏览（艺术家→专辑→歌曲）集成在「全部」tab 内，连通状态显示「Navidrome 已连接」横幅+「浏览音乐」按钮；② 浏览视图使用 `isBrowsingNovidrome` 标志控制显隐，艺术家列表可「返回曲库」退出浏览；③ 歌曲行支持「导入」按钮（单曲入库）+「导入全部」按钮（整张专辑入库）；④ MusicViewModel 新增 `importNovidromeAlbum()` 批量导入方法；⑤ aboutToAppear 中如已配置且曲库为空自动进入浏览；⑥ 修复层级切换残影 bug：`novidromeIsBrowsing = true` 必须在 `novidromeBrowseLevel` 变更之前设置，防止旧数据先渲染再被 loading 覆盖。
+61. **专辑打开后无歌曲 + 无法流式播放 + MusicPage 重构为纯 Navidrome 流媒体** — 四个根因：① **`getSongs()` 缺少 status 检查** — API 返回 HTTP 200 但 Subsonic status 可能不是 ok，代码直接读 `resp['album']['song']` 无错误处理；② **错误静默吞噬** — `browseNovidromeSongs/Albums/Artists` 的 catch 块设 `=[]` 丢弃异常，用户永远看不到失败原因；③ **AVPlayer 播放竞态条件** — `loadTrack()` 设 URL 后 AVPlayer 异步准备（idle→initialized→prepared），`play()` 立即检查状态只放行 prepared/paused/completed，HTTP 流媒体准备远慢于本地文件 → `play()` 静默无操作 → 永远不响；④ **MusicPage 架构错位** — 没有本地音乐却保留全部/专辑/艺术家/歌单/搜索 5 个本地曲库标签，Navidrome 是需手动进入的独立浏览模式，打开专辑后无歌曲且无播放能力。修复：① `getSongs()` 新增 status 检查 + `encodeURIComponent(albumId)` + 防御单曲作为 object 而非 array 的兼容 + hilog 错误日志；② MusicViewModel 新增 `@Trace novidromeError` 字段，三个 browse 方法 catch 中填入具体错误信息；③ MusicPlayerService 新增 `autoPlayWhenReady` 标志 — `loadTrack` 设 flag=true → stateChange 在 prepared 时自动调 `play()` 并清 flag，同时 `reset()` 替代 `stop()` 确保新 URL 触发完整 idle→initialized→prepared 生命周期；④ **MusicPage 完全重写** — 移除本地曲库标签/导入按钮/独立浏览模式，页面即 Navidrome：默认展示全部专辑（`getAlbumList2?type=newest`）→ 点击专辑进入歌曲列表 → 点击歌曲直接 HTTP 流式播放，header 歌曲层显示返回+专辑名，错误以红色文字+重试按钮显示。
 
 ## ArkTS Strict Rules
 - No spread operator `...` → explicit property copy when creating new ThemeConfig

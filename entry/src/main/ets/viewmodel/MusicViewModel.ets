@@ -54,6 +54,7 @@ export class MusicViewModel {
   @Trace novidromeAlbums: SubsonicAlbum[] = [];
   @Trace novidromeSongs: SubsonicSong[] = [];
   @Trace novidromeSearchQuery: string = '';
+  @Trace novidromeError: string = '';
 
   // ── Private services/repos ──
   private playerService: MusicPlayerService;
@@ -380,34 +381,43 @@ export class MusicViewModel {
 
   async browseNovidromeArtists(): Promise<void> {
     if (this.novidromeClient === null) {
+      this.novidromeError = 'Navidrome 客户端未初始化';
       return;
     }
     try {
+      this.novidromeError = '';
       this.novidromeArtists = await this.novidromeClient.getArtists();
-    } catch (_err) {
+    } catch (err) {
       this.novidromeArtists = [];
+      this.novidromeError = '加载艺术家失败: ' + (err as Error).message;
     }
   }
 
   async browseNovidromeAlbums(artistId?: string): Promise<void> {
     if (this.novidromeClient === null) {
+      this.novidromeError = 'Navidrome 客户端未初始化';
       return;
     }
     try {
+      this.novidromeError = '';
       this.novidromeAlbums = await this.novidromeClient.getAlbums(artistId);
-    } catch (_err) {
+    } catch (err) {
       this.novidromeAlbums = [];
+      this.novidromeError = '加载专辑失败: ' + (err as Error).message;
     }
   }
 
   async browseNovidromeSongs(albumId: string): Promise<void> {
     if (this.novidromeClient === null) {
+      this.novidromeError = 'Navidrome 客户端未初始化';
       return;
     }
     try {
+      this.novidromeError = '';
       this.novidromeSongs = await this.novidromeClient.getSongs(albumId);
-    } catch (_err) {
+    } catch (err) {
       this.novidromeSongs = [];
+      this.novidromeError = '加载歌曲失败: ' + (err as Error).message;
     }
   }
 
