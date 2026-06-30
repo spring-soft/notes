@@ -117,13 +117,18 @@ TodoAddSheet save:
 ```
 MusicPage.aboutToAppear()
   → register tickHandler → updates @Local displayState/PositionMs/DurationMs
-  → viewModel.loadTracks() → queries music_tracks RDB → tracks populated
-  → viewModel.loadPlaylists() → queries music_playlists RDB
+  → initNavidrome() → connectNovidrome() ping → browseNovidromeAlbums() (default tab)
+  → 4 Tab Chips: 全部歌曲/歌手/专辑/歌单
+    - 全部歌曲: getAllSongs() → browseNovidromeAllSongs() → novidromeAllSongs → playNovidromeTrack()
+    - 歌手: getArtists() → browseNovidromeArtists() → tap artist → browseNovidromeAlbums(id) → tap album → songs → play
+    - 专辑: getAlbumList2 → browseNovidromeAlbums() → tap album → browseNovidromeSongs(id) → play
+    - 歌单: loadPlaylists() → tap playlist → getPlaylistTracks(id) → play
+  → Tab 切换懒加载：switchTab() 仅在切换到目标 tab 时才拉取数据
 
 MusicPage.playTrack(track):
-  → viewModel.playTrack(track)
-  → playerService.loadTrack(track)  (sets AVPlayer url — local file:// or Navidrome HTTP)
-  → playerService.play()
+  → viewModel.playNovidromeTrack(song, contextSongs)  (sets this.tracks for next/prev)
+  → playerService.loadTrack(track)  (sets AVPlayer url — Navidrome HTTP stream URL)
+  → playerService.play()  (may defer via autoPlayWhenReady if not yet prepared)
   → isMiniPlayerVisible = true → MiniPlayer appears globally
 
 MiniPlayer (global overlay in Index.ets):
@@ -139,9 +144,16 @@ MusicPlayerPage (full-screen Now Playing):
 Navidrome integration (pure streaming — no local import needed):
   → SettingsPage: server URL + username + password + test connection
   → NavidromeApiClient: Subsonic REST API with MD5(password+salt) auth
-  → MusicPage: albums → songs → direct stream (no local RDB dependency)
+  → MusicPage: 4-tab browse → songs → direct stream (no local RDB dependency)
   → Stream URL resolved and played via AVPlayer HTTP streaming
+  → generateAuthParamsNoFormat() for binary endpoints (stream, coverArt) — no &f=json
   → MiniPlayer global overlay shows now-playing track
+
+Favorites (local RDB playlist):
+  → "❤️ 收藏" playlist auto-created on first favorite
+  → Heart icon (ICON.HEART/HEART_FILL) on each song row
+  → toggleFavoriteTrack() adds/removes from favorites playlist
+  → Favorites appear in 歌单 tab alongside other playlists
 ```
 - **MusicViewModel singleton** — module-level `initMusicViewModel()`/`getMusicViewModel()`, survives tab switches
 - **MiniPlayer global overlay** — rendered in Index.ets Stack (phone: above tab bar, tablet: bottom of content area), self-contained with own handler
@@ -183,10 +195,10 @@ Navidrome integration (pure streaming — no local import needed):
 | `model/MusicModel.ets` | Track, Playlist, NovidromeConfig, MusicPlayerConfig interfaces + Subsonic response types |
 | `constants/MusicConstants.ets` | Music defaults (volume, repeatMode, shuffle), Navidrome API version, UI constants |
 | `repository/MusicRepository.ets` | RDB CRUD for tracks, playlists, playlist-track junction (JOIN query) |
-| `service/NavidromeApiClient.ets` | Subsonic REST API client with MD5 auth, HTTP via @kit.NetworkKit |
+| `service/NavidromeApiClient.ets` | Subsonic REST API client — MD5 auth, getAllSongs(), getStreamUrl() uses no-f=json generator, batch album fetch |
 | `service/MusicPlayerService.ets` | AVPlayer wrapper with state machine, callback pattern |
-| `viewmodel/MusicViewModel.ets` | @ObservedV2 singleton — playback control, Navidrome browse/stream, error exposure (novidromeError) |
-| `pages/MusicPage.ets` | Pure Navidrome streaming browser — albums → songs → direct stream, no local library tabs |
+| `viewmodel/MusicViewModel.ets` | @ObservedV2 singleton — playback, 4-tab browse, favorites playlist, playNovidromeTrack() for next/prev nav |
+| `pages/MusicPage.ets` | Pure Navidrome streaming browser — 4-tab (全部歌曲/歌手/专辑/歌单) + favorites heart, Stack+Visibility anti-ghost |
 | `pages/MusicPlayerPage.ets` | Full-screen Now Playing NavDestination — album art, controls, seek, volume |
 | `components/business/MusicTrackItem.ets` | Track row with album art thumbnail, title, artist, duration |
 | `components/business/MusicControls.ets` | Playback controls: shuffle, prev, play/pause, next, repeat |
@@ -257,6 +269,10 @@ Navidrome integration (pure streaming — no local import needed):
 58. **新增音乐播放器功能（5th tab）** — 完整音乐播放模块：① 本地音乐文件回放（AVPlayer + file:// URI）；② 全功能播放器 UI（Now Playing 全屏页 + 全局 MiniPlayer 悬浮条）；③ **Navidrome/Subsonic 流媒体集成** — MD5 认证、REST API（getArtists/getAlbums/getSongs/search3/stream）、可配置服务器地址+用户名+密码；④ 3 张新 RDB 表（music_tracks/music_playlists/music_playlist_tracks）；⑤ MusicViewModel 模块级单例（切 tab 不中断播放）；⑥ SettingsPage 新增"音乐服务"配置区（Toggle + TextInput + 测试连接）；⑦ 5 个新 UI 组件（MusicTrackItem/MusicControls/MiniPlayer + 2 页面）；⑧ 17 个新文件 + 8 个修改文件；⑨ 权限：INTERNET + READ_MEDIA。
 59. **Navidrome 设置页无法连接（3 轮修复）** — 四个根因：① HarmonyOS NEXT 默认拦截 HTTP 明文流量（`cleartextTraffic` 未开启）；② `ping()` catch 块丢弃了错误信息，用户只看到泛泛「✗ 连接失败」；③ **MD5 实现 padding 数组大小 bug** — `paddedLen` 公式算出的是 32-bit 字数但 `new Array(paddedLen)` 把字数当字节数，密码 >8 字符时 bitLen 覆盖 input 字节，MD5 错误 → 认证失败；④ **Subsonic JSON 响应 envelope 未解包** — Navidrome 返回 `{"subsonic-response":{"status":"ok",...}}`，但代码直接读 `parsed.status` 而非 `parsed['subsonic-response']['status']`，`undefined === 'ok'` 永远 false → ping/getArtists/getAlbums/getSongs/search3 全部静默失败。修复：① module.json5 新增 `"network":{"cleartextTraffic":true}`；② NavidromeApiClient 新增 `lastError` 字段 + `getNovidromeError()` 暴露错误；③ SettingsPage 显示具体错误；④ 修正 `md5Hash` 数组大小为 `wordCount*4`；⑤ 新增 `unwrap()` helper 解包 `subsonic-response` envelope，`ping()`/`parseResponse()`/`getAlbums()`/`getSongs()` 全部改为先 unwrap 再访问字段。
 60. **Navidrome 连接成功但音乐页无内容（4 轮修复）** — 根因：MusicPage 只展示本地 RDB 曲库，没有 Navidrome 远程浏览/导入 UI。修复：① MusicPage 新增 Navidrome 3 级层级浏览（艺术家→专辑→歌曲）集成在「全部」tab 内，连通状态显示「Navidrome 已连接」横幅+「浏览音乐」按钮；② 浏览视图使用 `isBrowsingNovidrome` 标志控制显隐，艺术家列表可「返回曲库」退出浏览；③ 歌曲行支持「导入」按钮（单曲入库）+「导入全部」按钮（整张专辑入库）；④ MusicViewModel 新增 `importNovidromeAlbum()` 批量导入方法；⑤ aboutToAppear 中如已配置且曲库为空自动进入浏览；⑥ 修复层级切换残影 bug：`novidromeIsBrowsing = true` 必须在 `novidromeBrowseLevel` 变更之前设置，防止旧数据先渲染再被 loading 覆盖。
+62. **Navidrome 音乐点击播放无响应** — 根因：`getStreamUrl()` 和 `getCoverArtUrl()` 使用了 `generateAuthParams()`（含 `&f=json`），stream endpoint 接收 `f=json` 后可能返回 JSON 错误而非二进制音频数据，导致 AVPlayer 无法解码。修复：① 新增 `generateAuthParamsNoFormat()` 方法（不含 `&f=json`），`getStreamUrl()` 和 `getCoverArtUrl()` 改用此方法；② `MusicPlayerService.loadTrack()` 始终 `reset()` + `setVolume()` 确保干净的播放周期和音量；③ `play()` 方法新增 `initialized`/`idle` 状态处理——这些状态下设置 `autoPlayWhenReady` 标志延迟到 'prepared' 时自动播放。
+63. **音乐页面多维度分类浏览 + 收藏歌单** — 原来只能按专辑浏览，操作不便。修复：① MusicPage 新增 4 个 Tab Chip（全部歌曲/歌手/专辑/歌单），默认选中「专辑」；② 全部歌曲：`NavidromeApiClient.getAllSongs()` 取全部专辑→批量并发取歌→聚合为扁平列表，直接点击播放；③ 歌手：`getArtists()` → 点击进入该歌手专辑列表 → 点击专辑进入歌曲列表；④ 专辑：保留原有专辑→歌曲浏览流程；⑤ 歌单：展示 RDB 播放列表（含自动创建的 ❤️ 收藏），点击进入歌曲列表；⑥ 每个歌曲行新增心形收藏按钮（`ICON.HEART`/`ICON.HEART_FILL`），点击即添加/移除到收藏歌单；⑦ `MusicViewModel` 新增 `browseNovidromeAllSongs()`、`ensureFavoritePlaylist()`、`toggleFavoriteTrack()`、`isTrackFavorited()`、`getPlaylistTracks()`、`playNovidromeTrack()` 方法；⑧ Tab 切换懒加载——仅在切换到对应 Tab 时才拉取数据。
+64. **笔记详情页导航动画横向位移修复** — 根因：`Navigation` 默认 Stack 模式的 push/pop 动画是 Slide（从左滑入/向左滑出），导致笔记列表在 push 时 header 和卡片一起左滑才消失。修复：所有 `pushPathByName()` 和 `pop()` 调用传入第三个参数 `false` 禁用动画，页面原地切换无位移。涉及 `NotesPage.ets`、`NoteDetailPage.ets`、`MusicPage.ets`、`MusicPlayerPage.ets`、`Index.ets`。SDK 24 中第三参数类型为 `animated?: boolean`，不是对象。
+
 61. **专辑打开后无歌曲 + 无法流式播放 + MusicPage 重构为纯 Navidrome 流媒体（6 轮修复）** — 六个根因：⓪ **URL 双 `?` bug（第三轮新发现）** — `sendGetRequest()` 始终用 `?` 连接认证参数，当 endpoint 自带 `?`（如 `getAlbumList2?type=newest&size=500`）时 URL 变成 `...?type=newest&size=500?u=...`，第二个 `?` 之后全部被服务器当作 `size` 值的一部分，认证参数丢失 → 服务器返回错误 / 空数据；① **`getAlbumList2` JSON key 错误** — Subsonic `getAlbumList2` 返回 key `"albumList2"` 而非 `"albumList"`，代码读错 key → 永远 undefined；② **`getSongs()` 缺少 status 检查**；③ **错误静默吞噬** — catch 块设 `=[]` 丢弃异常；④ **AVPlayer 播放竞态条件** — `play()` 先于 prepared 状态调用导致静默无操作；⑤ **MusicPage 架构错位 + 过渡残影** — 没有本地音乐却保留本地曲库标签；`if/else` 条件渲染导致旧视图销毁→新视图创建的布局动画，旧窗口随新窗口一起运动。修复：⓪ `sendGetRequest` 检测 endpoint 含 `?` 则用 `&` 连接认证参数；① `SubsonicAlbumListResponse` 新增 `albumList2?:`；② `getSongs()` 新增 status 检查 + `encodeURIComponent` + 单曲兼容；③ MusicViewModel 新增 `@Trace novidromeError`；④ `autoPlayWhenReady` + `reset()`；⑤ MusicPage 完全重写 — 移除本地标签/导入按钮；**用 Stack + Visibility 替代 if/else**，两个视图同时挂载瞬间切换无销毁重建 → 根除过渡残影；loading 遮罩在 browseLevel 变更之前先设 true。
 
 ## ArkTS Strict Rules

@@ -245,7 +245,7 @@ struct Index {
           this.tabNavStacks[this.currentTabIndex].clear();
           this.currentTabIndex = 4;
           this.currentNavStack = this.tabNavStacks[4];
-          this.tabNavStacks[4].pushPathByName('music_player', {} as Record<string, Object>);
+          this.tabNavStacks[4].pushPathByName('music_player', {} as Record<string, Object>, false);
         }
       })
         .position({ left: 0, right: 0, bottom: 64 })
@@ -299,7 +299,7 @@ struct Index {
             this.tabNavStacks[this.currentTabIndex].clear();
             this.currentTabIndex = 4;
             this.currentNavStack = this.tabNavStacks[4];
-            this.tabNavStacks[4].pushPathByName('music_player', {} as Record<string, Object>);
+            this.tabNavStacks[4].pushPathByName('music_player', {} as Record<string, Object>, false);
           }
         })
           .position({ left: 0, right: 0, bottom: 0 })

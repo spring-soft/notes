@@ -200,6 +200,22 @@ export class NavidromeApiClient {
       '&f=json';
   }
 
+  /**
+   * Same as generateAuthParams but WITHOUT the &f=json suffix.
+   * Used for binary endpoints (stream, coverArt) where f=json would
+   * tell the server to wrap the response in a JSON envelope — which is
+   * wrong for raw audio/image data.
+   */
+  private generateAuthParamsNoFormat(): string {
+    const salt: string = this.generateSalt(12);
+    const token: string = this.md5(this.config.password + salt);
+    return 'u=' + encodeURIComponent(this.config.username) +
+      '&t=' + token +
+      '&s=' + salt +
+      '&v=' + MusicConstants.NOVIDROME_API_VERSION +
+      '&c=' + MusicConstants.NOVIDROME_CLIENT_NAME;
+  }
+
   // ── HTTP Request Helper ──
 
   private async sendGetRequest(endpoint: string): Promise<string> {
@@ -363,6 +379,39 @@ export class NavidromeApiClient {
     return [songData as SubsonicSong];
   }
 
+  /**
+   * Fetches ALL songs from the Navidrome library by iterating through
+   * every album. This is N+1 API calls (1 for album list + N for songs)
+   * so it can be slow on large libraries.  Callers should show a loading
+   * spinner and consider caching the result.
+   */
+  async getAllSongs(): Promise<SubsonicSong[]> {
+    const allSongs: SubsonicSong[] = [];
+    // Get all albums first
+    const albums: SubsonicAlbum[] = await this.getAlbums();
+    if (albums.length === 0) {
+      return allSongs;
+    }
+    // Fetch songs for each album in parallel batches of 6 to avoid
+    // overwhelming the server (and the HTTP client pool).
+    const batchSize: number = 6;
+    for (let i: number = 0; i < albums.length; i += batchSize) {
+      const batch: SubsonicAlbum[] = albums.slice(i, i + batchSize);
+      const batchPromises: Promise<SubsonicSong[]>[] = [];
+      for (let j: number = 0; j < batch.length; j++) {
+        batchPromises.push(this.getSongs(batch[j].id));
+      }
+      const batchResults: SubsonicSong[][] = await Promise.all(batchPromises);
+      for (let k: number = 0; k < batchResults.length; k++) {
+        const songs: SubsonicSong[] = batchResults[k];
+        for (let s: number = 0; s < songs.length; s++) {
+          allSongs.push(songs[s]);
+        }
+      }
+    }
+    return allSongs;
+  }
+
   async search3(query: string): Promise<SubsonicSearchResult3> {
     const endpoint: string = 'search3?query=' + encodeURIComponent(query);
     const json: string = await this.sendGetRequest(endpoint);
@@ -374,7 +423,10 @@ export class NavidromeApiClient {
   }
 
   getStreamUrl(trackId: string): string {
-    return this.config.serverUrl + '/rest/stream?id=' + trackId + '&' + this.generateAuthParams();
+    // IMPORTANT: no &f=json — the stream endpoint returns raw audio bytes.
+    // Including f=json tells the server to wrap the response in a JSON
+    // envelope, which breaks AVPlayer audio decoding.
+    return this.config.serverUrl + '/rest/stream?id=' + trackId + '&' + this.generateAuthParamsNoFormat();
   }
 
   getCoverArtUrl(coverArtId: string, size?: number): string {
@@ -382,6 +434,7 @@ export class NavidromeApiClient {
     if (size !== undefined && size > 0) {
       endpoint += '&size=' + size;
     }
-    return this.config.serverUrl + '/rest/' + endpoint + '&' + this.generateAuthParams();
+    // Cover art is binary image data — no f=json.
+    return this.config.serverUrl + '/rest/' + endpoint + '&' + this.generateAuthParamsNoFormat();
   }
 }

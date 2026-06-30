@@ -136,12 +136,11 @@ export class MusicPlayerService {
       this.setState(PlayerState.LOADING);
       const player: media.AVPlayer = await this.ensurePlayer();
 
-      // Reset player to idle before loading new URL. stop() alone
-      // keeps the old source; reset() clears it so setting url triggers
-      // a fresh idle→initialized→prepared cycle.
-      if (this.playerState !== PlayerState.IDLE) {
-        player.reset();
-      }
+      // Always reset to idle before loading a new URL so setting url
+      // triggers a fresh idle→initialized→prepared cycle.  Also apply
+      // the stored volume to the (possibly new) AVPlayer instance.
+      player.reset();
+      player.setVolume(this.volumeLevel);
 
       // Determine URL based on source
       let url: string = '';
@@ -174,8 +173,13 @@ export class MusicPlayerService {
       return;
     }
     const state: string = this.avPlayer.state;
+    // Prepared/paused/completed — can play immediately.
     if (state === 'prepared' || state === 'paused' || state === 'completed') {
       this.avPlayer.play();
+    } else if (state === 'initialized' || state === 'idle') {
+      // URL was just set and the codec is still initializing.  Defer play
+      // to the stateChange handler via autoPlayWhenReady.
+      this.autoPlayWhenReady = true;
     }
   }
 

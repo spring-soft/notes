@@ -120,7 +120,7 @@ export struct NoteDetailPage {
       // Trigger NotesPage refresh BEFORE popping so the list is already
       // up-to-date when the user returns (onShown is unreliable).
       NavParams.triggerNotesRefresh();
-      this.navStack.pop();
+      this.navStack.pop(false);
     } catch (err) {
       console.error('NoteDetailPage.saveNote: save failed - ' + String(err));
     } finally {
@@ -151,7 +151,7 @@ export struct NoteDetailPage {
     }
     NavParams.needsNotesRefresh = true;
     NavParams.triggerNotesRefresh();
-    this.navStack.pop();
+    this.navStack.pop(false);
   }
 
   private isPresetCategory(category: string): boolean {
@@ -180,7 +180,7 @@ export struct NoteDetailPage {
           .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
     .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
           .onClick(() => {
-            this.navStack.pop();
+            this.navStack.pop(false);
           });
 
           Blank();

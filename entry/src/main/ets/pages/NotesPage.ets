@@ -246,6 +246,10 @@ export struct NotesPage {
 
   private navigateToDetail(noteId: string): void {
     NavParams.noteId = noteId;
-    this.navStack.pushPathByName('note_detail', {} as Record<string, Object>);
+    // animated: false — prevents the default slide-from-right transition
+    // that causes the notes list header and cards to slide left as a group
+    // before the detail page appears.  Instead, the page switch is instant.
+    this.navStack.pushPathByName('note_detail',
+      {} as Record<string, Object>, false);
   }
 }

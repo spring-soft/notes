@@ -53,8 +53,13 @@ export class MusicViewModel {
   @Trace novidromeArtists: SubsonicArtist[] = [];
   @Trace novidromeAlbums: SubsonicAlbum[] = [];
   @Trace novidromeSongs: SubsonicSong[] = [];
+  @Trace novidromeAllSongs: SubsonicSong[] = [];
   @Trace novidromeSearchQuery: string = '';
   @Trace novidromeError: string = '';
+
+  // ── Favorites (local RDB playlist) ──
+  @Trace favoritePlaylistId: string = '';
+  @Trace favoriteTrackIds: string[] = [];
 
   // ── Private services/repos ──
   private playerService: MusicPlayerService;
@@ -145,6 +150,7 @@ export class MusicViewModel {
 
     await this.loadTracks();
     await this.loadPlaylists();
+    await this.ensureFavoritePlaylist();
   }
 
   // ── Track Library ──
@@ -336,6 +342,10 @@ export class MusicViewModel {
     await this.loadPlaylists();
   }
 
+  async getPlaylistTracks(playlistId: ID): Promise<Track[]> {
+    return await this.repository.getTracksForPlaylist(playlistId);
+  }
+
   async playPlaylist(playlistId: ID): Promise<void> {
     const playlistTracks: Track[] = await this.repository.getTracksForPlaylist(playlistId);
     if (playlistTracks.length > 0) {
@@ -421,6 +431,88 @@ export class MusicViewModel {
     }
   }
 
+  async browseNovidromeAllSongs(): Promise<void> {
+    if (this.novidromeClient === null) {
+      this.novidromeError = 'Navidrome 客户端未初始化';
+      return;
+    }
+    try {
+      this.novidromeError = '';
+      this.novidromeAllSongs = await this.novidromeClient.getAllSongs();
+    } catch (err) {
+      this.novidromeAllSongs = [];
+      this.novidromeError = '加载歌曲失败: ' + (err as Error).message;
+    }
+  }
+
+  // ── Favorites (local RDB playlist) ──
+
+  /**
+   * Finds or creates the "❤️ 收藏" playlist for favorites.
+   * Called once during initialize() and after any playlist mutation.
+   */
+  async ensureFavoritePlaylist(): Promise<void> {
+    // Look for existing favorites playlist by name
+    for (let i: number = 0; i < this.playlists.length; i++) {
+      if (this.playlists[i].name === '❤️ 收藏') {
+        this.favoritePlaylistId = this.playlists[i].id;
+        // Load its track IDs
+        const tracks: Track[] = await this.repository.getTracksForPlaylist(this.favoritePlaylistId);
+        this.favoriteTrackIds = [];
+        for (let j: number = 0; j < tracks.length; j++) {
+          this.favoriteTrackIds.push(tracks[j].id);
+        }
+        return;
+      }
+    }
+    // Create it
+    const playlistId: string = generateId();
+    const playlist: Playlist = {
+      id: playlistId,
+      name: '❤️ 收藏',
+      createdAt: Date.now(),
+    };
+    await this.repository.createPlaylist(playlist);
+    this.favoritePlaylistId = playlistId;
+    this.favoriteTrackIds = [];
+    await this.loadPlaylists();
+  }
+
+  isTrackFavorited(trackId: string): boolean {
+    for (let i: number = 0; i < this.favoriteTrackIds.length; i++) {
+      if (this.favoriteTrackIds[i] === trackId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async toggleFavoriteTrack(trackId: string): Promise<void> {
+    if (this.favoritePlaylistId === '') {
+      await this.ensureFavoritePlaylist();
+    }
+    if (this.favoritePlaylistId === '') {
+      return;
+    }
+
+    if (this.isTrackFavorited(trackId)) {
+      // Remove from favorites
+      await this.repository.removeTrackFromPlaylist(this.favoritePlaylistId, trackId);
+      const newIds: string[] = [];
+      for (let i: number = 0; i < this.favoriteTrackIds.length; i++) {
+        if (this.favoriteTrackIds[i] !== trackId) {
+          newIds.push(this.favoriteTrackIds[i]);
+        }
+      }
+      this.favoriteTrackIds = newIds;
+    } else {
+      // Add to favorites
+      await this.repository.addTrackToPlaylist(this.favoritePlaylistId, trackId);
+      this.favoriteTrackIds.push(trackId);
+    }
+    await this.loadPlaylists();
+  }
+
   async searchNovidrome(query: string): Promise<void> {
     if (this.novidromeClient === null) {
       return;
@@ -439,6 +531,28 @@ export class MusicViewModel {
     } catch (_err) {
       this.tracks = [];
     }
+  }
+
+  /**
+   * Plays a Navidrome song with proper next/prev support.
+   * Converts the provided song list to Track[] so playNext/playPrevious
+   * can navigate within the current browsing context.
+   */
+  async playNovidromeTrack(song: SubsonicSong, contextSongs: SubsonicSong[]): Promise<void> {
+    // Convert all context songs to tracks for next/prev navigation
+    const trackList: Track[] = [];
+    let targetIndex: number = 0;
+    for (let i: number = 0; i < contextSongs.length; i++) {
+      const t: Track = this.subsonicSongToTrack(contextSongs[i]);
+      trackList.push(t);
+      if (contextSongs[i].id === song.id) {
+        targetIndex = i;
+      }
+    }
+    this.tracks = trackList;
+
+    // Play the target track (playTrack handles stream URL resolution)
+    await this.playTrack(trackList[targetIndex]);
   }
 
   async importNovidromeTrack(song: SubsonicSong): Promise<Track> {

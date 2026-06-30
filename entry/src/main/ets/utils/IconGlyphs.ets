@@ -70,4 +70,6 @@ export class ICON {
   static readonly VOLUME_MUTE: Resource = $r('sys.symbol.speaker_slash');
   static readonly MUSIC_LIST: Resource = $r('sys.symbol.music_note_list');
   static readonly STREAM: Resource = $r('sys.symbol.wifi');
+  static readonly HEART: Resource = $r('sys.symbol.heart');
+  static readonly HEART_FILL: Resource = $r('sys.symbol.heart_fill');
 }
