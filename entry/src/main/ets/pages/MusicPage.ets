@@ -311,11 +311,36 @@ export struct MusicPage {
           MaterialConstants.THIN, this.themeConfig.isDarkMode));
 
         // ═══════════════════════════════════════════════════════════
-        // Layer 2: FAB — open full player
+        // Layer 2: Playback error banner
+        // ═══════════════════════════════════════════════════════════
+        if (this.viewModel.playbackError !== '') {
+          Row() {
+            Text('⚠ ' + this.viewModel.playbackError)
+              .fontSize(12 * this.themeConfig.fontScale)
+              .fontColor('#FFCDD2')
+              .maxLines(2)
+              .layoutWeight(1);
+            Button('✕')
+              .fontSize(14)
+              .fontColor('#FFCDD2')
+              .backgroundColor(Color.Transparent)
+              .width(32).height(32)
+              .onClick(() => { this.viewModel.playbackError = ''; });
+          }
+          .width('100%')
+          .padding({ left: 16, right: 8, top: 8, bottom: 8 })
+          .backgroundColor('#C62828')
+          .position({ left: 0, right: 0, bottom: 0 })
+          .zIndex(99);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // Layer 3: FAB — open full player (reflects playback state)
         // ═══════════════════════════════════════════════════════════
         if (this.viewModel.currentTrack !== null) {
           Button() {
-            SymbolGlyph(ICON.PLAY)
+            SymbolGlyph(this.displayState === PlayerState.PLAYING
+              ? ICON.MUSIC_LIST : ICON.PLAY)
               .fontSize(28)
               .fontColor([this.themeConfig.primaryColor]);
           }

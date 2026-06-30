@@ -18,6 +18,7 @@ export class MusicPlayerService {
   private currentPositionMs: number = 0;
   private durationMs: number = 0;
   private autoPlayWhenReady: boolean = false;
+  private loadTimeoutId: number | null = null;
 
   // Callbacks (set by ViewModel)
   private onStateChangeCallback: ((state: PlayerState) => void) | null = null;
@@ -72,6 +73,7 @@ export class MusicPlayerService {
       if (state === 'initialized') {
         this.setState(PlayerState.LOADING);
       } else if (state === 'prepared') {
+        this.clearLoadTimeout();
         this.setState(PlayerState.LOADING);
         // Auto-play when ready — fixes race condition where play() is
         // called before the async URL preparation completes (common for
@@ -83,6 +85,7 @@ export class MusicPlayerService {
           }
         }
       } else if (state === 'playing') {
+        this.clearLoadTimeout();
         this.setState(PlayerState.PLAYING);
         this.autoPlayWhenReady = false;
       } else if (state === 'paused') {
@@ -98,6 +101,7 @@ export class MusicPlayerService {
           this.onTrackEndCallback();
         }
       } else if (state === 'error') {
+        this.clearLoadTimeout();
         this.setState(PlayerState.ERROR);
         this.autoPlayWhenReady = false;
         hilog.error(DOMAIN, TAG, 'AVPlayer entered error state');
@@ -126,6 +130,7 @@ export class MusicPlayerService {
 
     this.avPlayer.on('error', (err: BusinessError) => {
       hilog.error(DOMAIN, TAG, 'AVPlayer error: %{public}d, %{public}s', err.code, err.message);
+      this.clearLoadTimeout();
       this.setState(PlayerState.ERROR);
       this.autoPlayWhenReady = false;
       if (this.onErrorCallback !== null) {
@@ -222,7 +227,24 @@ export class MusicPlayerService {
       hilog.info(DOMAIN, TAG, 'Loading track URL (%{public}s): %{public}s',
         track.source, url);
 
-      // 4. Set URL (triggers idle → initialized → prepared)
+      // 4. Clear any previous load timeout
+      this.clearLoadTimeout();
+
+      // 5. Set a safety timeout — if the stream doesn't prepare within 30 s,
+      //    report an error so the user isn't left wondering.
+      this.loadTimeoutId = setTimeout(() => {
+        if (this.avPlayer !== null && this.avPlayer.state !== 'prepared'
+          && this.avPlayer.state !== 'playing' && this.avPlayer.state !== 'paused') {
+          hilog.error(DOMAIN, TAG, 'Stream load timed out after 30 s');
+          this.setState(PlayerState.ERROR);
+          this.autoPlayWhenReady = false;
+          if (this.onErrorCallback !== null) {
+            this.onErrorCallback('加载超时: 服务器无响应，请检查网络连接和服务器地址');
+          }
+        }
+      }, 30000);
+
+      // 6. Set URL (triggers idle → initialized → prepared)
       this.autoPlayWhenReady = true;
       player.url = url;
       this.currentTrackId = track.id;
@@ -235,6 +257,13 @@ export class MusicPlayerService {
       if (this.onErrorCallback !== null) {
         this.onErrorCallback('加载失败: ' + e.message);
       }
+    }
+  }
+
+  private clearLoadTimeout(): void {
+    if (this.loadTimeoutId !== null) {
+      clearTimeout(this.loadTimeoutId);
+      this.loadTimeoutId = null;
     }
   }
 

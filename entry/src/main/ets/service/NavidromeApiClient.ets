@@ -18,6 +18,12 @@ import { MusicConstants } from '../constants/MusicConstants';
 const DOMAIN: number = 0x0001;
 const TAG: string = 'NavidromeApiClient';
 
+/** Internal cache entry for API response caching. */
+interface CacheEntry {
+  data: string;
+  timestamp: number;
+}
+
 /**
  * Subsonic-compatible REST API client for Navidrome music server.
  * Implements MD5-based token authentication per the Subsonic API spec.
@@ -26,12 +32,48 @@ export class NavidromeApiClient {
   private config: NovidromeConfig;
   lastError: string = '';
 
+  // ── API Response Cache ──
+  // Reduces repeated HTTP calls when switching tabs.  Each entry is keyed
+  // by endpoint (e.g. "getArtists", "getAlbumList2?type=newest&size=500").
+  private cache: Map<string, CacheEntry> = new Map();
+  private cacheTtlMs: number = MusicConstants.NOVIDROME_CACHE_TTL_MS;
+
   constructor(config: NovidromeConfig) {
     this.config = this.normalizeConfig(config);
   }
 
   updateConfig(config: NovidromeConfig): void {
     this.config = this.normalizeConfig(config);
+    // Config changed — stale cache entries might point to the wrong server.
+    this.invalidateCache();
+  }
+
+  /** Clears all cached API responses. */
+  invalidateCache(): void {
+    this.cache.clear();
+    hilog.info(DOMAIN, TAG, 'Cache invalidated');
+  }
+
+  /** Returns the number of cached entries (for diagnostics). */
+  getCacheSize(): number {
+    return this.cache.size;
+  }
+
+  private getCached(cacheKey: string): string | null {
+    const entry: CacheEntry | undefined = this.cache.get(cacheKey);
+    if (entry === undefined) {
+      return null;
+    }
+    if (Date.now() - entry.timestamp > this.cacheTtlMs) {
+      this.cache.delete(cacheKey);
+      return null;
+    }
+    hilog.info(DOMAIN, TAG, 'Cache hit: %{public}s', cacheKey);
+    return entry.data;
+  }
+
+  private setCache(cacheKey: string, data: string): void {
+    this.cache.set(cacheKey, { data: data, timestamp: Date.now() });
   }
 
   getConfig(): NovidromeConfig {
@@ -218,7 +260,16 @@ export class NavidromeApiClient {
 
   // ── HTTP Request Helper ──
 
-  private async sendGetRequest(endpoint: string): Promise<string> {
+  private async sendGetRequest(endpoint: string, skipCache: boolean = false): Promise<string> {
+    // Check cache first (skip for ping and binary endpoints).
+    const cacheKey: string = endpoint;
+    if (!skipCache) {
+      const cached: string | null = this.getCached(cacheKey);
+      if (cached !== null) {
+        return cached;
+      }
+    }
+
     // Endpoints like getAlbumList2?type=newest already contain '?'.
     // Use '&' as separator to avoid double-'?' which would make the
     // server misinterpret auth params as part of the previous value.
@@ -238,6 +289,10 @@ export class NavidromeApiClient {
 
       if (response.responseCode === 200) {
         const body: string = response.result as string;
+        // Cache successful responses (except pings)
+        if (!skipCache) {
+          this.setCache(cacheKey, body);
+        }
         return body;
       }
 
@@ -280,7 +335,7 @@ export class NavidromeApiClient {
 
   async ping(): Promise<boolean> {
     try {
-      const json: string = await this.sendGetRequest('ping');
+      const json: string = await this.sendGetRequest('ping', true);
       const resp = this.unwrap(json);
       const status: string = resp['status'] as string;
       hilog.info(DOMAIN, TAG, 'Ping response: %{public}s', status);
@@ -426,7 +481,7 @@ export class NavidromeApiClient {
     // IMPORTANT: no &f=json — the stream endpoint returns raw audio bytes.
     // Including f=json tells the server to wrap the response in a JSON
     // envelope, which breaks AVPlayer audio decoding.
-    return this.config.serverUrl + '/rest/stream?id=' + trackId + '&' + this.generateAuthParamsNoFormat();
+    return this.config.serverUrl + '/rest/stream?id=' + encodeURIComponent(trackId) + '&' + this.generateAuthParamsNoFormat();
   }
 
   getCoverArtUrl(coverArtId: string, size?: number): string {

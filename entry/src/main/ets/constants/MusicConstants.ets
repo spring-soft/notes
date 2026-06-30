@@ -17,6 +17,7 @@ export class MusicConstants {
   static readonly NOVIDROME_API_VERSION: string = '1.16.1';
   static readonly NOVIDROME_CLIENT_NAME: string = 'MemoFlow';
   static readonly NOVIDROME_TIMEOUT_MS: number = 15000;
+  static readonly NOVIDROME_CACHE_TTL_MS: number = 300000; // 5 minutes
 
   // ── UI ──
   static readonly SEEK_STEP_MS: number = 10000;
