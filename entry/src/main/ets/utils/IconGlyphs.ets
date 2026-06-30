@@ -61,7 +61,7 @@ export class ICON {
 
   // ── Music ──
   static readonly MUSIC: Resource = $r('sys.symbol.music_note_list');
-  static readonly PREVIOUS: Resource = $r('sys.symbol.backward_fill');
+  static readonly PREVIOUS: Resource = $r('sys.symbol.backward_end_fill');
   static readonly NEXT: Resource = $r('sys.symbol.forward_end_fill');
   static readonly SHUFFLE: Resource = $r('sys.symbol.shuffle');
   static readonly REPEAT: Resource = $r('sys.symbol.repeat');

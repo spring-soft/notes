@@ -134,7 +134,12 @@ export class MusicPlayerService {
     this.avPlayer.on('stateChange', (state: string) => {
       hilog.info(DOMAIN, TAG, 'AVPlayer state: %{public}s', state);
       if (state === 'initialized') {
-        this.setState(PlayerState.LOADING);
+        // Only show loading for first-time track loads (IDLE/STOPPED).
+        // During track switch while playing, keep PLAYING so the UI
+        // shows the pause button continuously — no perceived interruption.
+        if (this.playerState !== PlayerState.PLAYING) {
+          this.setState(PlayerState.LOADING);
+        }
         // CRITICAL: AVPlayer requires an explicit prepare() call to
         // transition from initialized → prepared.  Without this, HTTP
         // streams never reach the prepared state and playback silently
