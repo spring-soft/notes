@@ -197,7 +197,7 @@ Favorites (local RDB playlist):
 | `constants/MusicConstants.ets` | Music defaults (volume, repeatMode, shuffle), Navidrome API version, UI constants |
 | `repository/MusicRepository.ets` | RDB CRUD for tracks, playlists, playlist-track junction (JOIN query) |
 | `service/NavidromeApiClient.ets` | Subsonic REST API client — MD5 auth, getAllSongs(), getStreamUrl() uses no-f=json generator, batch album fetch |
-| `service/MusicPlayerService.ets` | AVPlayer wrapper — release()+createAVPlayer() per track, state machine, prepare() on initialized, 30s load timeout |
+| `service/MusicPlayerService.ets` | AVPlayer wrapper + AVSession background playback — release()+createAVPlayer() per track, state machine, prepare() on initialized, 30s load timeout |
 | `viewmodel/MusicViewModel.ets` | @ObservedV2 singleton — playback, 5-tab browse, favorites playlist, favoriteTracks, playNovidromeTrack() for next/prev nav, @Trace playbackError |
 | `pages/MusicPage.ets` | Pure Navidrome streaming browser — 5-tab (全部歌曲/歌手/专辑/歌单/❤️收藏) + favorites heart, Stack+Visibility anti-ghost |
 | `pages/MusicPlayerPage.ets` | Full-screen Now Playing NavDestination — album art, controls, seek (no volume slider; prev button in header) |
@@ -297,6 +297,8 @@ Favorites (local RDB playlist):
 75. **音乐页面动画优化与残影消除** — ① MusicPage 内容区层级切换由 `visibility` 瞬切改为 `opacity` + `.animation({duration:200})` 平滑交叉淡入淡出，同时加 `hitTestBehavior(None)` 防止隐藏层误触；② MusicPlayerPage 新增 `animateTo` 入场淡入（200ms EaseOut）+ 退场淡出（150ms EaseIn）+ `pop(false)`，在无 Slide 的前提下实现柔和过渡。
 
 76. **播放器页面 UI 优化 + 收藏分类 + MiniPlayer 增强** — ① MusicPlayerPage 左侧后退按钮改为上一首（PREVIOUS）按钮；② 移除音量调节滑块（系统音量可直接调整）；③ MusicPage 新增「❤️ 收藏」第 5 个 Tab，显示所有收藏曲目，支持点击播放和取消收藏；④ MusicPage 错误底栏从红色 `#C62828` 改为毛玻璃半透明（backdropBlur + getOverlayColor），与整体设计统一；⑤ MiniPlayer 底栏新增上一首按钮（位于标题右侧、播放/暂停左侧）；⑥ MusicViewModel 新增 `@Trace favoriteTracks: Track[]` + `loadFavoriteTracks()` 方法。
+
+77. **播放器细节优化 — 后退按钮恢复 + 图标去 emoji + 切歌不打断 + 后台播放** — ① MusicPlayerPage 左上角恢复为后退导航按钮（BACK）；② MusicPage 收藏 Tab 从 emoji `❤️` 改为 SymbolGlyph(ICON.HEART_FILL)，错误横幅 `⚠` 和 `✕` 也改为 SymbolGlyph；③ MusicPlayerService.loadTrack() 移除初始 `setState(LOADING)` + 'prepared' 中移除 `setState(LOADING)`，切歌时播放状态不中断，UI 持续显示播放中；④ 新增 AVSession 集成（`enableBackgroundPlayback`）— MusicPlayerService 通过 `avSession.createAVSession` + `activate()` 注册媒体会话，`loadTrack` 时设 metadata，'playing'/'paused' 时同步 play state，`destroy` 时 deactivate+destroy；Index.ets 传 UIAbility context → MusicViewModel.enableBackgroundAudio() → MusicPlayerService.enableBackgroundPlayback()。应用退后台后音频继续播放。
 
 61. **专辑打开后无歌曲 + 无法流式播放 + MusicPage 重构为纯 Navidrome 流媒体（6 轮修复）** — 六个根因：⓪ **URL 双 `?` bug（第三轮新发现）** — `sendGetRequest()` 始终用 `?` 连接认证参数，当 endpoint 自带 `?`（如 `getAlbumList2?type=newest&size=500`）时 URL 变成 `...?type=newest&size=500?u=...`，第二个 `?` 之后全部被服务器当作 `size` 值的一部分，认证参数丢失 → 服务器返回错误 / 空数据；① **`getAlbumList2` JSON key 错误** — Subsonic `getAlbumList2` 返回 key `"albumList2"` 而非 `"albumList"`，代码读错 key → 永远 undefined；② **`getSongs()` 缺少 status 检查**；③ **错误静默吞噬** — catch 块设 `=[]` 丢弃异常；④ **AVPlayer 播放竞态条件** — `play()` 先于 prepared 状态调用导致静默无操作；⑤ **MusicPage 架构错位 + 过渡残影** — 没有本地音乐却保留本地曲库标签；`if/else` 条件渲染导致旧视图销毁→新视图创建的布局动画，旧窗口随新窗口一起运动。修复：⓪ `sendGetRequest` 检测 endpoint 含 `?` 则用 `&` 连接认证参数；① `SubsonicAlbumListResponse` 新增 `albumList2?:`；② `getSongs()` 新增 status 检查 + `encodeURIComponent` + 单曲兼容；③ MusicViewModel 新增 `@Trace novidromeError`；④ `autoPlayWhenReady` + `reset()`；⑤ MusicPage 完全重写 — 移除本地标签/导入按钮；**用 Stack + Visibility 替代 if/else**，两个视图同时挂载瞬间切换无销毁重建 → 根除过渡残影；loading 遮罩在 browseLevel 变更之前先设 true。
 

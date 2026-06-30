@@ -82,6 +82,10 @@ struct Index {
     const musicRepo: MusicRepository = new MusicRepository(DatabaseHelper.getInstance().getStore());
     const musicVM: MusicViewModel = initMusicViewModel(musicRepo, settingsRepo);
     await musicVM.initialize();
+    // Enable background playback — pass UIAbility context for AVSession
+    await musicVM.enableBackgroundAudio(
+      this.getUIContext().getHostContext() as common.Context
+    );
 
     // Sync @Provide('themeConfig') whenever themeVM changes
     // themeUpdateSignal forces Index + all children to re-render via @State

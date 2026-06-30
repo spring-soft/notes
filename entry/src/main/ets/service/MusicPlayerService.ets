@@ -1,4 +1,6 @@
 import { media } from '@kit.MediaKit';
+import { avSession } from '@kit.AVSessionKit';
+import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { Track, PlayerState, MusicSource } from '../model/MusicModel';
@@ -20,6 +22,10 @@ export class MusicPlayerService {
   private autoPlayWhenReady: boolean = false;
   private loadTimeoutId: number | null = null;
 
+  // AVSession for background playback
+  private audioSession: avSession.AVSession | null = null;
+  private sessionActive: boolean = false;
+
   // Callbacks (set by ViewModel)
   private onStateChangeCallback: ((state: PlayerState) => void) | null = null;
   private onPositionUpdateCallback: ((currentMs: number, totalMs: number) => void) | null = null;
@@ -28,6 +34,67 @@ export class MusicPlayerService {
 
   constructor() {
     // AVPlayer is created lazily on first loadTrack call
+  }
+
+  /**
+   * Enable background audio playback via AVSession.
+   * Must be called once with a valid context (from Index.initializeApp).
+   */
+  async enableBackgroundPlayback(context: common.Context): Promise<void> {
+    if (this.sessionActive) {
+      return;
+    }
+    try {
+      this.audioSession = await avSession.createAVSession(context, 'MemoFlowMusic', 'audio');
+      await this.audioSession.activate();
+      this.sessionActive = true;
+      hilog.info(DOMAIN, TAG, 'AVSession created and activated for background playback');
+    } catch (err) {
+      const e: BusinessError = err as BusinessError;
+      hilog.warn(DOMAIN, TAG, 'AVSession creation failed: %{public}s', e.message);
+      // Background playback won't work, but foreground playback is unaffected.
+    }
+  }
+
+  private updateSessionMetadata(track: Track): void {
+    if (!this.sessionActive || this.audioSession === null) {
+      return;
+    }
+    try {
+      const metadata: avSession.AVMetadata = {
+        assetId: track.id,
+        title: track.title !== '' ? track.title : '未知曲目',
+        artist: track.artist !== '' ? track.artist : '未知艺术家',
+        album: track.album !== undefined ? track.album : '',
+        duration: track.durationMs > 0 ? track.durationMs : 0,
+      };
+      this.audioSession.setAVMetadata(metadata);
+    } catch (err) {
+      const e: BusinessError = err as BusinessError;
+      hilog.warn(DOMAIN, TAG, 'setAVMetadata failed: %{public}s', e.message);
+    }
+  }
+
+  private updateSessionPlayState(isPlaying: boolean): void {
+    if (!this.sessionActive || this.audioSession === null) {
+      return;
+    }
+    try {
+      const playState: avSession.AVPlaybackState = {
+        state: isPlaying
+          ? avSession.PlaybackState.PLAYBACK_STATE_PLAY
+          : avSession.PlaybackState.PLAYBACK_STATE_PAUSE,
+        speed: isPlaying ? 1.0 : 0.0,
+        position: {
+          elapsedTime: this.currentPositionMs,
+          updateTime: Date.now(),
+        },
+      };
+      this.audioSession.setAVPlaybackState(playState);
+    } catch (err) {
+      const e: BusinessError = err as BusinessError;
+      hilog.warn(DOMAIN, TAG, 'setAVPlaybackState failed: %{public}s', e.message);
+    }
   }
 
   onStateChange(callback: (state: PlayerState) => void): void {
@@ -78,7 +145,6 @@ export class MusicPlayerService {
         }
       } else if (state === 'prepared') {
         this.clearLoadTimeout();
-        this.setState(PlayerState.LOADING);
         // Auto-play when ready — fixes race condition where play() is
         // called before the async URL preparation completes.
         if (this.autoPlayWhenReady) {
@@ -91,9 +157,11 @@ export class MusicPlayerService {
         this.clearLoadTimeout();
         this.setState(PlayerState.PLAYING);
         this.autoPlayWhenReady = false;
+        this.updateSessionPlayState(true);
       } else if (state === 'paused') {
         this.setState(PlayerState.PAUSED);
         this.autoPlayWhenReady = false;
+        this.updateSessionPlayState(false);
       } else if (state === 'stopped') {
         this.setState(PlayerState.STOPPED);
         this.autoPlayWhenReady = false;
@@ -146,7 +214,6 @@ export class MusicPlayerService {
 
   async loadTrack(track: Track): Promise<void> {
     try {
-      this.setState(PlayerState.LOADING);
       this.clearLoadTimeout();
 
       // 1. Destroy old player entirely — release()+createAVPlayer() instead
@@ -210,6 +277,8 @@ export class MusicPlayerService {
       this.currentTrackId = track.id;
       this.currentPositionMs = 0;
       this.durationMs = track.durationMs;
+      // Notify system media session of track change (background playback)
+      this.updateSessionMetadata(track);
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, 'Failed to load track: %{public}s', e.message);
@@ -334,6 +403,18 @@ export class MusicPlayerService {
         hilog.warn(DOMAIN, TAG, 'Destroy error: %{public}s', e.message);
       }
       this.avPlayer = null;
+    }
+    // Deactivate AVSession for background playback
+    if (this.audioSession !== null) {
+      try {
+        this.audioSession.deactivate();
+        this.audioSession.destroy();
+      } catch (err) {
+        const e: BusinessError = err as BusinessError;
+        hilog.warn(DOMAIN, TAG, 'Session destroy error: %{public}s', e.message);
+      }
+      this.audioSession = null;
+      this.sessionActive = false;
     }
     this.setState(PlayerState.IDLE);
     this.onStateChangeCallback = null;

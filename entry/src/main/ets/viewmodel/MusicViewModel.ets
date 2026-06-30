@@ -14,6 +14,7 @@ import {
   getDefaultNovidromeConfig,
 } from '../model/MusicModel';
 import { ID } from '../model/AppConstantsModel';
+import { common } from '@kit.AbilityKit';
 import { MusicRepository } from '../repository/MusicRepository';
 import { SettingsRepository } from '../repository/SettingsRepository';
 import { MusicPlayerService } from '../service/MusicPlayerService';
@@ -161,6 +162,15 @@ export class MusicViewModel {
     await this.loadTracks();
     await this.loadPlaylists();
     await this.ensureFavoritePlaylist();
+  }
+
+  /**
+   * Enable background audio playback via AVSession.
+   * Called from Index.initializeApp() with the UIAbility context
+   * after the MusicViewModel singleton is initialized.
+   */
+  async enableBackgroundAudio(context: common.Context): Promise<void> {
+    await this.playerService.enableBackgroundPlayback(context);
   }
 
   // ── Track Library ──

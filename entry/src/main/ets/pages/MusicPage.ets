@@ -288,7 +288,7 @@ export struct MusicPage {
               this.tabChip('歌手', 1);
               this.tabChip('专辑', 2);
               this.tabChip('歌单', 3);
-              this.tabChip('❤️ 收藏', 4);
+              this.tabChip('收藏', 4, ICON.HEART_FILL);
             }
             .width('100%')
             .padding({ left: 20, right: 20, top: 6, bottom: 4 });
@@ -323,14 +323,16 @@ export struct MusicPage {
         if (this.displayState === PlayerState.ERROR
           && this.viewModel.playbackError !== '') {
           Row() {
-            Text('⚠ ' + this.viewModel.playbackError)
+            Text(this.viewModel.playbackError)
               .fontSize(12 * this.themeConfig.fontScale)
               .fontColor(this.themeConfig.isDarkMode ? '#FFCDD2' : '#B71C1C')
               .maxLines(2)
               .layoutWeight(1);
-            Button('✕')
-              .fontSize(14)
-              .fontColor(this.themeConfig.isDarkMode ? '#FFCDD2' : '#B71C1C')
+            Button() {
+              SymbolGlyph(ICON.CLOSE)
+                .fontSize(14)
+                .fontColor([this.themeConfig.isDarkMode ? '#FFCDD2' : '#B71C1C']);
+            }
               .backgroundColor(Color.Transparent)
               .width(32).height(32)
               .onClick(() => { this.viewModel.playbackError = ''; });
@@ -378,23 +380,33 @@ export struct MusicPage {
   // ── Tab Chip ──
 
   @Builder
-  tabChip(label: string, tabIndex: number) {
-    Text(label)
-      .fontSize(13 * this.themeConfig.fontScale)
-      .fontWeight(this.browseTab === tabIndex ? FontWeight.Medium : FontWeight.Normal)
-      .fontColor(this.browseTab === tabIndex
-        ? '#FFFFFF'
-        : this.themeConfig.textSecondaryColor)
-      .padding({ left: 14, right: 14, top: 6, bottom: 6 })
-      .borderRadius(16)
-      .backgroundColor(this.browseTab === tabIndex
-        ? this.themeConfig.primaryColor
-        : Color.Transparent)
-      .backdropBlur(this.browseTab === tabIndex
-        ? 0
-        : MaterialConstants.getBlur(MaterialConstants.CHIP))
-      .margin({ right: 8 })
-      .onClick(() => { this.switchTab(tabIndex); });
+  tabChip(label: string, tabIndex: number, icon?: Resource) {
+    Row() {
+      if (icon !== undefined) {
+        SymbolGlyph(icon)
+          .fontSize(13)
+          .fontColor(this.browseTab === tabIndex
+            ? ['#FFFFFF']
+            : [this.themeConfig.textSecondaryColor])
+          .margin({ right: 4 });
+      }
+      Text(label)
+        .fontSize(13 * this.themeConfig.fontScale)
+        .fontWeight(this.browseTab === tabIndex ? FontWeight.Medium : FontWeight.Normal)
+        .fontColor(this.browseTab === tabIndex
+          ? '#FFFFFF'
+          : this.themeConfig.textSecondaryColor);
+    }
+    .padding({ left: 14, right: 14, top: 6, bottom: 6 })
+    .borderRadius(16)
+    .backgroundColor(this.browseTab === tabIndex
+      ? this.themeConfig.primaryColor
+      : Color.Transparent)
+    .backdropBlur(this.browseTab === tabIndex
+      ? 0
+      : MaterialConstants.getBlur(MaterialConstants.CHIP))
+    .margin({ right: 8 })
+    .onClick(() => { this.switchTab(tabIndex); });
   }
 
   // ── Content Area ──

@@ -182,18 +182,17 @@ export struct MusicPlayerPage {
         // ═══════════════════════════════════════════════════════════
         Column() {
           Row() {
-            // Previous track button (was back button)
             Button() {
-              SymbolGlyph(ICON.PREVIOUS)
-                .fontSize(22)
-                .fontColor([this.themeConfig.primaryColor]);
+              SymbolGlyph(ICON.BACK)
+                .fontSize(20)
+                .fontColor([this.themeConfig.textColor]);
             }
             .width(40)
             .height(40)
             .borderRadius(20)
             .backgroundColor(Color.Transparent)
             .onClick(() => {
-              this.viewModel.playPrevious();
+              this.navStack.pop(false);
             });
 
             Text('正在播放')
