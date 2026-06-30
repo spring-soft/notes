@@ -100,6 +100,21 @@ export struct MiniPlayer {
             this.onTap();
           });
 
+          // Previous
+          Button() {
+            SymbolGlyph(ICON.PREVIOUS)
+              .fontSize(20)
+              .fontColor([this.themeConfig.primaryColor]);
+          }
+          .width(36)
+          .height(36)
+          .borderRadius(18)
+          .backgroundColor(Color.Transparent)
+          .margin({ right: 2 })
+          .onClick(() => {
+            this.viewModel.playPrevious();
+          });
+
           // Play/Pause
           Button() {
             SymbolGlyph(this.playerState === PlayerState.PLAYING ? ICON.PAUSE : ICON.PLAY)

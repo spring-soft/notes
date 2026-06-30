@@ -106,9 +106,12 @@ export struct MusicPage {
       await this.viewModel.browseNovidromeArtists();
     } else if (tab === 2) {
       await this.viewModel.browseNovidromeAlbums();
-    } else {
+    } else if (tab === 3) {
       // Playlists — already loaded in ViewModel, just refresh
       await this.viewModel.loadPlaylists();
+    } else {
+      // Favorites (tab 4)
+      await this.viewModel.loadFavoriteTracks();
     }
     this.isLoading = false;
   }
@@ -285,6 +288,7 @@ export struct MusicPage {
               this.tabChip('歌手', 1);
               this.tabChip('专辑', 2);
               this.tabChip('歌单', 3);
+              this.tabChip('❤️ 收藏', 4);
             }
             .width('100%')
             .padding({ left: 20, right: 20, top: 6, bottom: 4 });
@@ -321,19 +325,21 @@ export struct MusicPage {
           Row() {
             Text('⚠ ' + this.viewModel.playbackError)
               .fontSize(12 * this.themeConfig.fontScale)
-              .fontColor('#FFCDD2')
+              .fontColor(this.themeConfig.isDarkMode ? '#FFCDD2' : '#B71C1C')
               .maxLines(2)
               .layoutWeight(1);
             Button('✕')
               .fontSize(14)
-              .fontColor('#FFCDD2')
+              .fontColor(this.themeConfig.isDarkMode ? '#FFCDD2' : '#B71C1C')
               .backgroundColor(Color.Transparent)
               .width(32).height(32)
               .onClick(() => { this.viewModel.playbackError = ''; });
           }
           .width('100%')
           .padding({ left: 16, right: 8, top: 8, bottom: 8 })
-          .backgroundColor('#C62828')
+          .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
+          .backgroundColor(MaterialConstants.getOverlayColor(
+            MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
           .position({ left: 0, right: 0, bottom: 0 })
           .zIndex(99);
         }
@@ -450,9 +456,12 @@ export struct MusicPage {
     } else if (this.browseTab === 2) {
       // 专辑
       this.albumsSection();
-    } else {
+    } else if (this.browseTab === 3) {
       // 歌单
       this.playlistsSection();
+    } else {
+      // 收藏
+      this.favoritesSection();
     }
   }
 
@@ -675,6 +684,113 @@ export struct MusicPage {
     .width('100%');
   }
 
+  // ── 收藏 Section ──
+
+  @Builder
+  favoritesSection() {
+    Column() {
+      if (this.viewModel.favoriteTracks.length === 0 && !this.isLoading) {
+        Blank().height(40);
+        SymbolGlyph(ICON.HEART)
+          .fontSize(36)
+          .fontColor([this.themeConfig.textSecondaryColor]);
+        Text('还没有收藏歌曲')
+          .fontSize(14 * this.themeConfig.fontScale)
+          .fontColor(this.themeConfig.textSecondaryColor)
+          .margin({ top: 12 });
+        Text('在歌曲上点击 ❤️ 即可收藏')
+          .fontSize(12 * this.themeConfig.fontScale)
+          .fontColor(this.themeConfig.textSecondaryColor)
+          .margin({ top: 4 });
+      }
+
+      Text(String(this.viewModel.favoriteTracks.length) + ' 首收藏')
+        .fontSize(12 * this.themeConfig.fontScale)
+        .fontColor(this.themeConfig.textSecondaryColor)
+        .padding({ left: 16, right: 16, top: 4, bottom: 8 })
+        .visibility(this.viewModel.favoriteTracks.length > 0
+          ? Visibility.Visible : Visibility.None);
+
+      ForEach(this.viewModel.favoriteTracks, (track: Track, idx: number) => {
+        this.favoriteTrackRow(track, idx);
+      }, (track: Track) => track.id + '_fav_' + String(this.favoriteSignal));
+    }
+    .width('100%');
+  }
+
+  @Builder
+  favoriteTrackRow(track: Track, idx: number) {
+    Row() {
+      // Track number
+      Text(String(idx + 1))
+        .fontSize(13 * this.themeConfig.fontScale)
+        .fontColor(this.themeConfig.textSecondaryColor)
+        .width(28)
+        .textAlign(TextAlign.Center);
+
+      // Title + artist
+      Column() {
+        Text(track.title)
+          .fontSize(14 * this.themeConfig.fontScale)
+          .fontWeight(this.isFavoriteCurrentTrack(track) ? FontWeight.Bold : FontWeight.Normal)
+          .fontColor(this.isFavoriteCurrentTrack(track)
+            ? this.themeConfig.primaryColor
+            : this.themeConfig.textColor)
+          .maxLines(1);
+        Text(track.artist)
+          .fontSize(11 * this.themeConfig.fontScale)
+          .fontColor(this.themeConfig.textSecondaryColor)
+          .maxLines(1)
+          .margin({ top: 1 });
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+      .margin({ left: 8 });
+
+      // Duration
+      Text(this.formatDurationMs(track.durationMs))
+        .fontSize(12 * this.themeConfig.fontScale)
+        .fontColor(this.themeConfig.textSecondaryColor);
+
+      // Unfavorite button
+      SymbolGlyph(ICON.HEART_FILL)
+        .fontSize(16)
+        .fontColor(['#E57373'])
+        .margin({ left: 10 })
+        .onClick(() => {
+          this.viewModel.toggleFavoriteTrack(track.id);
+          this.favoriteSignal++;
+          // Reload favorites after toggle to reflect removal
+          setTimeout(() => {
+            this.viewModel.loadFavoriteTracks();
+          }, 100);
+        });
+
+      // Now-playing indicator
+      if (this.isFavoriteCurrentTrack(track)
+        && this.displayState === PlayerState.PLAYING) {
+        SymbolGlyph(ICON.STREAM)
+          .fontSize(14)
+          .fontColor([this.themeConfig.primaryColor])
+          .margin({ left: 6 });
+      }
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+    .borderRadius(this.themeConfig.borderRadius)
+    .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
+    .backgroundColor(MaterialConstants.getOverlayColor(
+      MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
+    .margin({ left: 10, right: 10, bottom: 4 })
+    .onClick(() => {
+      // Play the favorited track within the favorites context
+      this.viewModel.tracks = this.viewModel.favoriteTracks;
+      this.viewModel.playTrack(track);
+      this.navStack.pushPathByName('music_player',
+        {} as Record<string, Object>, false);
+    });
+  }
+
   private async loadPlaylistTracks(playlistId: string): Promise<void> {
     const tracks: Track[] = await this.viewModel.getPlaylistTracks(playlistId);
     // Convert tracks to SubsonicSong-like items
@@ -865,12 +981,28 @@ export struct MusicPage {
       && this.viewModel.currentTrack.id === song.id;
   }
 
+  private isFavoriteCurrentTrack(track: Track): boolean {
+    return this.viewModel.currentTrack !== null
+      && this.viewModel.currentTrack.id === track.id;
+  }
+
   private formatDuration(seconds: number): string {
     if (seconds <= 0) {
       return '--:--';
     }
     const mins: number = Math.floor(seconds / 60);
     const secs: number = seconds % 60;
+    const secStr: string = secs < 10 ? '0' + String(secs) : String(secs);
+    return String(mins) + ':' + secStr;
+  }
+
+  private formatDurationMs(ms: number): string {
+    if (ms <= 0) {
+      return '--:--';
+    }
+    const totalSec: number = Math.floor(ms / 1000);
+    const mins: number = Math.floor(totalSec / 60);
+    const secs: number = totalSec % 60;
     const secStr: string = secs < 10 ? '0' + String(secs) : String(secs);
     return String(mins) + ':' + secStr;
   }

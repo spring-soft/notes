@@ -61,6 +61,7 @@ export class MusicViewModel {
   // ── Favorites (local RDB playlist) ──
   @Trace favoritePlaylistId: string = '';
   @Trace favoriteTrackIds: string[] = [];
+  @Trace favoriteTracks: Track[] = [];
 
   // ── Private services/repos ──
   private playerService: MusicPlayerService;
@@ -496,6 +497,17 @@ export class MusicViewModel {
       }
     }
     return false;
+  }
+
+  async loadFavoriteTracks(): Promise<void> {
+    if (this.favoritePlaylistId === '') {
+      await this.ensureFavoritePlaylist();
+    }
+    if (this.favoritePlaylistId === '') {
+      this.favoriteTracks = [];
+      return;
+    }
+    this.favoriteTracks = await this.repository.getTracksForPlaylist(this.favoritePlaylistId);
   }
 
   async toggleFavoriteTrack(trackId: string): Promise<void> {

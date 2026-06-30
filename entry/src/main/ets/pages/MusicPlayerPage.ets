@@ -45,18 +45,6 @@ export struct MusicPlayerPage {
     this.viewModel.setTickHandler(null);
   }
 
-  /**
-   * Fade-out then pop — avoids jarring instant disappearance.
-   */
-  private animatedPop(): void {
-    animateTo({ duration: 150, curve: Curve.EaseIn }, () => {
-      this.pageOpacity = 0;
-    });
-    setTimeout(() => {
-      this.navStack.pop(false);
-    }, 160);
-  }
-
   build() {
     NavDestination() {
       Stack() {
@@ -178,34 +166,6 @@ export struct MusicPlayerPage {
             .width('100%')
             .padding({ top: 28, bottom: 20 });
 
-            // Volume slider
-            Row() {
-              SymbolGlyph(this.viewModel.volume === 0 ? ICON.VOLUME_MUTE : ICON.VOLUME)
-                .fontSize(18)
-                .fontColor([this.themeConfig.textSecondaryColor]);
-
-              Slider({
-                value: this.viewModel.volume * 100,
-                min: 0,
-                max: 100,
-                step: 1,
-              })
-                .width('100%')
-                .trackColor(this.themeConfig.primaryColor + '30')
-                .selectedColor(this.themeConfig.primaryColor)
-                .onChange((value: number) => {
-                  this.viewModel.setVolume(value / 100);
-                });
-
-              Text(String(Math.round(this.viewModel.volume * 100)) + '%')
-                .fontSize(12 * this.themeConfig.fontScale)
-                .fontColor(this.themeConfig.textSecondaryColor)
-                .width(40)
-                .textAlign(TextAlign.End);
-            }
-            .width('100%')
-            .padding({ left: 24, right: 24, bottom: 8 });
-
             Blank().height(40);
           }
           .width('100%')
@@ -222,17 +182,18 @@ export struct MusicPlayerPage {
         // ═══════════════════════════════════════════════════════════
         Column() {
           Row() {
+            // Previous track button (was back button)
             Button() {
-              SymbolGlyph(ICON.BACK)
-                .fontSize(20)
-                .fontColor([this.themeConfig.textColor]);
+              SymbolGlyph(ICON.PREVIOUS)
+                .fontSize(22)
+                .fontColor([this.themeConfig.primaryColor]);
             }
             .width(40)
             .height(40)
             .borderRadius(20)
             .backgroundColor(Color.Transparent)
             .onClick(() => {
-              this.animatedPop();
+              this.viewModel.playPrevious();
             });
 
             Text('正在播放')
