@@ -443,6 +443,20 @@ export class MusicViewModel {
     return track;
   }
 
+  async importNovidromeAlbum(albumId: string): Promise<number> {
+    if (this.novidromeSongs.length === 0) {
+      return 0;
+    }
+    let importedCount: number = 0;
+    for (let i: number = 0; i < this.novidromeSongs.length; i++) {
+      const track: Track = await this.importNovidromeTrack(this.novidromeSongs[i]);
+      if (track !== null) {
+        importedCount++;
+      }
+    }
+    return importedCount;
+  }
+
   private subsonicSongToTrack(song: SubsonicSong): Track {
     let albumArtUrl: string = '';
     if (this.novidromeClient !== null && song.coverArt !== undefined && song.coverArt !== '') {

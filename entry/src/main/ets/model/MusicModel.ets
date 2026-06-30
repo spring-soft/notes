@@ -31,6 +31,7 @@ export enum MusicPageTab {
   ARTISTS = 2,
   PLAYLISTS = 3,
   SEARCH = 4,
+  NOVIDROME = 5,
 }
 
 // ── Core Data Interfaces ──

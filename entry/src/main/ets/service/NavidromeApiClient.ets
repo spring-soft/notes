@@ -253,7 +253,7 @@ export class NavidromeApiClient {
       const msg: string = errObj !== undefined ? errObj['message'] as string : 'Unknown error';
       throw new Error('Subsonic error: ' + msg);
     }
-    return resp as T;
+    return resp as Object as T;
   }
 
   // ── Public API Methods ──

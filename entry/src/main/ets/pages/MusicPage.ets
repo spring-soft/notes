@@ -1,6 +1,6 @@
 import { MusicViewModel, getMusicViewModel } from '../viewmodel/MusicViewModel';
 import { ThemeViewModel } from '../viewmodel/ThemeViewModel';
-import { Track, Playlist, PlayerState, MusicPageTab } from '../model/MusicModel';
+import { Track, Playlist, PlayerState, MusicPageTab, MusicSource, SubsonicSong, SubsonicArtist, SubsonicAlbum } from '../model/MusicModel';
 import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
 import { MaterialConstants } from '../constants/MaterialConstants';
 import { MusicTrackItem } from '../components/business/MusicTrackItem';
@@ -23,6 +23,15 @@ export struct MusicPage {
   @Local displayDurationMs: number = 0;
   @Local searchQuery: string = '';
   @Local isSearching: boolean = false;
+  // Navidrome browse state
+  @Local novidromeBrowseLevel: number = 0;
+  @Local novidromeSelectedArtistId: string = '';
+  @Local novidromeSelectedArtistName: string = '';
+  @Local novidromeSelectedAlbumId: string = '';
+  @Local novidromeSelectedAlbumName: string = '';
+  @Local novidromeIsBrowsing: boolean = false;
+  @Local novidromeImportingId: string = '';
+  @Local novidromeImportingAlbum: boolean = false;
 
   private viewModel: MusicViewModel = getMusicViewModel();
 
@@ -68,6 +77,7 @@ export struct MusicPage {
                 this.tabChip('艺术家', MusicPageTab.ARTISTS);
                 this.tabChip('歌单', MusicPageTab.PLAYLISTS);
                 this.tabChip('搜索', MusicPageTab.SEARCH);
+                this.tabChip('Navidrome', MusicPageTab.NOVIDROME);
               }
               .width('100%')
               .padding({ left: 12, right: 12, top: 4, bottom: 8 });
@@ -98,7 +108,9 @@ export struct MusicPage {
               }
 
               // Content based on currentTab
-              if (this.viewModel.tracks.length === 0) {
+              if (this.viewModel.currentTab === MusicPageTab.NOVIDROME) {
+                this.novidromeBrowseView();
+              } else if (this.viewModel.tracks.length === 0) {
                 Column() {
                   Blank().height(40);
                   EmptyState({
@@ -229,6 +241,9 @@ export struct MusicPage {
       .animation({ duration: 200, curve: Curve.EaseInOut })
       .onClick(() => {
         this.viewModel.currentTab = tab;
+        if (tab === MusicPageTab.NOVIDROME) {
+          this.enterNovidromeBrowse();
+        }
       });
   }
 
@@ -383,5 +398,354 @@ export struct MusicPage {
       }
     }
     return result;
+  }
+
+  // ── Navidrome Browse ──
+
+  private async enterNovidromeBrowse(): Promise<void> {
+    this.novidromeBrowseLevel = 0;
+    this.novidromeSelectedArtistId = '';
+    this.novidromeSelectedArtistName = '';
+    this.novidromeSelectedAlbumId = '';
+    this.novidromeSelectedAlbumName = '';
+
+    // Auto-connect if not already connected
+    if (!this.viewModel.novidromeConnected) {
+      this.novidromeIsBrowsing = true;
+      const connected: boolean = await this.viewModel.connectNovidrome();
+      if (!connected) {
+        this.novidromeIsBrowsing = false;
+        return;
+      }
+    }
+
+    this.novidromeIsBrowsing = true;
+    await this.viewModel.browseNovidromeArtists();
+    this.novidromeIsBrowsing = false;
+  }
+
+  private async loadNovidromeAlbums(artistId: string): Promise<void> {
+    this.novidromeIsBrowsing = true;
+    await this.viewModel.browseNovidromeAlbums(artistId);
+    this.novidromeIsBrowsing = false;
+  }
+
+  private async loadNovidromeSongs(albumId: string): Promise<void> {
+    this.novidromeIsBrowsing = true;
+    await this.viewModel.browseNovidromeSongs(albumId);
+    this.novidromeIsBrowsing = false;
+  }
+
+  private async importNovidromeSong(song: SubsonicSong): Promise<void> {
+    this.novidromeImportingId = song.id;
+    await this.viewModel.importNovidromeTrack(song);
+    this.novidromeImportingId = '';
+  }
+
+  private async importNovidromeAlbumAll(): Promise<void> {
+    this.novidromeImportingAlbum = true;
+    await this.viewModel.importNovidromeAlbum(this.novidromeSelectedAlbumId);
+    this.novidromeImportingAlbum = false;
+  }
+
+  // ── Navidrome Browse Views ──
+
+  @Builder
+  novidromeBrowseView() {
+    // Not configured
+    if (!this.viewModel.novidromeConfig.enabled || this.viewModel.novidromeConfig.serverUrl === '') {
+      Column() {
+        Blank().height(60);
+        EmptyState({
+          icon: ICON.STREAM,
+          title: 'Navidrome 未配置',
+          subtitle: '请先在设置中配置 Navidrome 连接',
+        });
+      }
+      .width('100%');
+    } else if (this.novidromeIsBrowsing) {
+      // Loading
+      Column() {
+        Blank().height(60);
+        LoadingProgress()
+          .width(40).height(40)
+          .color(this.themeConfig.primaryColor);
+        Text('加载中...')
+          .fontSize(14)
+          .fontColor(this.themeConfig.textSecondaryColor)
+          .margin({ top: 12 });
+      }
+      .width('100%');
+    } else if (!this.viewModel.novidromeConnected) {
+      // Connection failed
+      Column() {
+        Blank().height(60);
+        EmptyState({
+          icon: ICON.STREAM,
+          title: '无法连接到 Navidrome',
+          subtitle: '请检查服务器地址和网络连接',
+        });
+        Button('重试')
+          .fontSize(14)
+          .fontColor(this.themeConfig.primaryColor)
+          .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
+          .borderRadius(8)
+          .padding({ left: 20, right: 20, top: 8, bottom: 8 })
+          .margin({ top: 16 })
+          .onClick(() => {
+            this.enterNovidromeBrowse();
+          });
+      }
+      .width('100%');
+    } else if (this.novidromeBrowseLevel === 0) {
+      // Level 0: Artists
+      this.novidromeArtistList();
+    } else if (this.novidromeBrowseLevel === 1) {
+      // Level 1: Albums
+      this.novidromeAlbumList();
+    } else if (this.novidromeBrowseLevel === 2) {
+      // Level 2: Songs
+      this.novidromeSongList();
+    }
+  }
+
+  @Builder
+  novidromeArtistList() {
+    Column() {
+      if (this.viewModel.novidromeArtists.length === 0) {
+        Blank().height(40);
+        Text('没有找到艺术家')
+          .fontSize(14)
+          .fontColor(this.themeConfig.textSecondaryColor);
+      }
+      ForEach(this.viewModel.novidromeArtists, (artist: SubsonicArtist, _idx: number) => {
+        Row() {
+          Column() {
+            Text(artist.name)
+              .fontSize(15 * this.themeConfig.fontScale)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.themeConfig.textColor)
+              .maxLines(1);
+            Text(String(artist.albumCount) + ' 张专辑')
+              .fontSize(12 * this.themeConfig.fontScale)
+              .fontColor(this.themeConfig.textSecondaryColor)
+              .margin({ top: 2 });
+          }
+          .layoutWeight(1)
+          .alignItems(HorizontalAlign.Start);
+
+          SymbolGlyph(ICON.BACK)
+            .fontSize(14)
+            .fontColor([this.themeConfig.textSecondaryColor])
+            .rotate({ angle: 180 });
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+        .borderRadius(this.themeConfig.borderRadius)
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
+        .margin({ left: 10, right: 10, bottom: 8 })
+        .onClick(() => {
+          this.novidromeSelectedArtistId = artist.id;
+          this.novidromeSelectedArtistName = artist.name;
+          this.novidromeBrowseLevel = 1;
+          this.loadNovidromeAlbums(artist.id);
+        });
+      }, (artist: SubsonicArtist) => artist.id);
+    }
+    .width('100%');
+  }
+
+  @Builder
+  novidromeAlbumList() {
+    Column() {
+      // Back navigation row
+      Row() {
+        SymbolGlyph(ICON.BACK)
+          .fontSize(16)
+          .fontColor([this.themeConfig.primaryColor])
+          .margin({ right: 8 })
+          .onClick(() => {
+            this.novidromeBrowseLevel = 0;
+          });
+        Text(this.novidromeSelectedArtistName)
+          .fontSize(16 * this.themeConfig.fontScale)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.themeConfig.textColor)
+          .maxLines(1)
+          .layoutWeight(1);
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 4, bottom: 8 });
+
+      if (this.viewModel.novidromeAlbums.length === 0) {
+        Blank().height(20);
+        Text('没有找到专辑')
+          .fontSize(14)
+          .fontColor(this.themeConfig.textSecondaryColor);
+      }
+      ForEach(this.viewModel.novidromeAlbums, (album: SubsonicAlbum, _idx: number) => {
+        Row() {
+          Column() {
+            Text(album.name)
+              .fontSize(15 * this.themeConfig.fontScale)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.themeConfig.textColor)
+              .maxLines(1);
+            Text(String(album.songCount) + ' 首 · ' + String(album.year > 0 ? album.year : ''))
+              .fontSize(12 * this.themeConfig.fontScale)
+              .fontColor(this.themeConfig.textSecondaryColor)
+              .margin({ top: 2 });
+          }
+          .layoutWeight(1)
+          .alignItems(HorizontalAlign.Start);
+
+          SymbolGlyph(ICON.BACK)
+            .fontSize(14)
+            .fontColor([this.themeConfig.textSecondaryColor])
+            .rotate({ angle: 180 });
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+        .borderRadius(this.themeConfig.borderRadius)
+        .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
+        .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
+        .margin({ left: 10, right: 10, bottom: 8 })
+        .onClick(() => {
+          this.novidromeSelectedAlbumId = album.id;
+          this.novidromeSelectedAlbumName = album.name;
+          this.novidromeBrowseLevel = 2;
+          this.loadNovidromeSongs(album.id);
+        });
+      }, (album: SubsonicAlbum) => album.id);
+    }
+    .width('100%');
+  }
+
+  @Builder
+  novidromeSongList() {
+    Column() {
+      // Back navigation row
+      Row() {
+        SymbolGlyph(ICON.BACK)
+          .fontSize(16)
+          .fontColor([this.themeConfig.primaryColor])
+          .margin({ right: 8 })
+          .onClick(() => {
+            this.novidromeBrowseLevel = 1;
+          });
+        Column() {
+          Text(this.novidromeSelectedAlbumName)
+            .fontSize(16 * this.themeConfig.fontScale)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.themeConfig.textColor)
+            .maxLines(1);
+          if (this.viewModel.novidromeSongs.length > 0) {
+            Text(String(this.viewModel.novidromeSongs.length) + ' 首')
+              .fontSize(12 * this.themeConfig.fontScale)
+              .fontColor(this.themeConfig.textSecondaryColor)
+              .margin({ top: 1 });
+          }
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start);
+
+        // Import all button
+        if (this.viewModel.novidromeSongs.length > 0 && !this.novidromeImportingAlbum) {
+          Button('导入全部')
+            .fontSize(13)
+            .fontColor(this.themeConfig.primaryColor)
+            .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
+            .borderRadius(8)
+            .padding({ left: 14, right: 14, top: 6, bottom: 6 })
+            .onClick(() => {
+              this.importNovidromeAlbumAll();
+            });
+        }
+        if (this.novidromeImportingAlbum) {
+          LoadingProgress()
+            .width(28).height(28)
+            .color(this.themeConfig.primaryColor);
+        }
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 4, bottom: 8 });
+
+      if (this.viewModel.novidromeSongs.length === 0 && !this.novidromeIsBrowsing) {
+        Blank().height(20);
+        Text('没有找到歌曲')
+          .fontSize(14)
+          .fontColor(this.themeConfig.textSecondaryColor);
+      }
+      ForEach(this.viewModel.novidromeSongs, (song: SubsonicSong, _idx: number) => {
+        Row() {
+          Column() {
+            Text(song.title)
+              .fontSize(14 * this.themeConfig.fontScale)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.themeConfig.textColor)
+              .maxLines(1);
+            Text(song.artist + ' · ' + this.formatDuration(song.duration))
+              .fontSize(11 * this.themeConfig.fontScale)
+              .fontColor(this.themeConfig.textSecondaryColor)
+              .margin({ top: 2 })
+              .maxLines(1);
+          }
+          .layoutWeight(1)
+          .alignItems(HorizontalAlign.Start);
+
+          // Import button or spinner
+          if (this.novidromeImportingId === song.id) {
+            LoadingProgress()
+              .width(24).height(24)
+              .color(this.themeConfig.primaryColor);
+          } else {
+            Button('导入')
+              .fontSize(12)
+              .fontColor(this.themeConfig.primaryColor)
+              .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
+              .borderRadius(7)
+              .padding({ left: 12, right: 12, top: 5, bottom: 5 })
+              .onClick(() => {
+                this.importNovidromeSong(song);
+              });
+          }
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+        .borderRadius(this.themeConfig.borderRadius)
+        .margin({ left: 10, right: 10, bottom: 6 })
+        .onClick(() => {
+          // Play directly (stream without importing)
+          const track: Track = {
+            id: song.id,
+            title: song.title,
+            artist: song.artist !== undefined ? song.artist : 'Unknown Artist',
+            album: song.album !== undefined ? song.album : '',
+            durationMs: song.duration !== undefined ? song.duration * 1000 : 0,
+            fileUri: '',
+            albumArtUri: '',
+            source: MusicSource.NOVIDROME,
+            serverTrackId: song.id,
+            dateAdded: Date.now(),
+          };
+          this.viewModel.playTrack(track);
+        });
+      }, (song: SubsonicSong) => song.id);
+
+      // Bottom spacer for import-all button clearance
+      Blank().height(20);
+    }
+    .width('100%');
+  }
+
+  private formatDuration(seconds: number): string {
+    if (seconds <= 0) {
+      return '--:--';
+    }
+    const mins: number = Math.floor(seconds / 60);
+    const secs: number = seconds % 60;
+    const secStr: string = secs < 10 ? '0' + String(secs) : String(secs);
+    return String(mins) + ':' + secStr;
   }
 }
