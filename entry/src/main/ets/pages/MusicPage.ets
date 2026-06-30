@@ -818,6 +818,9 @@ export struct MusicPage {
     .margin({ left: 10, right: 10, bottom: 4 })
     .onClick(() => {
       this.viewModel.playNovidromeTrack(song, contextSongs);
+      // Navigate to full-screen Now Playing page after starting playback.
+      this.navStack.pushPathByName('music_player',
+        {} as Record<string, Object>, false);
     });
   }
 

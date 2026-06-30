@@ -72,6 +72,15 @@ export class MusicPlayerService {
       hilog.info(DOMAIN, TAG, 'AVPlayer state: %{public}s', state);
       if (state === 'initialized') {
         this.setState(PlayerState.LOADING);
+        // CRITICAL: AVPlayer requires an explicit prepare() call to
+        // transition from initialized → prepared.  Without this, HTTP
+        // streams never reach the prepared state and playback silently
+        // fails — the player stays stuck in initialized until the 30 s
+        // timeout fires and the error banner turns red.
+        if (this.avPlayer !== null) {
+          hilog.info(DOMAIN, TAG, 'Calling prepare() to move from initialized → prepared');
+          this.avPlayer.prepare();
+        }
       } else if (state === 'prepared') {
         this.clearLoadTimeout();
         this.setState(PlayerState.LOADING);
@@ -285,6 +294,12 @@ export class MusicPlayerService {
       // URL was just set and the codec is still initializing.  Defer play
       // to the stateChange handler via autoPlayWhenReady.
       this.autoPlayWhenReady = true;
+      // If already initialized, the stateChange handler above may have
+      // already called prepare() — but if play() is called independently
+      // (e.g. playPause toggle), we must trigger the transition ourselves.
+      if (state === 'initialized' && this.avPlayer !== null) {
+        this.avPlayer.prepare();
+      }
     } else if (state === 'playing') {
       // Already playing — no action needed.
     } else if (state === 'error') {
