@@ -44,6 +44,13 @@ export struct MusicPage {
     if (this.viewModel.tracks.length === 0) {
       this.viewModel.loadTracks();
     }
+    // Auto-enter Navidrome browse if configured and local library is empty
+    if (this.viewModel.novidromeConfig.enabled
+      && this.viewModel.novidromeConfig.serverUrl !== ''
+      && this.viewModel.tracks.length === 0) {
+      this.viewModel.currentTab = MusicPageTab.NOVIDROME;
+      this.enterNovidromeBrowse();
+    }
   }
 
   aboutToDisappear(): void {
@@ -113,11 +120,30 @@ export struct MusicPage {
               } else if (this.viewModel.tracks.length === 0) {
                 Column() {
                   Blank().height(40);
-                  EmptyState({
-                    icon: ICON.MUSIC,
-                    title: '还没有音乐',
-                    subtitle: '添加本地音乐或连接Navidrome服务',
-                  });
+                  if (this.viewModel.novidromeConfig.enabled && this.viewModel.novidromeConfig.serverUrl !== '') {
+                    EmptyState({
+                      icon: ICON.STREAM,
+                      title: '曲库为空',
+                      subtitle: '点击下方按钮浏览 Navidrome 远程音乐',
+                    });
+                    Button('浏览 Navidrome')
+                      .fontSize(14)
+                      .fontColor('#FFFFFF')
+                      .backgroundColor(this.themeConfig.primaryColor)
+                      .borderRadius(20)
+                      .padding({ left: 24, right: 24, top: 10, bottom: 10 })
+                      .margin({ top: 12 })
+                      .onClick(() => {
+                        this.viewModel.currentTab = MusicPageTab.NOVIDROME;
+                        this.enterNovidromeBrowse();
+                      });
+                  } else {
+                    EmptyState({
+                      icon: ICON.MUSIC,
+                      title: '还没有音乐',
+                      subtitle: '添加本地音乐或连接Navidrome服务',
+                    });
+                  }
                 }
                 .width('100%');
               } else {
