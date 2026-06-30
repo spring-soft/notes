@@ -203,7 +203,11 @@ export class NavidromeApiClient {
   // ── HTTP Request Helper ──
 
   private async sendGetRequest(endpoint: string): Promise<string> {
-    const url: string = this.config.serverUrl + '/rest/' + endpoint + '?' + this.generateAuthParams();
+    // Endpoints like getAlbumList2?type=newest already contain '?'.
+    // Use '&' as separator to avoid double-'?' which would make the
+    // server misinterpret auth params as part of the previous value.
+    const sep: string = endpoint.indexOf('?') !== -1 ? '&' : '?';
+    const url: string = this.config.serverUrl + '/rest/' + endpoint + sep + this.generateAuthParams();
     hilog.info(DOMAIN, TAG, 'Request: %{public}s', endpoint);
 
     const httpClient: http.HttpRequest = http.createHttp();

@@ -98,9 +98,6 @@ export struct MusicPage {
             Blank().height(80);
 
             // ── Content ──
-            // NOTE: isLoading is set BEFORE browseLevel changes so the
-            // loading overlay hides the old view before the new view appears,
-            // preventing ghosting/residual images during level transitions.
             if (!this.pageReady) {
               // Initial page load
               Column() {
@@ -109,20 +106,6 @@ export struct MusicPage {
                   .width(40).height(40)
                   .color(this.themeConfig.primaryColor);
                 Text('连接 Navidrome...')
-                  .fontSize(14 * this.themeConfig.fontScale)
-                  .fontColor(this.themeConfig.textSecondaryColor)
-                  .margin({ top: 12 });
-              }
-              .width('100%');
-            } else if (this.isLoading) {
-              // Transition loading — shown during level switches to
-              // prevent the old view from ghosting over the new one.
-              Column() {
-                Blank().height(60);
-                LoadingProgress()
-                  .width(40).height(40)
-                  .color(this.themeConfig.primaryColor);
-                Text(this.browseLevel === 0 ? '加载专辑...' : '加载歌曲...')
                   .fontSize(14 * this.themeConfig.fontScale)
                   .fontColor(this.themeConfig.textSecondaryColor)
                   .margin({ top: 12 });
@@ -147,7 +130,7 @@ export struct MusicPage {
                   .margin({ top: 6 });
               }
               .width('100%');
-            } else if (!this.viewModel.novidromeConnected) {
+            } else if (!this.viewModel.novidromeConnected && !this.isLoading) {
               // Connection failed
               Column() {
                 Blank().height(60);
@@ -181,12 +164,43 @@ export struct MusicPage {
                   });
               }
               .width('100%');
-            } else if (this.browseLevel === 0) {
-              // ── Album List ──
-              this.albumListView();
             } else {
-              // ── Song List ──
-              this.songListView();
+              // Connected — both views stay mounted in a Stack with
+              // Visibility switching.  No if/else destroy/create →
+              // no layout animation → no ghosting/movement of old window.
+              Stack() {
+                // Album list layer
+                Column() {
+                  this.albumListView();
+                }
+                .width('100%')
+                .visibility(this.browseLevel === 0 && !this.isLoading
+                  ? Visibility.Visible : Visibility.None);
+
+                // Song list layer
+                Column() {
+                  this.songListView();
+                }
+                .width('100%')
+                .visibility(this.browseLevel === 1 && !this.isLoading
+                  ? Visibility.Visible : Visibility.None);
+
+                // Loading overlay — appears on top during data fetches
+                if (this.isLoading) {
+                  Column() {
+                    Blank().height(60);
+                    LoadingProgress()
+                      .width(40).height(40)
+                      .color(this.themeConfig.primaryColor);
+                    Text(this.browseLevel === 0 ? '加载专辑...' : '加载歌曲...')
+                      .fontSize(14 * this.themeConfig.fontScale)
+                      .fontColor(this.themeConfig.textSecondaryColor)
+                      .margin({ top: 12 });
+                  }
+                  .width('100%');
+                }
+              }
+              .width('100%');
             }
 
             // Bottom spacer for MiniPlayer clearance
@@ -208,11 +222,9 @@ export struct MusicPage {
                 .fontSize(18)
                 .fontColor([this.themeConfig.primaryColor])
                 .margin({ right: 10 })
-                .onClick(async () => {
-                  // isLoading first → loading overlay hides the song list
-                  // before we switch back to album list, preventing ghosting.
+                .onClick(() => {
+                  // Visibility switch is instant — no ghosting.
                   this.isLoading = true;
-                  await Promise.resolve();
                   this.browseLevel = 0;
                   this.selectedAlbumId = '';
                   this.selectedAlbumName = '';
