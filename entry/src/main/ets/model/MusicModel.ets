@@ -159,7 +159,8 @@ export interface SubsonicDirectory {
 }
 
 export interface SubsonicAlbumListResponse extends SubsonicResponseBase {
-  albumList: SubsonicAlbumListContainer;
+  albumList?: SubsonicAlbumListContainer;   // getAlbumList (v1.2.0)
+  albumList2?: SubsonicAlbumListContainer;  // getAlbumList2 (v1.8.0) — THIS is what Navidrome returns
 }
 
 export interface SubsonicAlbumListContainer {

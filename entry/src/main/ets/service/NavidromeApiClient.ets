@@ -299,7 +299,16 @@ export class NavidromeApiClient {
     const json: string = await this.sendGetRequest(endpoint);
 
     if (artistId !== undefined && artistId !== '') {
+      // getArtist response: artist.album[]
       const resp = this.unwrap(json);
+      const status: string = resp['status'] as string;
+      if (status !== 'ok') {
+        const errObj = resp['error'] as Record<string, Object>;
+        const msg: string = errObj !== undefined ? errObj['message'] as string : 'Unknown error';
+        hilog.error(DOMAIN, TAG, 'getArtist Subsonic error: %{public}s', msg);
+        this.lastError = '获取艺术家失败: ' + msg;
+        throw new Error('Subsonic error: ' + msg);
+      }
       const artistObj = resp['artist'] as Record<string, Object>;
       if (artistObj !== undefined && artistObj['album'] !== undefined) {
         return artistObj['album'] as SubsonicAlbum[];
@@ -307,8 +316,10 @@ export class NavidromeApiClient {
       return [];
     }
 
+    // getAlbumList2 response: key is "albumList2" NOT "albumList"
     const parsed: SubsonicAlbumListResponse = this.parseResponse<SubsonicAlbumListResponse>(json, endpoint);
-    return parsed.albumList !== undefined && parsed.albumList.album !== undefined ? parsed.albumList.album : [];
+    const container = parsed.albumList2 !== undefined ? parsed.albumList2 : parsed.albumList;
+    return container !== undefined && container.album !== undefined ? container.album : [];
   }
 
   async getSongs(albumId: string): Promise<SubsonicSong[]> {

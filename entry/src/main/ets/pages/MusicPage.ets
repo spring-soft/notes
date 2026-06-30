@@ -78,7 +78,8 @@ export struct MusicPage {
   }
 
   private async loadAlbumSongs(albumId: string): Promise<void> {
-    this.isLoading = true;
+    // isLoading already set by caller (before browseLevel change) to
+    // prevent ghosting. We just load data and clear the flag.
     await this.viewModel.browseNovidromeSongs(albumId);
     this.isLoading = false;
   }
@@ -97,13 +98,31 @@ export struct MusicPage {
             Blank().height(80);
 
             // ── Content ──
-            if (!this.pageReady || this.isLoading) {
+            // NOTE: isLoading is set BEFORE browseLevel changes so the
+            // loading overlay hides the old view before the new view appears,
+            // preventing ghosting/residual images during level transitions.
+            if (!this.pageReady) {
+              // Initial page load
               Column() {
                 Blank().height(80);
                 LoadingProgress()
                   .width(40).height(40)
                   .color(this.themeConfig.primaryColor);
                 Text('连接 Navidrome...')
+                  .fontSize(14 * this.themeConfig.fontScale)
+                  .fontColor(this.themeConfig.textSecondaryColor)
+                  .margin({ top: 12 });
+              }
+              .width('100%');
+            } else if (this.isLoading) {
+              // Transition loading — shown during level switches to
+              // prevent the old view from ghosting over the new one.
+              Column() {
+                Blank().height(60);
+                LoadingProgress()
+                  .width(40).height(40)
+                  .color(this.themeConfig.primaryColor);
+                Text(this.browseLevel === 0 ? '加载专辑...' : '加载歌曲...')
                   .fontSize(14 * this.themeConfig.fontScale)
                   .fontColor(this.themeConfig.textSecondaryColor)
                   .margin({ top: 12 });
@@ -189,11 +208,16 @@ export struct MusicPage {
                 .fontSize(18)
                 .fontColor([this.themeConfig.primaryColor])
                 .margin({ right: 10 })
-                .onClick(() => {
+                .onClick(async () => {
+                  // isLoading first → loading overlay hides the song list
+                  // before we switch back to album list, preventing ghosting.
+                  this.isLoading = true;
+                  await Promise.resolve();
                   this.browseLevel = 0;
                   this.selectedAlbumId = '';
                   this.selectedAlbumName = '';
                   this.viewModel.novidromeSongs = [];
+                  this.isLoading = false;
                 });
               Text(this.selectedAlbumName)
                 .fontSize(18 * this.themeConfig.fontScale)
@@ -344,6 +368,9 @@ export struct MusicPage {
           MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
         .margin({ left: 10, right: 10, bottom: 8 })
         .onClick(() => {
+          // isLoading FIRST — shows loading overlay before level switch,
+          // preventing the empty song list from rendering for one frame.
+          this.isLoading = true;
           this.selectedAlbumId = album.id;
           this.selectedAlbumName = album.name;
           this.browseLevel = 1;
