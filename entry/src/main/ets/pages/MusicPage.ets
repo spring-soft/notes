@@ -312,8 +312,12 @@ export struct MusicPage {
 
         // ═══════════════════════════════════════════════════════════
         // Layer 2: Playback error banner
+        // Only shown when the player is actively in ERROR state AND
+        // there is a non-empty error message — avoids stale errors
+        // appearing as a red bar during normal playback.
         // ═══════════════════════════════════════════════════════════
-        if (this.viewModel.playbackError !== '') {
+        if (this.displayState === PlayerState.ERROR
+          && this.viewModel.playbackError !== '') {
           Row() {
             Text('⚠ ' + this.viewModel.playbackError)
               .fontSize(12 * this.themeConfig.fontScale)
@@ -391,23 +395,29 @@ export struct MusicPage {
 
   @Builder
   contentArea() {
-    // Use Stack + Visibility to avoid ghosting during level transitions.
+    // Stack both levels simultaneously — visibility toggle avoids DOM
+    // destroy/create ghosting; opacity animation provides smooth crossfade.
+    // hitTestBehavior prevents clicks on the hidden layer.
     Stack() {
       // Level 0 — Top-level lists (varies by tab)
       Column() {
         this.topLevelContent();
       }
       .width('100%')
-      .visibility(this.browseLevel === 0 && !this.isLoading
-        ? Visibility.Visible : Visibility.None);
+      .opacity(this.browseLevel === 0 && !this.isLoading ? 1 : 0)
+      .hitTestBehavior(this.browseLevel === 0
+        ? HitTestMode.Default : HitTestMode.None)
+      .animation({ duration: 200, curve: Curve.EaseInOut });
 
       // Level 1/2 — Song list (shared across tabs, uses novidromeSongs)
       Column() {
         this.songListContent();
       }
       .width('100%')
-      .visibility(this.browseLevel >= 1 && !this.isLoading
-        ? Visibility.Visible : Visibility.None);
+      .opacity(this.browseLevel >= 1 && !this.isLoading ? 1 : 0)
+      .hitTestBehavior(this.browseLevel >= 1
+        ? HitTestMode.Default : HitTestMode.None)
+      .animation({ duration: 200, curve: Curve.EaseInOut });
 
       // Loading overlay
       if (this.isLoading) {

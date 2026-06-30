@@ -80,6 +80,13 @@ export class MusicViewModel {
     // Register player callbacks
     this.playerService.onStateChange((state: PlayerState) => {
       this.playerState = state;
+      // Clear any stale error once playback starts successfully.
+      // This prevents the red error banner from persisting after a
+      // transient error (e.g. prepare() failure on one track) when
+      // the next track plays fine.
+      if (state === PlayerState.PLAYING) {
+        this.playbackError = '';
+      }
       this.notifyTick();
       this.notifyMiniPlayer();
     });

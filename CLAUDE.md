@@ -291,6 +291,10 @@ Favorites (local RDB playlist):
 
 73. **统一毛玻璃设计 — 音乐页面** — ① `MusicPage.songRow` 缺少 `backdropBlur`+`backgroundColor`（歌曲行透明无深度），新增 REGULAR 级模糊+半透明背景，与专辑/歌手/歌单行一致；② `MusicPlayerPage` 专辑封面占位列从 `SURFACE` 级纯色背景升级为 REGULAR 级 backdropBlur 材质。
 
+74. **播放时底栏显示红色 — playbackError 未及时清除** — 根因：一旦触发过播放错误（如 prepare() 失败），`playbackError` 被设置后只在手动关闭或下次 `playTrack()` 时清除。若后续播放成功但 `playbackError` 未重置，红色错误条持续显示。修复：① `MusicViewModel` stateChange 回调中 `state === PLAYING` 时自动清除 `playbackError`；② `MusicPage` 错误条条件从 `playbackError !== ''` 改为 `displayState === ERROR && playbackError !== ''`（双重保险 —— 仅在 ERROR 状态时显示，PLAYING 时不可能出现红条）。
+
+75. **音乐页面动画优化与残影消除** — ① MusicPage 内容区层级切换由 `visibility` 瞬切改为 `opacity` + `.animation({duration:200})` 平滑交叉淡入淡出，同时加 `hitTestBehavior(None)` 防止隐藏层误触；② MusicPlayerPage 新增 `animateTo` 入场淡入（200ms EaseOut）+ 退场淡出（150ms EaseIn）+ `pop(false)`，在无 Slide 的前提下实现柔和过渡。
+
 61. **专辑打开后无歌曲 + 无法流式播放 + MusicPage 重构为纯 Navidrome 流媒体（6 轮修复）** — 六个根因：⓪ **URL 双 `?` bug（第三轮新发现）** — `sendGetRequest()` 始终用 `?` 连接认证参数，当 endpoint 自带 `?`（如 `getAlbumList2?type=newest&size=500`）时 URL 变成 `...?type=newest&size=500?u=...`，第二个 `?` 之后全部被服务器当作 `size` 值的一部分，认证参数丢失 → 服务器返回错误 / 空数据；① **`getAlbumList2` JSON key 错误** — Subsonic `getAlbumList2` 返回 key `"albumList2"` 而非 `"albumList"`，代码读错 key → 永远 undefined；② **`getSongs()` 缺少 status 检查**；③ **错误静默吞噬** — catch 块设 `=[]` 丢弃异常；④ **AVPlayer 播放竞态条件** — `play()` 先于 prepared 状态调用导致静默无操作；⑤ **MusicPage 架构错位 + 过渡残影** — 没有本地音乐却保留本地曲库标签；`if/else` 条件渲染导致旧视图销毁→新视图创建的布局动画，旧窗口随新窗口一起运动。修复：⓪ `sendGetRequest` 检测 endpoint 含 `?` 则用 `&` 连接认证参数；① `SubsonicAlbumListResponse` 新增 `albumList2?:`；② `getSongs()` 新增 status 检查 + `encodeURIComponent` + 单曲兼容；③ MusicViewModel 新增 `@Trace novidromeError`；④ `autoPlayWhenReady` + `reset()`；⑤ MusicPage 完全重写 — 移除本地标签/导入按钮；**用 Stack + Visibility 替代 if/else**，两个视图同时挂载瞬间切换无销毁重建 → 根除过渡残影；loading 遮罩在 browseLevel 变更之前先设 true。
 
 ## ArkTS Strict Rules

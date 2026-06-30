@@ -20,6 +20,7 @@ export struct MusicPlayerPage {
   @Local displayPositionMs: number = 0;
   @Local displayDurationMs: number = 0;
   @Local stateSignal: number = 0;
+  @Local pageOpacity: number = 0;
 
   private viewModel: MusicViewModel = getMusicViewModel();
 
@@ -30,10 +31,30 @@ export struct MusicPlayerPage {
       this.displayState = state;
       this.stateSignal++;
     });
+
+    // Fade-in: subtle entrance animation — page starts at 0 opacity
+    // and eases in over 200ms.  No slide because pushPathByName uses
+    // animated=false.  Uses animateTo (not .animation()) to avoid
+    // catching layout property changes.
+    animateTo({ duration: 200, curve: Curve.EaseOut }, () => {
+      this.pageOpacity = 1;
+    });
   }
 
   aboutToDisappear(): void {
     this.viewModel.setTickHandler(null);
+  }
+
+  /**
+   * Fade-out then pop — avoids jarring instant disappearance.
+   */
+  private animatedPop(): void {
+    animateTo({ duration: 150, curve: Curve.EaseIn }, () => {
+      this.pageOpacity = 0;
+    });
+    setTimeout(() => {
+      this.navStack.pop(false);
+    }, 160);
   }
 
   build() {
@@ -211,7 +232,7 @@ export struct MusicPlayerPage {
             .borderRadius(20)
             .backgroundColor(Color.Transparent)
             .onClick(() => {
-              this.navStack.pop(false);
+              this.animatedPop();
             });
 
             Text('正在播放')
@@ -228,6 +249,7 @@ export struct MusicPlayerPage {
         .backdropBlur(MaterialConstants.getBlur(MaterialConstants.THIN))
         .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.THIN, this.themeConfig.isDarkMode));
       }
+      .opacity(this.pageOpacity);
     }
     .hideTitleBar(true)
     .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.ULTRA_THIN, this.themeConfig.isDarkMode));
