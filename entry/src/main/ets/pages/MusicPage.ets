@@ -24,7 +24,8 @@ export struct MusicPage {
   @Local searchQuery: string = '';
   @Local isSearching: boolean = false;
   // Navidrome browse state
-  @Local novidromeBrowseLevel: number = 0;
+  @Local isBrowsingNovidrome: boolean = false;
+  @Local novidromeBrowseLevel: number = -1;
   @Local novidromeSelectedArtistId: string = '';
   @Local novidromeSelectedArtistName: string = '';
   @Local novidromeSelectedAlbumId: string = '';
@@ -48,7 +49,6 @@ export struct MusicPage {
     if (this.viewModel.novidromeConfig.enabled
       && this.viewModel.novidromeConfig.serverUrl !== ''
       && this.viewModel.tracks.length === 0) {
-      this.viewModel.currentTab = MusicPageTab.NOVIDROME;
       this.enterNovidromeBrowse();
     }
   }
@@ -84,7 +84,6 @@ export struct MusicPage {
                 this.tabChip('艺术家', MusicPageTab.ARTISTS);
                 this.tabChip('歌单', MusicPageTab.PLAYLISTS);
                 this.tabChip('搜索', MusicPageTab.SEARCH);
-                this.tabChip('Navidrome', MusicPageTab.NOVIDROME);
               }
               .width('100%')
               .padding({ left: 12, right: 12, top: 4, bottom: 8 });
@@ -114,8 +113,34 @@ export struct MusicPage {
                 .width('100%').padding({ left: 16, right: 16, bottom: 8 });
               }
 
+              // Navidrome banner — shown when connected and not browsing
+              if (this.viewModel.novidromeConnected && !this.isBrowsingNovidrome
+                && this.viewModel.currentTab === MusicPageTab.TRACKS) {
+                Row() {
+                  SymbolGlyph(ICON.STREAM)
+                    .fontSize(16)
+                    .fontColor([this.themeConfig.primaryColor]);
+                  Text('Navidrome 已连接')
+                    .fontSize(14 * this.themeConfig.fontScale)
+                    .fontColor(this.themeConfig.textColor)
+                    .margin({ left: 8 })
+                    .layoutWeight(1);
+                  Button('浏览音乐')
+                    .fontSize(13)
+                    .fontColor(this.themeConfig.primaryColor)
+                    .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
+                    .borderRadius(8)
+                    .padding({ left: 14, right: 14, top: 5, bottom: 5 })
+                    .onClick(() => {
+                      this.enterNovidromeBrowse();
+                    });
+                }
+                .width('100%')
+                .padding({ left: 16, right: 16, top: 6, bottom: 10 });
+              }
+
               // Content based on currentTab
-              if (this.viewModel.currentTab === MusicPageTab.NOVIDROME) {
+              if (this.isBrowsingNovidrome) {
                 this.novidromeBrowseView();
               } else if (this.viewModel.tracks.length === 0) {
                 Column() {
@@ -134,7 +159,6 @@ export struct MusicPage {
                       .padding({ left: 24, right: 24, top: 10, bottom: 10 })
                       .margin({ top: 12 })
                       .onClick(() => {
-                        this.viewModel.currentTab = MusicPageTab.NOVIDROME;
                         this.enterNovidromeBrowse();
                       });
                   } else {
@@ -267,9 +291,6 @@ export struct MusicPage {
       .animation({ duration: 200, curve: Curve.EaseInOut })
       .onClick(() => {
         this.viewModel.currentTab = tab;
-        if (tab === MusicPageTab.NOVIDROME) {
-          this.enterNovidromeBrowse();
-        }
       });
   }
 
@@ -429,6 +450,7 @@ export struct MusicPage {
   // ── Navidrome Browse ──
 
   private async enterNovidromeBrowse(): Promise<void> {
+    this.isBrowsingNovidrome = true;
     this.novidromeBrowseLevel = 0;
     this.novidromeSelectedArtistId = '';
     this.novidromeSelectedArtistName = '';
@@ -538,6 +560,22 @@ export struct MusicPage {
   @Builder
   novidromeArtistList() {
     Column() {
+      // Exit browse button
+      Row() {
+        SymbolGlyph(ICON.BACK)
+          .fontSize(16)
+          .fontColor([this.themeConfig.primaryColor])
+          .margin({ right: 8 })
+          .onClick(() => {
+            this.isBrowsingNovidrome = false;
+          });
+        Text('返回曲库')
+          .fontSize(14 * this.themeConfig.fontScale)
+          .fontColor(this.themeConfig.textSecondaryColor);
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 4, bottom: 8 });
+
       if (this.viewModel.novidromeArtists.length === 0) {
         Blank().height(40);
         Text('没有找到艺术家')
@@ -572,6 +610,7 @@ export struct MusicPage {
         .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
         .margin({ left: 10, right: 10, bottom: 8 })
         .onClick(() => {
+          this.novidromeIsBrowsing = true;
           this.novidromeSelectedArtistId = artist.id;
           this.novidromeSelectedArtistName = artist.name;
           this.novidromeBrowseLevel = 1;
@@ -638,6 +677,7 @@ export struct MusicPage {
         .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
         .margin({ left: 10, right: 10, bottom: 8 })
         .onClick(() => {
+          this.novidromeIsBrowsing = true;
           this.novidromeSelectedAlbumId = album.id;
           this.novidromeSelectedAlbumName = album.name;
           this.novidromeBrowseLevel = 2;
