@@ -37,6 +37,7 @@ export struct NoteDetailPage {
   @Local hasChanges: boolean = false;
   @Local isSaving: boolean = false;
   @Local isDeleting: boolean = false;
+  @Local pageOpacity: number = 0;
   private loadedNote: Note | null = null;
   private dialogController: CustomDialogController | null = null;
 
@@ -68,6 +69,14 @@ export struct NoteDetailPage {
       this.isNew = false;
       this.loadNote(id);
     }
+
+    // Fade-in: page starts transparent then animates to full opacity.
+    // This replaces the default Navigation slide transition (disabled via
+    // pushPathByName(..., false)) with a smooth fade that doesn't shift
+    // the underlying page content horizontally.
+    animateTo({ duration: 250, curve: Curve.EaseInOut }, () => {
+      this.pageOpacity = 1;
+    });
   }
 
   private async loadNote(id: string): Promise<void> {
@@ -120,7 +129,7 @@ export struct NoteDetailPage {
       // Trigger NotesPage refresh BEFORE popping so the list is already
       // up-to-date when the user returns (onShown is unreliable).
       NavParams.triggerNotesRefresh();
-      this.navStack.pop(true);
+      this.animatedPop();
     } catch (err) {
       console.error('NoteDetailPage.saveNote: save failed - ' + String(err));
     } finally {
@@ -151,7 +160,7 @@ export struct NoteDetailPage {
     }
     NavParams.needsNotesRefresh = true;
     NavParams.triggerNotesRefresh();
-    this.navStack.pop(true);
+    this.animatedPop();
   }
 
   private isPresetCategory(category: string): boolean {
@@ -161,6 +170,18 @@ export struct NoteDetailPage {
       }
     }
     return false;
+  }
+
+  /**
+   * Fade-out then pop — avoids the abrupt disappearance that happens
+   * with instant navStack.pop(false), while still preventing the default
+   * slide transition that would shift the underlying page horizontally.
+   */
+  private animatedPop(): void {
+    this.pageOpacity = 0;
+    setTimeout(() => {
+      this.navStack.pop(false);
+    }, 260);
   }
 
   build() {
@@ -180,7 +201,7 @@ export struct NoteDetailPage {
           .backdropBlur(MaterialConstants.getBlur(MaterialConstants.CHIP))
     .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.CHIP, this.themeConfig.isDarkMode))
           .onClick(() => {
-            this.navStack.pop(true);
+            this.animatedPop();
           });
 
           Blank();
@@ -381,7 +402,9 @@ export struct NoteDetailPage {
         }
       }
       .width('100%')
-      .height('100%');
+      .height('100%')
+      .opacity(this.pageOpacity)
+      .animation({ duration: 250, curve: Curve.EaseInOut });
     }
     .hideTitleBar(true);
   }

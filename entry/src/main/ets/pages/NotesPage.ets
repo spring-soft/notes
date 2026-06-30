@@ -246,9 +246,10 @@ export struct NotesPage {
 
   private navigateToDetail(noteId: string): void {
     NavParams.noteId = noteId;
-    // animated: true — enables the default Navigation push transition
-    // (slide-from-right) which provides smooth visual continuity.
+    // animated: false — avoid default slide transition that causes the
+    // notes list header and cards to shift left as a group.  Fade animation
+    // is handled manually by NoteDetailPage (pageOpacity + animatedPop).
     this.navStack.pushPathByName('note_detail',
-      {} as Record<string, Object>, true);
+      {} as Record<string, Object>, false);
   }
 }
