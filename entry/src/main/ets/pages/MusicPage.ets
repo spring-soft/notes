@@ -815,6 +815,9 @@ export struct MusicPage {
     .width('100%')
     .padding({ left: 16, right: 16, top: 12, bottom: 12 })
     .borderRadius(this.themeConfig.borderRadius)
+    .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
+    .backgroundColor(MaterialConstants.getOverlayColor(
+      MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
     .margin({ left: 10, right: 10, bottom: 4 })
     .onClick(() => {
       this.viewModel.playNovidromeTrack(song, contextSongs);

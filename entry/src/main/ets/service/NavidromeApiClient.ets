@@ -38,6 +38,13 @@ export class NavidromeApiClient {
   private cache: Map<string, CacheEntry> = new Map();
   private cacheTtlMs: number = MusicConstants.NOVIDROME_CACHE_TTL_MS;
 
+  // ── Stream URL Cache ──
+  // Stream URLs contain auth tokens — caching avoids regenerating random
+  // salt + MD5 hash on every track tap.  Tokens are stateless so reuse is
+  // safe.  Cleared with invalidateCache() on config change.
+  private streamUrlCache: Map<string, string> = new Map();
+  private coverArtUrlCache: Map<string, string> = new Map();
+
   constructor(config: NovidromeConfig) {
     this.config = this.normalizeConfig(config);
   }
@@ -48,9 +55,11 @@ export class NavidromeApiClient {
     this.invalidateCache();
   }
 
-  /** Clears all cached API responses. */
+  /** Clears all cached API responses and stream/cover URLs. */
   invalidateCache(): void {
     this.cache.clear();
+    this.streamUrlCache.clear();
+    this.coverArtUrlCache.clear();
     hilog.info(DOMAIN, TAG, 'Cache invalidated');
   }
 
@@ -481,15 +490,31 @@ export class NavidromeApiClient {
     // IMPORTANT: no &f=json — the stream endpoint returns raw audio bytes.
     // Including f=json tells the server to wrap the response in a JSON
     // envelope, which breaks AVPlayer audio decoding.
-    return this.config.serverUrl + '/rest/stream?id=' + encodeURIComponent(trackId) + '&' + this.generateAuthParamsNoFormat();
+    const cacheKey: string = trackId;
+    const cached: string | undefined = this.streamUrlCache.get(cacheKey);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const url: string = this.config.serverUrl + '/rest/stream?id='
+      + encodeURIComponent(trackId) + '&' + this.generateAuthParamsNoFormat();
+    this.streamUrlCache.set(cacheKey, url);
+    return url;
   }
 
   getCoverArtUrl(coverArtId: string, size?: number): string {
+    const cacheKey: string = coverArtId + '_' + (size !== undefined ? String(size) : '0');
+    const cached: string | undefined = this.coverArtUrlCache.get(cacheKey);
+    if (cached !== undefined) {
+      return cached;
+    }
     let endpoint: string = 'getCoverArt?id=' + coverArtId;
     if (size !== undefined && size > 0) {
       endpoint += '&size=' + size;
     }
     // Cover art is binary image data — no f=json.
-    return this.config.serverUrl + '/rest/' + endpoint + '&' + this.generateAuthParamsNoFormat();
+    const url: string = this.config.serverUrl + '/rest/' + endpoint
+      + '&' + this.generateAuthParamsNoFormat();
+    this.coverArtUrlCache.set(cacheKey, url);
+    return url;
   }
 }

@@ -53,16 +53,12 @@ export class MusicPlayerService {
     }
   }
 
-  // ── Player Initialization ──
+  // ── Player Setup ──
 
-  private async ensurePlayer(): Promise<media.AVPlayer> {
-    if (this.avPlayer === null) {
-      this.avPlayer = await media.createAVPlayer();
-      this.setupListeners();
-    }
-    return this.avPlayer;
-  }
-
+  /**
+   * Registers event listeners on the CURRENT avPlayer instance.
+   * Called after creating a fresh AVPlayer on each loadTrack.
+   */
   private setupListeners(): void {
     if (this.avPlayer === null) {
       return;
@@ -75,8 +71,7 @@ export class MusicPlayerService {
         // CRITICAL: AVPlayer requires an explicit prepare() call to
         // transition from initialized → prepared.  Without this, HTTP
         // streams never reach the prepared state and playback silently
-        // fails — the player stays stuck in initialized until the 30 s
-        // timeout fires and the error banner turns red.
+        // fails.
         if (this.avPlayer !== null) {
           hilog.info(DOMAIN, TAG, 'Calling prepare() to move from initialized → prepared');
           this.avPlayer.prepare();
@@ -85,8 +80,7 @@ export class MusicPlayerService {
         this.clearLoadTimeout();
         this.setState(PlayerState.LOADING);
         // Auto-play when ready — fixes race condition where play() is
-        // called before the async URL preparation completes (common for
-        // HTTP streams which take longer than local files).
+        // called before the async URL preparation completes.
         if (this.autoPlayWhenReady) {
           this.autoPlayWhenReady = false;
           if (this.avPlayer !== null) {
@@ -148,80 +142,38 @@ export class MusicPlayerService {
     });
   }
 
-  // ── State Wait Helper ──
-
-  /**
-   * Waits for the AVPlayer to reach a specific state, or times out.
-   *
-   * HarmonyOS AVPlayer.reset() is synchronous in call but the state
-   * transition to 'idle' happens asynchronously.  Setting url before
-   * the reset completes results in the URL being applied to a stale
-   * state then cleared by the pending reset — playback silently fails.
-   * This helper ensures we only proceed once the state machine has
-   * settled on the target value.
-   */
-  private waitForState(targetState: string, timeoutMs: number): Promise<void> {
-    return new Promise<void>((resolve) => {
-      const player: media.AVPlayer | null = this.avPlayer;
-      if (player === null) {
-        resolve();
-        return;
-      }
-
-      // Already at target — resolve immediately
-      if (player.state === targetState) {
-        resolve();
-        return;
-      }
-
-      let settled: boolean = false;
-      const handler = (state: string) => {
-        if (settled) {
-          return;
-        }
-        if (state === targetState) {
-          settled = true;
-          player.off('stateChange', handler);
-          resolve();
-        } else if (state === 'error') {
-          settled = true;
-          player.off('stateChange', handler);
-          hilog.warn(DOMAIN, TAG,
-            'Player entered error while waiting for %{public}s', targetState);
-          resolve(); // Don't hang — let the caller handle the error state
-        }
-      };
-
-      player.on('stateChange', handler);
-
-      setTimeout(() => {
-        if (!settled) {
-          settled = true;
-          player.off('stateChange', handler);
-          hilog.warn(DOMAIN, TAG,
-            'Timed out after %{public}d ms waiting for state %{public}s',
-            timeoutMs, targetState);
-          resolve(); // Don't hang forever
-        }
-      }, timeoutMs);
-    });
-  }
-
   // ── Track Loading ──
 
   async loadTrack(track: Track): Promise<void> {
     try {
       this.setState(PlayerState.LOADING);
-      const player: media.AVPlayer = await this.ensurePlayer();
+      this.clearLoadTimeout();
 
-      // 1. Reset and wait for the player to reach 'idle'.
-      //    MUST wait — otherwise setting url races with the async reset
-      //    transition and the URL can be silently discarded.
-      player.reset();
-      await this.waitForState('idle', 5000);
+      // 1. Destroy old player entirely — release()+createAVPlayer() instead
+      //    of reset().  When switching HTTP streams, the old player's
+      //    internal state (buffered data, pending callbacks) can interfere
+      //    with the new URL load.  A fresh AVPlayer starts in clean 'idle'
+      //    state, guaranteeing a reliable idle→initialized→prepared chain.
+      if (this.avPlayer !== null) {
+        try {
+          // Detach all listeners BEFORE release so stale 'released' events
+          // cannot mutate autoPlayWhenReady / playerState on the new player.
+          this.avPlayer.off('stateChange');
+          this.avPlayer.off('timeUpdate');
+          this.avPlayer.off('durationUpdate');
+          this.avPlayer.off('error');
+          this.avPlayer.release();
+        } catch (e) {
+          const err: BusinessError = e as BusinessError;
+          hilog.warn(DOMAIN, TAG, 'Error releasing old player: %{public}s', err.message);
+        }
+        this.avPlayer = null;
+      }
 
-      // 2. Apply stored volume to the (possibly new) AVPlayer instance.
-      player.setVolume(this.volumeLevel);
+      // 2. Create a fresh AVPlayer — starts in 'idle' state
+      this.avPlayer = await media.createAVPlayer();
+      this.setupListeners();
+      this.avPlayer.setVolume(this.volumeLevel);
 
       // 3. Determine URL based on source.
       let url: string = '';
@@ -236,10 +188,7 @@ export class MusicPlayerService {
       hilog.info(DOMAIN, TAG, 'Loading track URL (%{public}s): %{public}s',
         track.source, url);
 
-      // 4. Clear any previous load timeout
-      this.clearLoadTimeout();
-
-      // 5. Set a safety timeout — if the stream doesn't prepare within 30 s,
+      // 4. Set a safety timeout — if the stream doesn't prepare within 30 s,
       //    report an error so the user isn't left wondering.
       this.loadTimeoutId = setTimeout(() => {
         if (this.avPlayer !== null && this.avPlayer.state !== 'prepared'
@@ -253,9 +202,11 @@ export class MusicPlayerService {
         }
       }, 30000);
 
-      // 6. Set URL (triggers idle → initialized → prepared)
+      // 5. Set URL — triggers idle → initialized → prepared chain.
+      //    stateChange handler calls prepare() on 'initialized',
+      //    then play() on 'prepared' when autoPlayWhenReady is true.
       this.autoPlayWhenReady = true;
-      player.url = url;
+      this.avPlayer.url = url;
       this.currentTrackId = track.id;
       this.currentPositionMs = 0;
       this.durationMs = track.durationMs;

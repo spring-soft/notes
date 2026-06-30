@@ -196,7 +196,7 @@ Favorites (local RDB playlist):
 | `constants/MusicConstants.ets` | Music defaults (volume, repeatMode, shuffle), Navidrome API version, UI constants |
 | `repository/MusicRepository.ets` | RDB CRUD for tracks, playlists, playlist-track junction (JOIN query) |
 | `service/NavidromeApiClient.ets` | Subsonic REST API client — MD5 auth, getAllSongs(), getStreamUrl() uses no-f=json generator, batch album fetch |
-| `service/MusicPlayerService.ets` | AVPlayer wrapper with state machine, callback pattern, waitForState() async guard, prepare() call on initialized, 30s load timeout |
+| `service/MusicPlayerService.ets` | AVPlayer wrapper — release()+createAVPlayer() per track, state machine, prepare() on initialized, 30s load timeout |
 | `viewmodel/MusicViewModel.ets` | @ObservedV2 singleton — playback, 4-tab browse, favorites playlist, playNovidromeTrack() for next/prev nav, @Trace playbackError |
 | `pages/MusicPage.ets` | Pure Navidrome streaming browser — 4-tab (全部歌曲/歌手/专辑/歌单) + favorites heart, Stack+Visibility anti-ghost |
 | `pages/MusicPlayerPage.ets` | Full-screen Now Playing NavDestination — album art, controls, seek, volume |
@@ -284,6 +284,12 @@ Favorites (local RDB playlist):
 69. **点击歌曲不跳转全屏播放页** — 根因：`MusicPage.songRow` 的 `onClick` 只调用 `viewModel.playNovidromeTrack()` 开始播放，没有 push `music_player` NavDestination。修复：在 `onClick` 中 `playNovidromeTrack()` 后添加 `this.navStack.pushPathByName('music_player', {} as Record<string, Object>, false)`，点击歌曲即跳转全屏 Now Playing 页面。
 
 70. **笔记详情页动画残留（横向位移）— 手动 Fade .animation() 副作用** — 根因：NoteDetailPage/MusicPlayerPage 外层 Stack 的 `.animation({ duration: 250, curve: Curve.EaseInOut })` 会动画化 Stack **所有**属性变化（不仅 opacity），Navigation push 期间的布局/位置变化也被捕获并平滑化 → 旧页面组件出现横向位移。修复：移除所有手动 Fade 代码（`@Local pageOpacity`/`animateTo`/`animatedPop`/`.opacity().animation()`），改为直接 `navStack.pop(false)`。同时尝试 `.pageTransition({ duration: 0 })` → 编译器报错 `Property 'pageTransition' does not exist on type 'NavDestinationAttribute'`（SDK API 24 不支持）；尝试 `.transition({ duration: 0 })` → 编译器报错 `'duration' does not exist in type 'TransitionOptions | TransitionEffect<...>'`。最终采用纯 `pushPathByName(..., false)` + `pop(false)` 无动画方案（#66 最终方案）。
+
+71. **切歌后无法播放 — AVPlayer release()+createAVPlayer() 替代 reset()** — 根因：切歌时 `loadTrack()` 调用 `player.reset()` 回到 idle，但旧 HTTP stream 的内部状态（缓冲数据、pending 回调）会干扰新 URL 的加载。此外，`reset()` 的异步 'released' 事件可能在重建新播放器后才到达，导致误设 `autoPlayWhenReady=false`。修复：`loadTrack()` 改为完全释放旧播放器 → 创建新实例：① `off()` 解绑所有事件监听；② `release()` 释放旧实例；③ `media.createAVPlayer()` 创建全新播放器（天然 idle 状态）；④ 重新 `setupListeners()`。去掉不再需要的 `ensurePlayer()` 和 `waitForState()` 方法。
+
+72. **流媒体 URL 缓存 — 切歌更流畅** — NavidromeApiClient 新增：① `streamUrlCache: Map<string, string>` 缓存 `getStreamUrl()` 结果（含含随机 salt 的 auth token，token 无状态可复用）；② `coverArtUrlCache: Map<string, string>` 缓存 `getCoverArtUrl()` 结果；③ `invalidateCache()` 同时清空两个 URL 缓存。切歌时免重新生成 salt+MD5，直接复用已缓存的完整 stream URL。
+
+73. **统一毛玻璃设计 — 音乐页面** — ① `MusicPage.songRow` 缺少 `backdropBlur`+`backgroundColor`（歌曲行透明无深度），新增 REGULAR 级模糊+半透明背景，与专辑/歌手/歌单行一致；② `MusicPlayerPage` 专辑封面占位列从 `SURFACE` 级纯色背景升级为 REGULAR 级 backdropBlur 材质。
 
 61. **专辑打开后无歌曲 + 无法流式播放 + MusicPage 重构为纯 Navidrome 流媒体（6 轮修复）** — 六个根因：⓪ **URL 双 `?` bug（第三轮新发现）** — `sendGetRequest()` 始终用 `?` 连接认证参数，当 endpoint 自带 `?`（如 `getAlbumList2?type=newest&size=500`）时 URL 变成 `...?type=newest&size=500?u=...`，第二个 `?` 之后全部被服务器当作 `size` 值的一部分，认证参数丢失 → 服务器返回错误 / 空数据；① **`getAlbumList2` JSON key 错误** — Subsonic `getAlbumList2` 返回 key `"albumList2"` 而非 `"albumList"`，代码读错 key → 永远 undefined；② **`getSongs()` 缺少 status 检查**；③ **错误静默吞噬** — catch 块设 `=[]` 丢弃异常；④ **AVPlayer 播放竞态条件** — `play()` 先于 prepared 状态调用导致静默无操作；⑤ **MusicPage 架构错位 + 过渡残影** — 没有本地音乐却保留本地曲库标签；`if/else` 条件渲染导致旧视图销毁→新视图创建的布局动画，旧窗口随新窗口一起运动。修复：⓪ `sendGetRequest` 检测 endpoint 含 `?` 则用 `&` 连接认证参数；① `SubsonicAlbumListResponse` 新增 `albumList2?:`；② `getSongs()` 新增 status 检查 + `encodeURIComponent` + 单曲兼容；③ MusicViewModel 新增 `@Trace novidromeError`；④ `autoPlayWhenReady` + `reset()`；⑤ MusicPage 完全重写 — 移除本地标签/导入按钮；**用 Stack + Visibility 替代 if/else**，两个视图同时挂载瞬间切换无销毁重建 → 根除过渡残影；loading 遮罩在 browseLevel 变更之前先设 true。
 

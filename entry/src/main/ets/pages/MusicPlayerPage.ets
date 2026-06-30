@@ -64,7 +64,8 @@ export struct MusicPlayerPage {
                 .width(260)
                 .height(260)
                 .borderRadius(16)
-                .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.SURFACE, this.themeConfig.isDarkMode))
+                .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
+                .backgroundColor(MaterialConstants.getOverlayColor(MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
                 .justifyContent(FlexAlign.Center)
                 .alignItems(HorizontalAlign.Center);
               }
