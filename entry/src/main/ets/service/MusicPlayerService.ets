@@ -217,19 +217,97 @@ export class MusicPlayerService {
 
   // ── Track Loading ──
 
+  /**
+   * Loads a new track for playback.  Uses an overlapping strategy to
+   * eliminate the silence gap between tracks:
+   *
+   *   1. Create a new AVPlayer in the background (old one keeps playing)
+   *   2. Set URL and wait for the 'prepared' state on the new player
+   *   3. Only THEN release the old player and make the new one current
+   *   4. Return — caller calls play() which starts playback near-instantly
+   *
+   * This way the HTTP stream setup / buffering happens while the old
+   * track is still playing, so the user hears a seamless transition.
+   */
   async loadTrack(track: Track): Promise<void> {
     try {
       this.clearLoadTimeout();
 
-      // 1. Destroy old player entirely — release()+createAVPlayer() instead
-      //    of reset().  When switching HTTP streams, the old player's
-      //    internal state (buffered data, pending callbacks) can interfere
-      //    with the new URL load.  A fresh AVPlayer starts in clean 'idle'
-      //    state, guaranteeing a reliable idle→initialized→prepared chain.
+      // Determine URL
+      let url: string = '';
+      if (track.source === MusicSource.NOVIDROME) {
+        url = track.fileUri;
+      } else {
+        url = 'file://' + track.fileUri;
+      }
+
+      hilog.info(DOMAIN, TAG, 'Loading track URL (%{public}s): %{public}s',
+        track.source, url);
+
+      // ── Phase 1: Create new player and wait for 'prepared' ──
+      // Old player keeps playing during this phase.
+      const newPlayer: media.AVPlayer = await media.createAVPlayer();
+      newPlayer.setVolume(this.volumeLevel);
+
+      let prepareError: string = '';
+
+      await new Promise<void>((resolve: (value: void) => void) => {
+        let finished: boolean = false;
+
+        const finish = (): void => {
+          if (finished) {
+            return;
+          }
+          finished = true;
+          newPlayer.off('stateChange');
+          newPlayer.off('error');
+          clearTimeout(timeoutId);
+          resolve();
+        };
+
+        const timeoutId: number = setTimeout(() => {
+          prepareError = '加载超时: 服务器无响应';
+          finish();
+        }, 30000);
+
+        newPlayer.on('stateChange', (state: string) => {
+          if (state === 'initialized') {
+            newPlayer.prepare();
+          } else if (state === 'prepared') {
+            // New player is ready — proceed to phase 2
+            finish();
+          } else if (state === 'error') {
+            prepareError = '播放器进入错误状态';
+            finish();
+          }
+        });
+
+        newPlayer.on('error', (err: BusinessError) => {
+          prepareError = '播放错误: ' + err.message;
+          finish();
+        });
+
+        // Kick off the state machine
+        newPlayer.url = url;
+      });
+
+      // ── Phase 2: If preparation failed, clean up and report ──
+      if (prepareError !== '') {
+        try {
+          newPlayer.release();
+        } catch (_e) {
+          // ignore
+        }
+        this.setState(PlayerState.ERROR);
+        if (this.onErrorCallback !== null) {
+          this.onErrorCallback(prepareError);
+        }
+        return;
+      }
+
+      // ── Phase 3: Swap players — release old, promote new ──
       if (this.avPlayer !== null) {
         try {
-          // Detach all listeners BEFORE release so stale 'released' events
-          // cannot mutate autoPlayWhenReady / playerState on the new player.
           this.avPlayer.off('stateChange');
           this.avPlayer.off('timeUpdate');
           this.avPlayer.off('durationUpdate');
@@ -242,48 +320,31 @@ export class MusicPlayerService {
         this.avPlayer = null;
       }
 
-      // 2. Create a fresh AVPlayer — starts in 'idle' state
-      this.avPlayer = await media.createAVPlayer();
+      this.avPlayer = newPlayer;
       this.setupListeners();
       this.avPlayer.setVolume(this.volumeLevel);
 
-      // 3. Determine URL based on source.
-      let url: string = '';
-      if (track.source === MusicSource.NOVIDROME) {
-        // Navidrome stream — full HTTP URL already resolved by ViewModel
-        url = track.fileUri;
-      } else {
-        // Local file — prepend file:// protocol
-        url = 'file://' + track.fileUri;
-      }
-
-      hilog.info(DOMAIN, TAG, 'Loading track URL (%{public}s): %{public}s',
-        track.source, url);
-
-      // 4. Set a safety timeout — if the stream doesn't prepare within 30 s,
-      //    report an error so the user isn't left wondering.
+      // ── Phase 4: Set up safety timeout for playback start ──
       this.loadTimeoutId = setTimeout(() => {
-        if (this.avPlayer !== null && this.avPlayer.state !== 'prepared'
-          && this.avPlayer.state !== 'playing' && this.avPlayer.state !== 'paused') {
-          hilog.error(DOMAIN, TAG, 'Stream load timed out after 30 s');
+        if (this.avPlayer !== null && this.avPlayer.state !== 'playing'
+          && this.avPlayer.state !== 'paused') {
+          hilog.error(DOMAIN, TAG, 'Playback start timed out after 30 s');
           this.setState(PlayerState.ERROR);
           this.autoPlayWhenReady = false;
           if (this.onErrorCallback !== null) {
-            this.onErrorCallback('加载超时: 服务器无响应，请检查网络连接和服务器地址');
+            this.onErrorCallback('播放启动超时');
           }
         }
       }, 30000);
 
-      // 5. Set URL — triggers idle → initialized → prepared chain.
-      //    stateChange handler calls prepare() on 'initialized',
-      //    then play() on 'prepared' when autoPlayWhenReady is true.
+      // ── Phase 5: Ready to play ──
       this.autoPlayWhenReady = true;
-      this.avPlayer.url = url;
       this.currentTrackId = track.id;
       this.currentPositionMs = 0;
       this.durationMs = track.durationMs;
-      // Notify system media session of track change (background playback)
       this.updateSessionMetadata(track);
+
+      hilog.info(DOMAIN, TAG, 'Track prepared and ready: %{public}s', track.title);
     } catch (err) {
       const e: BusinessError = err as BusinessError;
       hilog.error(DOMAIN, TAG, 'Failed to load track: %{public}s', e.message);
