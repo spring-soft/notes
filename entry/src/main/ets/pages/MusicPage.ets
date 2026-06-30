@@ -4,6 +4,8 @@ import { Track, SubsonicSong, SubsonicAlbum, SubsonicArtist, Playlist, PlayerSta
 import { ThemeConfig, DEFAULT_THEME_CONFIG } from '../model/ThemeConfigModel';
 import { MaterialConstants } from '../constants/MaterialConstants';
 import { ICON } from '../utils/IconGlyphs';
+import { MusicRepository } from '../repository/MusicRepository';
+import { DatabaseHelper } from '../repository/DatabaseHelper';
 
 /**
  * Music page — pure Navidrome streaming browser with multi-tab browsing.
@@ -43,6 +45,16 @@ export struct MusicPage {
   @Local isLoading: boolean = false;
   @Local pageReady: boolean = false;
   @Local favoriteSignal: number = 0; // incremented after toggle to force re-render
+
+  // ── Custom playlist dialogs ──
+  @Local showCreateSheet: boolean = false;
+  @Local newPlaylistName: string = '';
+  @Local showAddSheet: boolean = false;
+  @Local addSheetSongId: string = '';
+  @Local addSheetSongTitle: string = '';
+  @Local showDeleteConfirm: boolean = false;
+  @Local deletePlaylistId: string = '';
+  @Local deletePlaylistName: string = '';
 
   private viewModel: MusicViewModel = getMusicViewModel();
 
@@ -369,6 +381,26 @@ export struct MusicPage {
               {} as Record<string, Object>, false);
           });
         }
+
+        // ═══════════════════════════════════════════════════════════
+        // Layer 4: Overlay dialogs (create playlist, add-to-playlist,
+        // delete confirmation)
+        // ═══════════════════════════════════════════════════════════
+
+        // ── Create playlist dialog ──
+        if (this.showCreateSheet) {
+          this.createPlaylistOverlay();
+        }
+
+        // ── Add to playlist sheet ──
+        if (this.showAddSheet) {
+          this.addToPlaylistOverlay();
+        }
+
+        // ── Delete playlist confirmation ──
+        if (this.showDeleteConfirm) {
+          this.deletePlaylistOverlay();
+        }
       }
     }
     .hideTitleBar(true)
@@ -643,12 +675,35 @@ export struct MusicPage {
   @Builder
   playlistsSection() {
     Column() {
+      // 新建歌单 button
+      Row() {
+        SymbolGlyph(ICON.PLUS)
+          .fontSize(15)
+          .fontColor([this.themeConfig.primaryColor])
+          .margin({ right: 8 });
+        Text('新建歌单')
+          .fontSize(14 * this.themeConfig.fontScale)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.themeConfig.primaryColor);
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+      .borderRadius(this.themeConfig.borderRadius)
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.REGULAR))
+      .backgroundColor(MaterialConstants.getOverlayColor(
+        MaterialConstants.REGULAR, this.themeConfig.isDarkMode))
+      .margin({ left: 10, right: 10, bottom: 12 })
+      .onClick(() => {
+        this.newPlaylistName = '';
+        this.showCreateSheet = true;
+      });
+
       if (this.viewModel.playlists.length === 0) {
-        Blank().height(40);
+        Blank().height(20);
         Text('还没有歌单')
           .fontSize(14 * this.themeConfig.fontScale)
           .fontColor(this.themeConfig.textSecondaryColor);
-        Text('在歌曲上点击 ❤️ 即可收藏')
+        Text('点击上方按钮创建歌单')
           .fontSize(12 * this.themeConfig.fontScale)
           .fontColor(this.themeConfig.textSecondaryColor)
           .margin({ top: 4 });
@@ -671,6 +726,19 @@ export struct MusicPage {
           }
           .layoutWeight(1)
           .alignItems(HorizontalAlign.Start);
+
+          // Delete button (only for user-created playlists, not favorites)
+          if (playlist.name !== '❤️ 收藏') {
+            SymbolGlyph(ICON.CLOSE)
+              .fontSize(14)
+              .fontColor([this.themeConfig.textSecondaryColor])
+              .margin({ right: 8 })
+              .onClick(() => {
+                this.deletePlaylistId = playlist.id;
+                this.deletePlaylistName = playlist.name;
+                this.showDeleteConfirm = true;
+              });
+          }
 
           SymbolGlyph(ICON.BACK)
             .fontSize(14)
@@ -733,12 +801,20 @@ export struct MusicPage {
   @Builder
   favoriteTrackRow(track: Track, idx: number) {
     Row() {
-      // Track number
-      Text(String(idx + 1))
-        .fontSize(13 * this.themeConfig.fontScale)
-        .fontColor(this.themeConfig.textSecondaryColor)
-        .width(28)
-        .textAlign(TextAlign.Center);
+      // Track number / play icon — show STREAM icon for currently playing track
+      if (this.isFavoriteCurrentTrack(track) && this.displayState === PlayerState.PLAYING) {
+        SymbolGlyph(ICON.STREAM)
+          .fontSize(13)
+          .fontColor([this.themeConfig.primaryColor])
+          .width(28);
+      } else {
+        Text(String(idx + 1))
+          .fontSize(13 * this.themeConfig.fontScale)
+          .fontColor(this.themeConfig.textSecondaryColor)
+          .width(28)
+          .fontFamily('monospace')
+          .textAlign(TextAlign.Center);
+      }
 
       // Title + artist
       Column() {
@@ -776,6 +852,17 @@ export struct MusicPage {
           setTimeout(() => {
             this.viewModel.loadFavoriteTracks();
           }, 100);
+        });
+
+      // Add-to-playlist button
+      SymbolGlyph(ICON.PLUS)
+        .fontSize(14)
+        .fontColor([this.themeConfig.textSecondaryColor])
+        .margin({ left: 4 })
+        .onClick(() => {
+          this.addSheetSongId = track.id;
+          this.addSheetSongTitle = track.title;
+          this.showAddSheet = true;
         });
 
       // Now-playing indicator
@@ -893,12 +980,20 @@ export struct MusicPage {
   @Builder
   songRow(song: SubsonicSong, idx: number, contextSongs: SubsonicSong[], showFavorite: boolean) {
     Row() {
-      // Track number / play icon
-      Text(String(song.track > 0 ? song.track : idx + 1))
-        .fontSize(13 * this.themeConfig.fontScale)
-        .fontColor(this.themeConfig.textSecondaryColor)
-        .width(28)
-        .textAlign(TextAlign.Center);
+      // Track number / play icon — show STREAM icon for currently playing track
+      if (this.isCurrentSong(song) && this.displayState === PlayerState.PLAYING) {
+        SymbolGlyph(ICON.STREAM)
+          .fontSize(13)
+          .fontColor([this.themeConfig.primaryColor])
+          .width(28);
+      } else {
+        Text(String(song.track > 0 ? song.track : idx + 1))
+          .fontSize(13 * this.themeConfig.fontScale)
+          .fontColor(this.themeConfig.textSecondaryColor)
+          .width(28)
+          .fontFamily('monospace')
+          .textAlign(TextAlign.Center);
+      }
 
       // Title + artist
       Column() {
@@ -941,6 +1036,17 @@ export struct MusicPage {
       } else {
         Blank().width(14).margin({ left: 10 });
       }
+
+      // Add-to-playlist button
+      SymbolGlyph(ICON.PLUS)
+        .fontSize(14)
+        .fontColor([this.themeConfig.textSecondaryColor])
+        .margin({ left: 4 })
+        .onClick(() => {
+          this.addSheetSongId = song.id;
+          this.addSheetSongTitle = song.title;
+          this.showAddSheet = true;
+        });
 
       // Now-playing indicator
       if (this.isCurrentSong(song) && this.displayState === PlayerState.PLAYING) {
@@ -1017,5 +1123,323 @@ export struct MusicPage {
     const secs: number = totalSec % 60;
     const secStr: string = secs < 10 ? '0' + String(secs) : String(secs);
     return String(mins) + ':' + secStr;
+  }
+
+  // ── Overlay: Create Playlist Dialog ──
+
+  @Builder
+  createPlaylistOverlay() {
+    Column() {
+      Column() {
+        Text('新建歌单')
+          .fontSize(18 * this.themeConfig.fontScale)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.themeConfig.textColor)
+          .margin({ bottom: 16 });
+
+        TextInput({ text: this.newPlaylistName, placeholder: '歌单名称' })
+          .fontSize(15 * this.themeConfig.fontScale)
+          .fontColor(this.themeConfig.textColor)
+          .placeholderColor(this.themeConfig.textSecondaryColor)
+          .backgroundColor(
+            this.themeConfig.isDarkMode
+              ? 'rgba(255, 255, 255, 0.08)'
+              : 'rgba(0, 0, 0, 0.04)'
+          )
+          .borderRadius(this.themeConfig.borderRadius)
+          .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+          .borderWidth(1)
+          .borderColor(
+            this.themeConfig.isDarkMode
+              ? 'rgba(255, 255, 255, 0.08)'
+              : 'rgba(0, 0, 0, 0.06)'
+          )
+          .margin({ bottom: 18 })
+          .onChange((value: string) => {
+            this.newPlaylistName = value;
+          });
+
+        Row() {
+          Button('取消')
+            .fontSize(14 * this.themeConfig.fontScale)
+            .fontColor(this.themeConfig.textColor)
+            .backgroundColor('rgba(128, 128, 128, 0.15)')
+            .borderRadius(this.themeConfig.borderRadius)
+            .layoutWeight(1)
+            .padding({ top: 9, bottom: 9 })
+            .onClick(() => {
+              this.showCreateSheet = false;
+              this.newPlaylistName = '';
+            });
+
+          Blank().width(14);
+
+          Button('创建')
+            .fontSize(14 * this.themeConfig.fontScale)
+            .fontColor('#FFFFFF')
+            .backgroundColor(this.themeConfig.primaryColor)
+            .borderRadius(this.themeConfig.borderRadius)
+            .layoutWeight(1)
+            .padding({ top: 9, bottom: 9 })
+            .onClick(() => {
+              this.doCreatePlaylist();
+            });
+        }
+        .width('100%');
+      }
+      .width(300)
+      .padding(22)
+      .borderRadius(this.themeConfig.borderRadius + 4)
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.DIALOG))
+      .backgroundColor(MaterialConstants.getOverlayColor(
+        MaterialConstants.DIALOG, this.themeConfig.isDarkMode));
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
+    .backgroundColor('rgba(0, 0, 0, 0.4)')
+    .zIndex(200)
+    .onClick(() => {
+      this.showCreateSheet = false;
+      this.newPlaylistName = '';
+    });
+  }
+
+  // ── Overlay: Add to Playlist Sheet ──
+
+  @Builder
+  addToPlaylistOverlay() {
+    Column() {
+      // Bottom sheet card
+      Column() {
+        // Header
+        Row() {
+          Text('添加到歌单')
+            .fontSize(17 * this.themeConfig.fontScale)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.themeConfig.textColor)
+            .layoutWeight(1);
+          SymbolGlyph(ICON.CLOSE)
+            .fontSize(16)
+            .fontColor([this.themeConfig.textSecondaryColor])
+            .onClick(() => {
+              this.showAddSheet = false;
+            });
+        }
+        .width('100%')
+        .margin({ bottom: 10 });
+
+        // Song name subtitle
+        Text(this.addSheetSongTitle)
+          .fontSize(12 * this.themeConfig.fontScale)
+          .fontColor(this.themeConfig.textSecondaryColor)
+          .maxLines(1)
+          .margin({ bottom: 14 });
+
+        // Playlist list
+        Column() {
+          if (this.viewModel.playlists.length === 0) {
+            Text('还没有歌单，请先创建')
+              .fontSize(13 * this.themeConfig.fontScale)
+              .fontColor(this.themeConfig.textSecondaryColor)
+              .padding({ top: 8, bottom: 8 });
+          }
+
+          ForEach(this.viewModel.playlists, (playlist: Playlist, _idx: number) => {
+            // Skip the favorites playlist — it's handled by the heart button
+            if (playlist.name === '❤️ 收藏') {
+              // Still show it but as the favorites toggle
+              Row() {
+                SymbolGlyph(this.viewModel.isTrackFavorited(this.addSheetSongId)
+                  ? ICON.HEART_FILL : ICON.HEART)
+                  .fontSize(16)
+                  .fontColor(this.viewModel.isTrackFavorited(this.addSheetSongId)
+                    ? ['#E57373']
+                    : [this.themeConfig.textSecondaryColor])
+                  .margin({ right: 10 });
+
+                Text('收藏')
+                  .fontSize(14 * this.themeConfig.fontScale)
+                  .fontColor(this.themeConfig.textColor)
+                  .layoutWeight(1);
+              }
+              .width('100%')
+              .padding({ left: 4, right: 4, top: 10, bottom: 10 })
+              .borderRadius(8)
+              .onClick(() => {
+                this.viewModel.toggleFavoriteTrack(this.addSheetSongId);
+                this.favoriteSignal++;
+                this.showAddSheet = false;
+              });
+            } else {
+              Row() {
+                SymbolGlyph(ICON.MUSIC_LIST)
+                  .fontSize(15)
+                  .fontColor([this.themeConfig.textSecondaryColor])
+                  .margin({ right: 10 });
+
+                Column() {
+                  Text(playlist.name)
+                    .fontSize(14 * this.themeConfig.fontScale)
+                    .fontColor(this.themeConfig.textColor)
+                    .maxLines(1);
+                  Text(playlist.trackCount !== undefined
+                    ? String(playlist.trackCount) + ' 首'
+                    : '')
+                    .fontSize(11 * this.themeConfig.fontScale)
+                    .fontColor(this.themeConfig.textSecondaryColor);
+                }
+                .layoutWeight(1)
+                .alignItems(HorizontalAlign.Start);
+              }
+              .width('100%')
+              .padding({ left: 4, right: 4, top: 10, bottom: 10 })
+              .borderRadius(8)
+              .onClick(() => {
+                this.doTogglePlaylistMembership(playlist.id, playlist.name);
+              });
+            }
+          }, (playlist: Playlist) => playlist.id);
+
+          // Quick create new playlist
+          Row() {
+            SymbolGlyph(ICON.PLUS)
+              .fontSize(15)
+              .fontColor([this.themeConfig.primaryColor])
+              .margin({ right: 10 });
+            Text('新建歌单')
+              .fontSize(14 * this.themeConfig.fontScale)
+              .fontColor(this.themeConfig.primaryColor);
+          }
+          .width('100%')
+          .padding({ left: 4, right: 4, top: 12, bottom: 4 })
+          .borderRadius(8)
+          .margin({ top: 4 })
+          .onClick(() => {
+            this.showAddSheet = false;
+            this.newPlaylistName = '';
+            this.showCreateSheet = true;
+          });
+        }
+        .width('100%');
+      }
+      .width('100%')
+      .padding(20)
+      .borderRadius({ topLeft: 16, topRight: 16 })
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.SHEET))
+      .backgroundColor(MaterialConstants.getOverlayColor(
+        MaterialConstants.SHEET, this.themeConfig.isDarkMode))
+      .constraintSize({ maxHeight: 480 });
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.End)
+    .backgroundColor('rgba(0, 0, 0, 0.4)')
+    .zIndex(200)
+    .onClick(() => {
+      this.showAddSheet = false;
+    });
+  }
+
+  // ── Overlay: Delete Playlist Confirmation ──
+
+  @Builder
+  deletePlaylistOverlay() {
+    Column() {
+      Column() {
+        Text('删除歌单')
+          .fontSize(18 * this.themeConfig.fontScale)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.themeConfig.textColor)
+          .margin({ bottom: 10 });
+
+        Text('确定要删除「' + this.deletePlaylistName + '」吗？\n歌曲不会被删除，仅移除歌单本身。')
+          .fontSize(14 * this.themeConfig.fontScale)
+          .fontColor(this.themeConfig.textSecondaryColor)
+          .margin({ bottom: 18 });
+
+        Row() {
+          Button('取消')
+            .fontSize(14 * this.themeConfig.fontScale)
+            .fontColor(this.themeConfig.textColor)
+            .backgroundColor('rgba(128, 128, 128, 0.15)')
+            .borderRadius(this.themeConfig.borderRadius)
+            .layoutWeight(1)
+            .padding({ top: 9, bottom: 9 })
+            .onClick(() => {
+              this.showDeleteConfirm = false;
+            });
+
+          Blank().width(14);
+
+          Button('删除')
+            .fontSize(14 * this.themeConfig.fontScale)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#E57373')
+            .borderRadius(this.themeConfig.borderRadius)
+            .layoutWeight(1)
+            .padding({ top: 9, bottom: 9 })
+            .onClick(() => {
+              this.doDeletePlaylist();
+            });
+        }
+        .width('100%');
+      }
+      .width(300)
+      .padding(22)
+      .borderRadius(this.themeConfig.borderRadius + 4)
+      .backdropBlur(MaterialConstants.getBlur(MaterialConstants.DIALOG))
+      .backgroundColor(MaterialConstants.getOverlayColor(
+        MaterialConstants.DIALOG, this.themeConfig.isDarkMode));
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
+    .backgroundColor('rgba(0, 0, 0, 0.4)')
+    .zIndex(200)
+    .onClick(() => {
+      this.showDeleteConfirm = false;
+    });
+  }
+
+  // ── Playlist action helpers ──
+
+  private async doCreatePlaylist(): Promise<void> {
+    const name: string = this.newPlaylistName.trim();
+    if (name === '') {
+      return;
+    }
+    this.showCreateSheet = false;
+    this.newPlaylistName = '';
+    await this.viewModel.createPlaylist(name);
+    await this.viewModel.loadPlaylists();
+  }
+
+  private async doDeletePlaylist(): Promise<void> {
+    this.showDeleteConfirm = false;
+    await this.viewModel.deletePlaylist(this.deletePlaylistId);
+    await this.viewModel.loadPlaylists();
+    this.deletePlaylistId = '';
+    this.deletePlaylistName = '';
+  }
+
+  private async doTogglePlaylistMembership(playlistId: string, playlistName: string): Promise<void> {
+    this.showAddSheet = false;
+    // Check if track is already in playlist and toggle
+    const musicRepo: MusicRepository = new MusicRepository(
+      DatabaseHelper.getInstance().getStore()
+    );
+    const isInPlaylist: boolean = await musicRepo.isTrackInPlaylist(
+      playlistId, this.addSheetSongId
+    );
+    if (isInPlaylist) {
+      await musicRepo.removeTrackFromPlaylist(playlistId, this.addSheetSongId);
+    } else {
+      await this.viewModel.addToPlaylist(playlistId, this.addSheetSongId);
+    }
+    // Refresh playlist track counts
+    await this.viewModel.loadPlaylists();
   }
 }

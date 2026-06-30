@@ -202,6 +202,17 @@ export class MusicRepository {
     return count;
   }
 
+  async isTrackInPlaylist(playlistId: ID, trackId: ID): Promise<boolean> {
+    const predicates: relationalStore.RdbPredicates = new relationalStore.RdbPredicates(TABLE_MUSIC_PLAYLIST_TRACKS);
+    predicates.equalTo(COL_PLTRACKS_PLAYLIST_ID, playlistId)
+      .and()
+      .equalTo(COL_PLTRACKS_TRACK_ID, trackId);
+    const resultSet: relationalStore.ResultSet = await this.store.query(predicates);
+    const count: number = resultSet.rowCount;
+    resultSet.close();
+    return count > 0;
+  }
+
   async clearPlaylistTracks(playlistId: ID): Promise<void> {
     const predicates: relationalStore.RdbPredicates = new relationalStore.RdbPredicates(TABLE_MUSIC_PLAYLIST_TRACKS);
     predicates.equalTo(COL_PLTRACKS_PLAYLIST_ID, playlistId);

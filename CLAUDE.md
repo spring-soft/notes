@@ -199,7 +199,7 @@ Favorites (local RDB playlist):
 | `service/NavidromeApiClient.ets` | Subsonic REST API client — MD5 auth, getAllSongs(), getStreamUrl() uses no-f=json generator, batch album fetch |
 | `service/MusicPlayerService.ets` | AVPlayer wrapper + AVSession background playback — release()+createAVPlayer() per track, state machine, prepare() on initialized, 30s load timeout |
 | `viewmodel/MusicViewModel.ets` | @ObservedV2 singleton — playback, 5-tab browse, favorites playlist, favoriteTracks, playNovidromeTrack() for next/prev nav, @Trace playbackError |
-| `pages/MusicPage.ets` | Pure Navidrome streaming browser — 5-tab (全部歌曲/歌手/专辑/歌单/❤️收藏) + favorites heart, Stack+Visibility anti-ghost |
+| `pages/MusicPage.ets` | Pure Navidrome streaming browser — 5-tab (全部歌曲/歌手/专辑/歌单/❤️收藏) + favorites heart, custom playlist create/delete/add, Stack+Visibility anti-ghost |
 | `pages/MusicPlayerPage.ets` | Full-screen Now Playing NavDestination — album art, controls, seek (no volume slider; prev button in header) |
 | `components/business/MusicTrackItem.ets` | Track row with album art thumbnail, title, artist, duration |
 | `components/business/MusicControls.ets` | Playback controls: shuffle, prev, play/pause, next, repeat |
@@ -297,6 +297,8 @@ Favorites (local RDB playlist):
 75. **音乐页面动画优化与残影消除** — ① MusicPage 内容区层级切换由 `visibility` 瞬切改为 `opacity` + `.animation({duration:200})` 平滑交叉淡入淡出，同时加 `hitTestBehavior(None)` 防止隐藏层误触；② MusicPlayerPage 新增 `animateTo` 入场淡入（200ms EaseOut）+ 退场淡出（150ms EaseIn）+ `pop(false)`，在无 Slide 的前提下实现柔和过渡。
 
 76. **播放器页面 UI 优化 + 收藏分类 + MiniPlayer 增强** — ① MusicPlayerPage 左侧后退按钮改为上一首（PREVIOUS）按钮；② 移除音量调节滑块（系统音量可直接调整）；③ MusicPage 新增「❤️ 收藏」第 5 个 Tab，显示所有收藏曲目，支持点击播放和取消收藏；④ MusicPage 错误底栏从红色 `#C62828` 改为毛玻璃半透明（backdropBlur + getOverlayColor），与整体设计统一；⑤ MiniPlayer 底栏新增上一首按钮（位于标题右侧、播放/暂停左侧）；⑥ MusicViewModel 新增 `@Trace favoriteTracks: Track[]` + `loadFavoriteTracks()` 方法。
+
+78. **自定义歌单 + 歌曲序号优化** — ① MusicRepository 新增 `isTrackInPlaylist()` 查询 junction 表方法；② MusicPage 歌单 Tab 新增「＋ 新建歌单」按钮 + 每个歌单行新增删除按钮（X，仅非收藏歌单）；③ 歌曲行新增「+」按钮 → 弹出底部 sheet 歌单选择器（列出所有歌单含收藏 + 新建入口）→ 可添加/移除歌曲到任意歌单；④ 三个内联 overlay：创建歌单（居中卡片 TextInput+取消/创建）、添加到歌单（底部 sheet 列出歌单+收藏+新建入口）、删除确认（居中卡片 取消/删除）；⑤ 歌曲序号优化：正在播放曲目序号位置显示 `SymbolGlyph(ICON.STREAM)` + primaryColor，否则显示等宽数字；⑥ 两处应用（songRow + favoriteTrackRow）。
 
 77. **播放器细节优化 — 后退按钮恢复 + 图标去 emoji + 切歌不打断 + 后台播放** — ① MusicPlayerPage 左上角恢复为后退导航按钮（BACK）；② MusicPage 收藏 Tab 从 emoji `❤️` 改为 SymbolGlyph(ICON.HEART_FILL)，错误横幅 `⚠` 和 `✕` 也改为 SymbolGlyph；③ MusicPlayerService.loadTrack() 重构为**重叠切换**：先创建新 AVPlayer → 设 URL → 等待 'prepared'（旧播放器在此期间继续播放）→ 就绪后才释放旧播放器 → 切歌瞬间无静音间隙；'initialized' handler 仅在非 PLAYING 时设 LOADING；④ 新增 AVSession 集成（`enableBackgroundPlayback`）— MusicPlayerService 通过 `avSession.createAVSession` + `activate()` 注册媒体会话，`loadTrack` 时设 metadata，'playing'/'paused' 时同步 play state，`destroy` 时 deactivate+destroy；Index.ets 传 UIAbility context → MusicViewModel.enableBackgroundAudio() → MusicPlayerService.enableBackgroundPlayback()。应用退后台后音频继续播放。⑤ ICON.PREVIOUS 从 backward_fill 改为 backward_end_fill（标准「上一首」图标）。
 
